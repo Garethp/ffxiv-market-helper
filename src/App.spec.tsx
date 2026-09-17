@@ -13,25 +13,19 @@ vi.mock("./services/currentCharacterService", () => ({
     setCurrentCharacterName: vi.fn(),
   },
 }));
-// Stand-ins that show which character each page was given, and let a test navigate between them.
-vi.mock("./containers/TrackedItemsContainer", async () => {
-  const { Link } = await import("react-router-dom");
-  return {
-    TrackedItemsContainer: ({ currentCharacter }: PageProps) => (
-      <>
-        <p>Tracked items selling as {currentCharacter?.name}</p>
-        <Link to="/high-volume-items">High volume items</Link>
-      </>
-    ),
-  };
-});
+// Stand-ins that show which page is open and which character it was given.
+vi.mock("./containers/TrackedItemsContainer", () => ({
+  TrackedItemsContainer: ({ currentCharacter }: PageProps) => (
+    <p>Tracked items selling as {currentCharacter?.name}</p>
+  ),
+}));
 vi.mock("./containers/HighVolumeItemsContainer", () => ({
   HighVolumeItemsContainer: ({ currentCharacter }: PageProps) => (
     <p>High volume items for {currentCharacter?.name}</p>
   ),
 }));
 vi.mock("./containers/ItemProfitScanContainer", () => ({
-  ItemProfitScanContainer: () => null,
+  ItemProfitScanContainer: () => <p>Item profit scan</p>,
 }));
 
 import App from "./App";
@@ -48,12 +42,14 @@ const mockedSetCurrentCharacterName = vi.mocked(
 const alice: Character = { name: "Alice", homeWorld: "WorldA", retainers: [] };
 const bob: Character = { name: "Bob", homeWorld: "WorldB", retainers: [] };
 
-const renderApp = () =>
+const renderApp = (path = "/") =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <App />
     </MemoryRouter>,
   );
+
+const navLink = (name: string) => screen.getByRole("link", { name });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -121,9 +117,52 @@ describe("App", () => {
       fireEvent.change(await screen.findByLabelText("Selling as"), {
         target: { value: "Bob" },
       });
-      fireEvent.click(screen.getByText("High volume items"));
+      fireEvent.click(navLink("High Volume Items"));
 
       await screen.findByText("High volume items for Bob");
+    });
+
+    it("should show the Current Character's home world alongside it", async () => {
+      renderApp();
+
+      fireEvent.change(await screen.findByLabelText("Selling as"), {
+        target: { value: "Bob" },
+      });
+
+      await screen.findByText("WorldB");
+    });
+  });
+
+  describe("the navbar", () => {
+    it("should move between pages", async () => {
+      renderApp();
+      await screen.findByText("Tracked items selling as Alice");
+
+      fireEvent.click(navLink("High Volume Items"));
+      await screen.findByText("High volume items for Alice");
+
+      fireEvent.click(navLink("Tracked Items"));
+      await screen.findByText("Tracked items selling as Alice");
+    });
+
+    it("should mark only the page being viewed as current", async () => {
+      renderApp("/high-volume-items");
+      await screen.findByText("High volume items for Alice");
+
+      expect(navLink("High Volume Items").getAttribute("aria-current")).toBe(
+        "page",
+      );
+      expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
+    });
+
+    it("should mark no page as current on a page it doesn't link to", async () => {
+      renderApp("/item/5");
+      await screen.findByText("Item profit scan");
+
+      expect(navLink("High Volume Items").hasAttribute("aria-current")).toBe(
+        false,
+      );
+      expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
     });
   });
 });

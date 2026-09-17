@@ -1,4 +1,4 @@
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { ProfitTable } from "../components/ProfitTable";
 import { useItemProfitScan } from "../hooks/useItemProfitScan";
 import type { TradingConfig } from "../services/tradingConfig";
@@ -41,12 +41,6 @@ const ItemProfitScan = ({
       <title>{itemName ?? `Item #${itemId}`}</title>
       <header>
         <h1>{itemName ?? `Item #${itemId}`}</h1>
-        <p className="subtitle">
-          <Link to="/high-volume-items" className="nav-link">
-            ← High volume items
-          </Link>{" "}
-          · <Link to="/">Tracked items</Link>
-        </p>
       </header>
 
       <div className="toolbar">

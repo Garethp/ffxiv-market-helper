@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { ProfitTable } from "../components/ProfitTable";
 import { useTrackedItemsAnalysis } from "../hooks/useTrackedItemsAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
@@ -35,9 +34,6 @@ export const TrackedItemsContainer = ({
         <span className="last-updated">
           Rows refresh automatically every {params.refreshIntervalMs / 1000}s
         </span>
-        <Link to="/high-volume-items" className="nav-link">
-          Find high-volume items →
-        </Link>
       </div>
 
       {buyingRegions.map((buyingRegion) => (

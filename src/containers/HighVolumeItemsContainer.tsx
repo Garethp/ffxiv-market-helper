@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { BULK_SALE_VELOCITY_BATCH_SIZE } from "../api/universalis";
 import { fetchItemNames } from "../api/xivapi";
 import { ScannedItemsTable } from "../components/ScannedItemsTable";
@@ -82,12 +81,7 @@ export const HighVolumeItemsContainer = ({
       <title>High Volume Items</title>
       <header>
         <h1>High Volume Items</h1>
-        <p className="subtitle">
-          Sale velocity on {world || "…"} ·{" "}
-          <Link to="/" className="nav-link">
-            ← Back to tracked items
-          </Link>
-        </p>
+        <p className="subtitle">Sale velocity on {world || "…"}</p>
       </header>
 
       <div className="toolbar">

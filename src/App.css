@@ -15,12 +15,94 @@ body {
   padding: 2rem 1.5rem;
 }
 
-.app-bar {
+.navbar {
+  background: #181b22;
+  border-bottom: 1px solid #2a2d36;
+}
+
+.navbar-inner {
   display: flex;
-  justify-content: flex-end;
+  align-items: stretch;
+  flex-wrap: wrap;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1rem 1.5rem 0;
+  padding: 0 1.5rem;
+}
+
+.character-switcher {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem 1.5rem 0.75rem 0;
+  margin-right: 1.5rem;
+  border-right: 1px solid #2a2d36;
+}
+
+.character-switcher-label {
+  color: #9aa0aa;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.character-switcher-control {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.character-switcher select {
+  background: #1c1f27;
+  color: #e8e8e8;
+  border: 1px solid #3a3e4a;
+  border-radius: 0.3rem;
+  padding: 0.35rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.character-switcher select:not(:disabled):hover {
+  border-color: #8ab4f8;
+}
+
+.character-switcher-world {
+  color: #9aa0aa;
+  font-size: 0.9rem;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.navbar-link {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0;
+  color: #9aa0aa;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.navbar-link:hover {
+  color: #e8e8e8;
+}
+
+.navbar-link.active {
+  color: #e8e8e8;
+  border-bottom-color: #8ab4f8;
+}
+
+/* Narrow enough that the links wrap under the switcher, so the divider between them has nothing to divide. */
+@media (max-width: 600px) {
+  .character-switcher {
+    padding-right: 0;
+    margin-right: 0;
+    border-right: none;
+  }
 }
 
 header h1 {
@@ -42,16 +124,6 @@ header h1 {
 .last-updated {
   color: #9aa0aa;
   font-size: 0.9rem;
-}
-
-.nav-link {
-  color: #8ab4f8;
-  font-size: 0.9rem;
-  text-decoration: none;
-}
-
-.nav-link:hover {
-  text-decoration: underline;
 }
 
 .toolbar button {

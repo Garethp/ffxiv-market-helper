@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
-import { CharacterSelection } from "./components/CharacterSelection";
+import { NavBar } from "./components/NavBar";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
@@ -60,13 +60,11 @@ const App = () => {
 
   return (
     <>
-      <div className="app-bar">
-        <CharacterSelection
-          characters={config.characters}
-          currentCharacter={currentCharacter}
-          onSelect={setCurrentCharacter}
-        />
-      </div>
+      <NavBar
+        characters={config.characters}
+        currentCharacter={currentCharacter}
+        onSelectCharacter={setCurrentCharacter}
+      />
       <Routes>
         <Route
           path="/"
