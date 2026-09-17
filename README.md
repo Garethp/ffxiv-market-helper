@@ -3,6 +3,9 @@
 This is a personal project that uses the Universalis API to track market data for Final Fantasy XIV. The goal is to
 track the prices of certain items and calculate the profit of flipping items between different worlds/datacenters/regions.
 
+## Try it out
+You can try out the app by visiting it here: [https://garethp.github.io/ffxiv-market-helper/](https://garethp.github.io/ffxiv-market-helper/)
+
 ## Features
 
 - Configure which items you want to track the profit margin for
