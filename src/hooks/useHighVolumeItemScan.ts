@@ -3,8 +3,6 @@ import {
   BULK_SALE_VELOCITY_BATCH_SIZE,
   fetchMarketableItemIds,
   fetchSaleVelocityBatch,
-  pauseBulkScan,
-  resumeBulkScan,
   type ItemSaleVelocity,
 } from "../api/universalis";
 import { chunk } from "../utils/chunk";
@@ -57,18 +55,7 @@ export type ScanStatus =
 export const useHighVolumeItemScan = () => {
   const [status, setStatus] = useState<ScanStatus>({ state: "idle" });
   const [results, setResults] = useState<ScannedItem[]>([]);
-  const [isPaused, setIsPaused] = useState(false);
   const generationTracker = useGeneration();
-
-  const pause = useCallback(() => {
-    pauseBulkScan();
-    setIsPaused(true);
-  }, []);
-
-  const resume = useCallback(() => {
-    resumeBulkScan();
-    setIsPaused(false);
-  }, []);
 
   const startScan = useCallback(
     async (
@@ -77,8 +64,6 @@ export const useHighVolumeItemScan = () => {
       statsWithinMs: number,
     ) => {
       const generation = generationTracker.start();
-      resumeBulkScan(); // clears any pause left over from a previous scan
-      setIsPaused(false);
       setResults([]);
       setStatus({ state: "running", scannedItems: 0, totalItems: 0 });
 
@@ -175,5 +160,5 @@ export const useHighVolumeItemScan = () => {
     [generationTracker],
   );
 
-  return { status, results, startScan, isPaused, pause, resume };
+  return { status, results, startScan };
 };

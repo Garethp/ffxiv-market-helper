@@ -1,35 +1,30 @@
 import { CachingFetcher } from "./CachingFetcher";
-import {
-  DEFAULT_RATE_LIMIT,
-  RequestLimitedApiClient,
-} from "./RequestLimitedApiClient";
+import { RequestLimitedApiClient } from "./RequestLimitedApiClient";
+import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimiter";
 
 const BASE_URL = "https://universalis.app/api/v2";
 const WEB_BASE_URL = "https://universalis.app";
 
-// Universalis allows up to 25 req/s and 8 concurrent requests; DEFAULT_RATE_LIMIT stays well under that to be a good citizen.
-const rateLimitedClient = new RequestLimitedApiClient(DEFAULT_RATE_LIMIT);
-// A short cache means independent rows that happen to want the same data (e.g. two buying
-// characters checking the same item's sell price) don't double up on requests.
-const client = new CachingFetcher(rateLimitedClient, { ttlMs: 30_000 });
-
-// A higher-throughput client used only for the bulk item-velocity scan (see
-// fetchSaleVelocityBatch) — the flip table's conservative limits would make scanning every
-// marketable item take much longer than necessary. It's deliberately separate and uncached: a
-// scan never repeats the same batch of item IDs, so caching wouldn't help.
-const bulkScanClient = new RequestLimitedApiClient({
-  maxConcurrent: 8,
-  maxRequestsPerSecond: 25,
+// Universalis allows up to 25 req/s and 8 concurrent requests. This stays below that so there's
+// room left over for using the Universalis website at the same time. Every request to it, from
+// every open tab, shares this one budget.
+const limiter = new CrossTabRequestLimiter("universalis", {
+  maxConcurrent: 5,
+  maxRequestsPerSecond: 15,
 });
 
-/** Pauses the bulk item-velocity scan — batches already in flight still finish, but no new ones start until resumed. */
-export const pauseBulkScan = (): void => {
-  bulkScanClient.pause();
-};
+// A short cache means independent rows that happen to want the same data (e.g. two buying
+// characters checking the same item's sell price) don't double up on requests.
+const client = new CachingFetcher(
+  new RequestLimitedApiClient(limiter, "interactive"),
+  { ttlMs: 30_000 },
+);
 
-export const resumeBulkScan = (): void => {
-  bulkScanClient.resume();
-};
+// Used only for the bulk item-velocity scan (see fetchSaleVelocityBatch). Background priority
+// lets it use the whole budget while nothing else needs it, without starving pages someone is
+// looking at. It's deliberately uncached: a scan never repeats the same batch of item IDs, so
+// caching wouldn't help.
+const bulkScanClient = new RequestLimitedApiClient(limiter, "background");
 
 export interface UniversalisListing {
   pricePerUnit: number;

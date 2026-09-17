@@ -1,15 +1,19 @@
 import { CachingFetcher } from "./CachingFetcher";
-import {
-  DEFAULT_RATE_LIMIT,
-  RequestLimitedApiClient,
-} from "./RequestLimitedApiClient";
+import { RequestLimitedApiClient } from "./RequestLimitedApiClient";
+import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimiter";
 import { chunk } from "../utils/chunk";
 
 const BASE_URL = "https://v2.xivapi.com/api/sheet/Item";
 
+// A conservative budget for being a polite citizen, shared by every open tab.
+const limiter = new CrossTabRequestLimiter("xivapi", {
+  maxConcurrent: 3,
+  maxRequestsPerSecond: 10,
+});
+
 // Item names never change, so a long cache avoids re-fetching the same names on every scan.
 const client = new CachingFetcher(
-  new RequestLimitedApiClient(DEFAULT_RATE_LIMIT),
+  new RequestLimitedApiClient(limiter, "interactive"),
   {
     ttlMs: 24 * 60 * 60_000,
   },

@@ -6,8 +6,6 @@ vi.mock("../api/universalis", () => ({
   BULK_SALE_VELOCITY_BATCH_SIZE: 20,
   fetchMarketableItemIds: vi.fn(),
   fetchSaleVelocityBatch: vi.fn(),
-  pauseBulkScan: vi.fn(),
-  resumeBulkScan: vi.fn(),
 }));
 
 import {

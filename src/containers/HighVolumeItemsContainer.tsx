@@ -19,8 +19,7 @@ export const HighVolumeItemsContainer = () => {
   const [world, setWorld] = useState("");
   const [entriesPerItem, setEntriesPerItem] = useState<number | null>(null);
   const [statsWithinMs, setStatsWithinMs] = useState<number | null>(null);
-  const { status, results, startScan, isPaused, pause, resume } =
-    useHighVolumeItemScan();
+  const { status, results, startScan } = useHighVolumeItemScan();
 
   useEffect(() => {
     Promise.all([
@@ -49,7 +48,7 @@ export const HighVolumeItemsContainer = () => {
   );
 
   const [itemNames, setItemNames] = useState<Record<number, string>>({});
-  // How many items had been checked at the last name lookup, so each 400-item interval only
+  // How many items had been checked at the last name lookup, so each 200-item interval only
   // fires once rather than on every batch that happens to land past the boundary.
   const lastNameCheckAtRef = useRef(0);
 
@@ -138,13 +137,7 @@ export const HighVolumeItemsContainer = () => {
           {status.state === "running" ? "Scanning…" : "Start scan"}
         </button>
         {status.state === "running" && (
-          <button type="button" onClick={isPaused ? resume : pause}>
-            {isPaused ? "Resume" : "Pause"}
-          </button>
-        )}
-        {status.state === "running" && (
           <span className="last-updated">
-            {isPaused ? "Paused — " : ""}
             {status.scannedItems.toLocaleString()} /{" "}
             {status.totalItems.toLocaleString()} items checked
           </span>
@@ -171,9 +164,8 @@ export const HighVolumeItemsContainer = () => {
           velocity on the selected world. Names for the current top results are
           looked up periodically as the scan runs, not just at the end. Click an
           item's name for a quick profit scan (opens in a new tab, so the scan
-          here keeps going — pause it first if you'd rather it didn't), or ↗ to
-          view it on Universalis directly. Showing the top {DISPLAY_LIMIT} by
-          total units sold per day.
+          here keeps going), or ↗ to view it on Universalis directly. Showing
+          the top {DISPLAY_LIMIT} by total units sold per day.
         </p>
       </footer>
     </div>

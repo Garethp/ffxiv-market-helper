@@ -57,9 +57,6 @@ describe("HighVolumeItemsContainer", () => {
         status: statusAt(400),
         results,
         startScan: vi.fn(),
-        isPaused: false,
-        pause: vi.fn(),
-        resume: vi.fn(),
       });
       setScanState = setState;
       return state;
@@ -87,9 +84,6 @@ describe("HighVolumeItemsContainer", () => {
         status: statusAt(420),
         results,
         startScan: vi.fn(),
-        isPaused: false,
-        pause: vi.fn(),
-        resume: vi.fn(),
       });
     });
 
@@ -116,9 +110,6 @@ describe("HighVolumeItemsContainer", () => {
         status: { state: "running", scannedItems: 150, totalItems: 1000 },
         results,
         startScan: vi.fn(),
-        isPaused: false,
-        pause: vi.fn(),
-        resume: vi.fn(),
       });
       setScanState = setState;
       return state;
@@ -134,7 +125,7 @@ describe("HighVolumeItemsContainer", () => {
       </MemoryRouter>,
     );
 
-    // Far short of the next 400-item checkpoint — no lookup should fire yet.
+    // Short of the next 200-item checkpoint — no lookup should fire yet.
     expect(mockedFetchItemNames).not.toHaveBeenCalled();
 
     // The scan finishes without the final stretch ever crossing the interval on its own.
@@ -148,9 +139,6 @@ describe("HighVolumeItemsContainer", () => {
         },
         results,
         startScan: vi.fn(),
-        isPaused: false,
-        pause: vi.fn(),
-        resume: vi.fn(),
       });
     });
 
