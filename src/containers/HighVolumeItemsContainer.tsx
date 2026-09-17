@@ -19,7 +19,7 @@ export const HighVolumeItemsContainer = () => {
   const [world, setWorld] = useState("");
   const [entriesPerItem, setEntriesPerItem] = useState<number | null>(null);
   const [statsWithinMs, setStatsWithinMs] = useState<number | null>(null);
-  const { status, results, startScan } = useHighVolumeItemScan();
+  const { status, results, startScan } = useHighVolumeItemScan(world);
 
   useEffect(() => {
     Promise.all([
@@ -55,19 +55,17 @@ export const HighVolumeItemsContainer = () => {
   // Looks up names for the current top results whenever the scanned-item count has advanced by
   // NAME_LOOKUP_INTERVAL since the last check, plus once more unconditionally when the scan
   // finishes — otherwise a final stretch too short to cross the interval would leave its items
-  // unnamed for good.
+  // unnamed for good. A previous scan's results are all there at once, so they're looked up
+  // straight away.
   useEffect(() => {
-    const scannedItems =
-      status.state === "running" || status.state === "done"
-        ? status.scannedItems
-        : null;
-    if (scannedItems === null) return;
+    if (status.state === "idle" || status.state === "error") return;
+    const scannedItems = status.state === "previous" ? 0 : status.scannedItems;
 
     // A new scan starts its own count back at zero — pick the interval math back up from there too.
     if (scannedItems < lastNameCheckAtRef.current) {
       lastNameCheckAtRef.current = 0;
     }
-    const isFinalCheck = status.state === "done";
+    const isFinalCheck = status.state !== "running";
     if (
       !isFinalCheck &&
       scannedItems - lastNameCheckAtRef.current < NAME_LOOKUP_INTERVAL
@@ -111,7 +109,12 @@ export const HighVolumeItemsContainer = () => {
       <div className="toolbar">
         <label className="character-select">
           World
-          <select value={world} onChange={(e) => setWorld(e.target.value)}>
+          {/* Locked during a scan, since the results shown always belong to the selected world. */}
+          <select
+            value={world}
+            disabled={status.state === "running"}
+            onChange={(e) => setWorld(e.target.value)}
+          >
             {regions.map((region) => (
               <optgroup key={region.name} label={region.name}>
                 {region.dataCenters.flatMap((dataCenter) =>
@@ -130,7 +133,7 @@ export const HighVolumeItemsContainer = () => {
           disabled={!canStart}
           onClick={() => {
             if (entriesPerItem !== null && statsWithinMs !== null) {
-              startScan(world, entriesPerItem, statsWithinMs);
+              startScan(entriesPerItem, statsWithinMs);
             }
           }}
         >
@@ -148,6 +151,12 @@ export const HighVolumeItemsContainer = () => {
             {status.failedBatchCount > 0
               ? `, ${status.failedBatchCount} batch(es) failed and were skipped`
               : ""}
+          </span>
+        )}
+        {status.state === "previous" && (
+          <span className="last-updated">
+            Showing the last scan, completed{" "}
+            {new Date(status.completedAt).toLocaleString()}
           </span>
         )}
         {status.state === "error" && (

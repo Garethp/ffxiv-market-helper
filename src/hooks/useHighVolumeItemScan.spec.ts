@@ -1,21 +1,42 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../api/universalis", () => ({
   BULK_SALE_VELOCITY_BATCH_SIZE: 20,
   fetchMarketableItemIds: vi.fn(),
   fetchSaleVelocityBatch: vi.fn(),
 }));
+vi.mock("../services/scanResultsService", () => ({
+  scanResultsService: { getLatestScan: vi.fn(), saveScan: vi.fn() },
+}));
 
 import {
   fetchMarketableItemIds,
   fetchSaleVelocityBatch,
 } from "../api/universalis";
+import {
+  scanResultsService,
+  type CompletedScan,
+} from "../services/scanResultsService";
 import { useHighVolumeItemScan } from "./useHighVolumeItemScan";
 
 const mockedFetchMarketableItemIds = vi.mocked(fetchMarketableItemIds);
 const mockedFetchSaleVelocityBatch = vi.mocked(fetchSaleVelocityBatch);
+const mockedGetLatestScan = vi.mocked(scanResultsService.getLatestScan);
+const mockedSaveScan = vi.mocked(scanResultsService.saveScan);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockedGetLatestScan.mockResolvedValue(null);
+  mockedSaveScan.mockResolvedValue();
+});
+
+const previousScan: CompletedScan = {
+  worldOrDataCenter: "Chaos",
+  completedAt: Date.parse("2026-09-17T06:00:00Z"),
+  items: [{ itemId: 7, nqSaleVelocity: 40, hqSaleVelocity: 2 }],
+};
 
 /** A promise whose resolution is controlled from outside, to pin down batch-completion ordering. */
 const deferred = <T>() => {
@@ -47,10 +68,10 @@ describe("useHighVolumeItemScan", () => {
       }));
     });
 
-    const { result } = renderHook(() => useHighVolumeItemScan());
+    const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
 
     await act(async () => {
-      result.current.startScan("Chaos", 10, 86_400_000);
+      result.current.startScan(10, 86_400_000);
     });
     await waitFor(() =>
       expect(mockedFetchSaleVelocityBatch).toHaveBeenCalledTimes(totalBatches),
@@ -84,5 +105,126 @@ describe("useHighVolumeItemScan", () => {
     });
     await waitFor(() => expect(result.current.results).toHaveLength(1200));
     expect(result.current.status.state).toBe("done");
+  });
+
+  describe("completed scans", () => {
+    it("should show the world's latest completed scan when first opened", async () => {
+      mockedGetLatestScan.mockResolvedValue(previousScan);
+
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+
+      await waitFor(() =>
+        expect(result.current.status).toEqual({
+          state: "previous",
+          completedAt: previousScan.completedAt,
+        }),
+      );
+      expect(mockedGetLatestScan).toHaveBeenCalledWith("Chaos");
+      expect(result.current.results).toEqual([
+        {
+          itemId: 7,
+          nqSaleVelocity: 40,
+          hqSaleVelocity: 2,
+          totalSaleVelocity: 42,
+        },
+      ]);
+    });
+
+    it("should switch to the latest completed scan of a newly selected world, showing nothing if it has none", async () => {
+      mockedGetLatestScan.mockImplementation(async (worldOrDataCenter) =>
+        worldOrDataCenter === "Chaos" ? previousScan : null,
+      );
+
+      const { result, rerender } = renderHook(
+        ({ world }) => useHighVolumeItemScan(world),
+        { initialProps: { world: "Chaos" } },
+      );
+      await waitFor(() => expect(result.current.results).toHaveLength(1));
+
+      rerender({ world: "Omega" });
+      await waitFor(() =>
+        expect(mockedGetLatestScan).toHaveBeenCalledWith("Omega"),
+      );
+      expect(result.current.status.state).toBe("idle");
+      expect(result.current.results).toEqual([]);
+    });
+
+    it("should not look for a completed scan before a world has been picked", async () => {
+      renderHook(() => useHighVolumeItemScan(""));
+
+      expect(mockedGetLatestScan).not.toHaveBeenCalled();
+    });
+
+    it("should clear the latest completed scan from view as soon as a new scan starts, but only replace it once the new scan completes", async () => {
+      mockedGetLatestScan.mockResolvedValue(previousScan);
+      const itemIdsLookup = deferred<number[]>();
+      mockedFetchMarketableItemIds.mockReturnValue(itemIdsLookup.promise);
+      mockedFetchSaleVelocityBatch.mockImplementation(async (_world, batch) =>
+        batch.map((itemId) => ({
+          itemId,
+          nqSaleVelocity: 5,
+          hqSaleVelocity: 1,
+        })),
+      );
+
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+      await waitFor(() => expect(result.current.status.state).toBe("previous"));
+
+      await act(async () => {
+        result.current.startScan(10, 86_400_000);
+      });
+      expect(result.current.results).toEqual([]);
+      expect(mockedSaveScan).not.toHaveBeenCalled();
+
+      await act(async () => {
+        itemIdsLookup.resolve([1, 2]);
+      });
+      await waitFor(() => expect(result.current.status.state).toBe("done"));
+      expect(mockedSaveScan).toHaveBeenCalledWith({
+        worldOrDataCenter: "Chaos",
+        completedAt: expect.any(Number),
+        items: [
+          { itemId: 1, nqSaleVelocity: 5, hqSaleVelocity: 1 },
+          { itemId: 2, nqSaleVelocity: 5, hqSaleVelocity: 1 },
+        ],
+      });
+    });
+
+    it("should not let a completed scan that finishes loading late replace a scan already under way", async () => {
+      const latestScanLookup = deferred<CompletedScan | null>();
+      mockedGetLatestScan.mockReturnValue(latestScanLookup.promise);
+      mockedFetchMarketableItemIds.mockReturnValue(new Promise(() => {}));
+
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+      await act(async () => {
+        result.current.startScan(10, 86_400_000);
+      });
+      await act(async () => {
+        latestScanLookup.resolve(previousScan);
+      });
+
+      expect(result.current.status.state).toBe("running");
+      expect(result.current.results).toEqual([]);
+    });
+
+    it("should still show a scan's results when saving them fails", async () => {
+      mockedFetchMarketableItemIds.mockResolvedValue([1, 2, 3]);
+      mockedFetchSaleVelocityBatch.mockImplementation(async (_world, batch) =>
+        batch.map((itemId) => ({
+          itemId,
+          nqSaleVelocity: 5,
+          hqSaleVelocity: 1,
+        })),
+      );
+      mockedSaveScan.mockRejectedValue(new Error("QuotaExceededError"));
+
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+      await act(async () => {
+        result.current.startScan(10, 86_400_000);
+      });
+
+      await waitFor(() => expect(result.current.status.state).toBe("done"));
+      expect(result.current.results).toHaveLength(3);
+    });
   });
 });

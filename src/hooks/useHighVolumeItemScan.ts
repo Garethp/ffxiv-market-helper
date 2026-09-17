@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BULK_SALE_VELOCITY_BATCH_SIZE,
   fetchMarketableItemIds,
   fetchSaleVelocityBatch,
   type ItemSaleVelocity,
 } from "../api/universalis";
+import { scanResultsService } from "../services/scanResultsService";
 import { chunk } from "../utils/chunk";
 import { withOneRetry } from "../utils/withOneRetry";
 import { useGeneration } from "./useGeneration";
@@ -12,6 +13,11 @@ import { useGeneration } from "./useGeneration";
 export interface ScannedItem extends ItemSaleVelocity {
   totalSaleVelocity: number;
 }
+
+const toScannedItem = (item: ItemSaleVelocity): ScannedItem => ({
+  ...item,
+  totalSaleVelocity: item.nqSaleVelocity + item.hqSaleVelocity,
+});
 
 /**
  * How many completed network batches to accumulate before committing them to
@@ -44,6 +50,8 @@ export type ScanStatus =
       totalItems: number;
       failedBatchCount: number;
     }
+  /** Showing a scan completed earlier, rather than one run since the page loaded. */
+  | { state: "previous"; completedAt: number }
   | { state: "error"; message: string };
 
 /**
@@ -51,18 +59,40 @@ export type ScanStatus =
  * its recent sale velocity, so items worth adding to the tracked list can be
  * spotted by how much they actually trade. A one-shot operation — there's no
  * auto-refresh here, unlike the flip table.
+ *
+ * Shows the latest completed scan of the world or data center, if there's a
+ * recent enough one, and switches to that of the new one whenever it
+ * changes. A new scan clears the completed one from view straight away, but
+ * only replaces the saved scan once it completes.
+ *
+ * @param worldOrDataCenter Empty until one has been picked.
  */
-export const useHighVolumeItemScan = () => {
+export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
   const [status, setStatus] = useState<ScanStatus>({ state: "idle" });
   const [results, setResults] = useState<ScannedItem[]>([]);
   const generationTracker = useGeneration();
 
+  useEffect(() => {
+    const generation = generationTracker.start();
+    setResults([]);
+    setStatus({ state: "idle" });
+    if (worldOrDataCenter === "") return;
+
+    scanResultsService.getLatestScan(worldOrDataCenter).then(
+      (scan) => {
+        // A scan started while this was loading takes precedence over it.
+        if (scan === null || !generationTracker.isCurrent(generation)) return;
+        setResults(scan.items.map(toScannedItem));
+        setStatus({ state: "previous", completedAt: scan.completedAt });
+      },
+      () => {
+        // A saved scan that can't be read is no different from not having one.
+      },
+    );
+  }, [generationTracker, worldOrDataCenter]);
+
   const startScan = useCallback(
-    async (
-      worldOrDataCenter: string,
-      entriesPerItem: number,
-      statsWithinMs: number,
-    ) => {
+    async (entriesPerItem: number, statsWithinMs: number) => {
       const generation = generationTracker.start();
       setResults([]);
       setStatus({ state: "running", scannedItems: 0, totalItems: 0 });
@@ -99,6 +129,8 @@ export const useHighVolumeItemScan = () => {
           }),
         );
 
+      // Every result so far, for saving once the scan completes — `results` state can't be read from here.
+      const allResults: ItemSaleVelocity[] = [];
       let pendingResults: ScannedItem[] = [];
       let batchesSincePendingFlush = 0;
       let flushedItemCount = 0;
@@ -116,12 +148,8 @@ export const useHighVolumeItemScan = () => {
           try {
             const batchResults = await fetchBatchWithRetry(batch);
             if (generationTracker.isCurrent(generation)) {
-              pendingResults.push(
-                ...batchResults.map((item) => ({
-                  ...item,
-                  totalSaleVelocity: item.nqSaleVelocity + item.hqSaleVelocity,
-                })),
-              );
+              allResults.push(...batchResults);
+              pendingResults.push(...batchResults.map(toScannedItem));
               batchesSincePendingFlush++;
               const stillRampingUp =
                 flushedItemCount < EARLY_FEEDBACK_ITEM_THRESHOLD;
@@ -155,9 +183,19 @@ export const useHighVolumeItemScan = () => {
           totalItems: itemIds.length,
           failedBatchCount,
         });
+        scanResultsService
+          .saveScan({
+            worldOrDataCenter,
+            completedAt: Date.now(),
+            items: allResults,
+          })
+          .catch(() => {
+            // The results are already on screen. Failing to save them (e.g. storage full) only
+            // means they won't be there next visit.
+          });
       }
     },
-    [generationTracker],
+    [generationTracker, worldOrDataCenter],
   );
 
   return { status, results, startScan };

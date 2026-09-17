@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { StrictMode, useState } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScannedItem, ScanStatus } from "../hooks/useHighVolumeItemScan";
 
 vi.mock("../hooks/useHighVolumeItemScan");
@@ -38,8 +38,14 @@ const deferred = <T,>() => {
 };
 
 const statusAt = (scannedItems: number): ScanStatus => {
-  return { state: "running", scannedItems, totalItems: 1000 };
+  return {
+    state: "running",
+    scannedItems,
+    totalItems: 1000,
+  };
 };
+
+afterEach(cleanup);
 
 describe("HighVolumeItemsContainer", () => {
   it("should not lose an item name that finishes loading after newer scan results have already arrived", async () => {
@@ -107,7 +113,7 @@ describe("HighVolumeItemsContainer", () => {
     let setScanState!: (state: ScanState) => void;
     mockedUseHighVolumeItemScan.mockImplementation(() => {
       const [state, setState] = useState<ScanState>({
-        status: { state: "running", scannedItems: 150, totalItems: 1000 },
+        status: statusAt(150),
         results,
         startScan: vi.fn(),
       });
@@ -143,5 +149,53 @@ describe("HighVolumeItemsContainer", () => {
     });
 
     await waitFor(() => screen.getByText("Grade 8 Dark Matter"));
+  });
+
+  describe("showing a previous scan", () => {
+    const item: ScannedItem = {
+      itemId: 3,
+      nqSaleVelocity: 250,
+      hqSaleVelocity: 50,
+      totalSaleVelocity: 300,
+    };
+    const previousScan: ScanState = {
+      status: {
+        state: "previous",
+        completedAt: Date.now(),
+      },
+      results: [item],
+      startScan: vi.fn(),
+    };
+
+    it("should look up names for its results straight away", async () => {
+      mockedUseHighVolumeItemScan.mockReturnValue(previousScan);
+      mockedFetchItemNames.mockResolvedValue(new Map([[3, "Cordial"]]));
+
+      render(
+        <MemoryRouter>
+          <HighVolumeItemsContainer />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => screen.getByText("Cordial"));
+    });
+  });
+
+  it("should stop the world being changed while a scan is running, so the results shown always belong to the selected world", async () => {
+    mockedUseHighVolumeItemScan.mockReturnValue({
+      status: statusAt(0),
+      results: [],
+      startScan: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <HighVolumeItemsContainer />
+      </MemoryRouter>,
+    );
+
+    expect((screen.getByLabelText("World") as HTMLSelectElement).disabled).toBe(
+      true,
+    );
   });
 });
