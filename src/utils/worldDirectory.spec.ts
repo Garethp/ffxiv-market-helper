@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+import type { RegionInfo } from "../types";
+import {
+  findDataCentersForRegion,
+  findRegionNameForWorld,
+} from "./worldDirectory";
+
+const regions: RegionInfo[] = [
+  {
+    name: "Europe",
+    dataCenters: [
+      { name: "Chaos", worlds: ["Cerberus"] },
+      { name: "Light", worlds: ["WorldA"] },
+    ],
+  },
+  {
+    name: "Japan",
+    dataCenters: [{ name: "Elemental", worlds: ["Carbuncle"] }],
+  },
+];
+
+describe("findRegionNameForWorld", () => {
+  it("should find the region a world belongs to", () => {
+    expect(findRegionNameForWorld("WorldA", regions)).toBe("Europe");
+  });
+
+  it("should find a world that belongs to a region other than the first", () => {
+    expect(findRegionNameForWorld("Carbuncle", regions)).toBe("Japan");
+  });
+
+  it("should have no region for a world that isn't in the directory", () => {
+    expect(findRegionNameForWorld("Nowhereland", regions)).toBeUndefined();
+  });
+});
+
+describe("findDataCentersForRegion", () => {
+  it("should list every data center in the named region", () => {
+    expect(findDataCentersForRegion("Europe", regions)).toEqual([
+      "Chaos",
+      "Light",
+    ]);
+  });
+
+  it("should list only the named region's data centers when it isn't the first region", () => {
+    expect(findDataCentersForRegion("Japan", regions)).toEqual(["Elemental"]);
+  });
+
+  it("should have no data centers for a region that isn't in the directory", () => {
+    expect(findDataCentersForRegion("Nowhereland", regions)).toEqual([]);
+  });
+});

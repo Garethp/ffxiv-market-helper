@@ -1,0 +1,274 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #12141a;
+  color: #e8e8e8;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: #9aa0aa;
+  margin-top: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.last-updated {
+  color: #9aa0aa;
+  font-size: 0.9rem;
+}
+
+.nav-link {
+  color: #8ab4f8;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.toolbar button {
+  background: #1c1f27;
+  color: #e8e8e8;
+  border: 1px solid #2a2d36;
+  border-radius: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.toolbar button:not(:disabled):hover {
+  border-color: #8ab4f8;
+}
+
+.character-select {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #9aa0aa;
+  font-size: 0.9rem;
+}
+
+.character-select select,
+.character-select input[type="number"] {
+  background: #1c1f27;
+  color: #e8e8e8;
+  border: 1px solid #2a2d36;
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  width: 6rem;
+}
+
+.character-section {
+  margin-bottom: 2rem;
+}
+
+.character-section h2 {
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+}
+
+.character-note {
+  color: #9aa0aa;
+  font-size: 0.85rem;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.flip-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.flip-table th,
+.flip-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: right;
+  border-bottom: 1px solid #2a2d36;
+}
+
+.flip-table th:first-child,
+.flip-table td:first-child {
+  text-align: left;
+}
+
+.flip-table a {
+  color: #8ab4f8;
+}
+
+.flip-table a:hover {
+  color: #aecbfa;
+}
+
+.external-link {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.external-link:hover {
+  opacity: 1;
+}
+
+.row-gap {
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.row-refreshing {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.gap-badge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.75rem;
+  background: #ffc107;
+  color: #1a1a1a;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.stale-badge {
+  margin-left: 0.5rem;
+  color: #f44336;
+  cursor: help;
+  user-select: none;
+}
+
+.undercut-badge {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.75rem;
+  background: #f44336;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+  cursor: help;
+  user-select: none;
+}
+
+.undercut-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 1;
+  top: 100%;
+  right: 0;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.25rem;
+  background: #2a2d36;
+  color: #e8e8e8;
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: none;
+  text-align: left;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.undercut-badge:hover .undercut-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.undercut-tooltip table {
+  border-collapse: collapse;
+  margin-top: 0.35rem;
+}
+
+.undercut-tooltip th,
+.undercut-tooltip td {
+  padding: 0.1rem 0.5rem;
+  text-align: right;
+}
+
+.copy-name-button {
+  position: relative;
+  margin-left: 0.4rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  vertical-align: middle;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.copy-name-button:hover {
+  opacity: 1;
+}
+
+.copy-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  background: #2a2d36;
+  color: #e8e8e8;
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.positive {
+  color: #4caf50;
+}
+
+.negative {
+  color: #f44336;
+}
+
+footer {
+  margin-top: 1.5rem;
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
