@@ -110,4 +110,25 @@ describe("CachingFetcher", () => {
     await expect(a.json()).resolves.toEqual({ value: 42 });
     await expect(b.json()).resolves.toEqual({ value: 42 });
   });
+
+  it("should keep a shared request going for other callers when one caller cancels", async () => {
+    const inner: Fetcher = {
+      fetch: async (_input, init) => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        init?.signal?.throwIfAborted();
+        return new Response("{}");
+      },
+    };
+    const cache = new CachingFetcher(inner, { ttlMs: 1000 });
+
+    const controller = new AbortController();
+    const cancelling = cache.fetch("https://example.test/a", {
+      signal: controller.signal,
+    });
+    const other = cache.fetch("https://example.test/a");
+    controller.abort();
+
+    await expect(cancelling).resolves.toBeInstanceOf(Response);
+    await expect(other).resolves.toBeInstanceOf(Response);
+  });
 });

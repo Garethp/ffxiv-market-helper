@@ -3,6 +3,7 @@ import type { Character, RegionInfo, TradingParameters } from "../types";
 
 vi.mock("./configService", () => ({
   configService: {
+    getTrackedItems: vi.fn(),
     getCharacters: vi.fn(),
     getRegions: vi.fn(),
     getTradingParameters: vi.fn(),
@@ -156,6 +157,10 @@ describe("loadTradingConfig", () => {
     });
     const bob = character({ name: "Bob", homeWorld: "WorldB" });
     const params = { refreshIntervalMs: 90_000 } as TradingParameters;
+    const trackedItems = [
+      { itemId: 1, name: "Cordial", stackSize: 999, targetQuantity: 99 },
+    ];
+    vi.mocked(configService.getTrackedItems).mockResolvedValue(trackedItems);
     vi.mocked(configService.getCharacters).mockResolvedValue([alice, bob]);
     vi.mocked(configService.getRegions).mockResolvedValue(regions);
     vi.mocked(configService.getTradingParameters).mockResolvedValue(params);
@@ -164,6 +169,7 @@ describe("loadTradingConfig", () => {
     const config = await loadTradingConfig();
 
     expect(config).toEqual({
+      trackedItems,
       characters: [alice, bob],
       regions,
       params,

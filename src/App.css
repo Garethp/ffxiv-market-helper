@@ -15,6 +15,14 @@ body {
   padding: 2rem 1.5rem;
 }
 
+.app-bar {
+  display: flex;
+  justify-content: flex-end;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 0;
+}
+
 header h1 {
   margin-bottom: 0.25rem;
 }

@@ -4,19 +4,10 @@ import { StrictMode, useState } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScannedItem, ScanStatus } from "../hooks/useHighVolumeItemScan";
+import type { TradingConfig } from "../services/tradingConfig";
+import type { TradingParameters } from "../types";
 
 vi.mock("../hooks/useHighVolumeItemScan");
-vi.mock("../services/configService", () => ({
-  configService: {
-    getRegions: vi.fn().mockResolvedValue([]),
-    getCharacters: vi.fn().mockResolvedValue([]),
-    getDefaultCharacterName: vi.fn().mockResolvedValue(""),
-    getTradingParameters: vi.fn().mockResolvedValue({
-      sellHistoryFetchCount: 100,
-      saleVelocityWindowMs: 86_400_000,
-    }),
-  },
-}));
 vi.mock("../api/xivapi", () => ({ fetchItemNames: vi.fn() }));
 
 import { fetchItemNames } from "../api/xivapi";
@@ -27,6 +18,19 @@ const mockedUseHighVolumeItemScan = vi.mocked(useHighVolumeItemScan);
 const mockedFetchItemNames = vi.mocked(fetchItemNames);
 
 type ScanState = ReturnType<typeof useHighVolumeItemScan>;
+
+const config: TradingConfig = {
+  trackedItems: [],
+  characters: [],
+  regions: [],
+  params: {
+    sellHistoryFetchCount: 100,
+    saleVelocityWindowMs: 86_400_000,
+  } as TradingParameters,
+  defaultCharacterName: "",
+  buyingRegions: [],
+  ownRetainers: [],
+};
 
 /** A promise whose resolution is controlled from outside. */
 const deferred = <T,>() => {
@@ -76,7 +80,7 @@ describe("HighVolumeItemsContainer", () => {
     render(
       <StrictMode>
         <MemoryRouter>
-          <HighVolumeItemsContainer />
+          <HighVolumeItemsContainer config={config} currentCharacter={null} />
         </MemoryRouter>
       </StrictMode>,
     );
@@ -127,7 +131,7 @@ describe("HighVolumeItemsContainer", () => {
 
     render(
       <MemoryRouter>
-        <HighVolumeItemsContainer />
+        <HighVolumeItemsContainer config={config} currentCharacter={null} />
       </MemoryRouter>,
     );
 
@@ -173,29 +177,11 @@ describe("HighVolumeItemsContainer", () => {
 
       render(
         <MemoryRouter>
-          <HighVolumeItemsContainer />
+          <HighVolumeItemsContainer config={config} currentCharacter={null} />
         </MemoryRouter>,
       );
 
       await waitFor(() => screen.getByText("Cordial"));
     });
-  });
-
-  it("should stop the world being changed while a scan is running, so the results shown always belong to the selected world", async () => {
-    mockedUseHighVolumeItemScan.mockReturnValue({
-      status: statusAt(0),
-      results: [],
-      startScan: vi.fn(),
-    });
-
-    render(
-      <MemoryRouter>
-        <HighVolumeItemsContainer />
-      </MemoryRouter>,
-    );
-
-    expect((screen.getByLabelText("World") as HTMLSelectElement).disabled).toBe(
-      true,
-    );
   });
 });

@@ -63,28 +63,30 @@ export class CrossTabRequestLimiter implements RequestLimiter {
     this.priorityGateLockName = `${prefix}:priority-gate`;
   }
 
-  async acquire(priority: RequestPriority): Promise<ReleasePermit> {
+  async acquire(
+    priority: RequestPriority,
+    signal?: AbortSignal,
+  ): Promise<ReleasePermit> {
     const locks = this.getLocks();
 
     if (priority === "background") {
       return this.oneAtATime("background", async () => {
         await locks.request(
           this.priorityGateLockName,
-          { mode: "exclusive" },
+          { mode: "exclusive", signal },
           () => {},
         );
-        return this.acquireSlots(locks);
+        return this.acquireSlots(locks, signal);
       });
     }
 
-    const releaseGate = await holdLock(
-      locks,
-      this.priorityGateLockName,
-      "shared",
-    );
+    const releaseGate = await holdLock(locks, this.priorityGateLockName, {
+      mode: "shared",
+      signal,
+    });
     try {
       return await this.oneAtATime("interactive", () =>
-        this.acquireSlots(locks),
+        this.acquireSlots(locks, signal),
       );
     } finally {
       releaseGate();
@@ -110,20 +112,33 @@ export class CrossTabRequestLimiter implements RequestLimiter {
     return result;
   }
 
-  private async acquireSlots(locks: LockRequester): Promise<ReleasePermit> {
+  private async acquireSlots(
+    locks: LockRequester,
+    signal: AbortSignal | undefined,
+  ): Promise<ReleasePermit> {
     const releaseConcurrency = await holdAnyLock(
       locks,
       this.concurrencyLockNames,
+      signal,
     );
 
     let releaseRate: () => void;
     try {
-      releaseRate = await holdAnyLock(locks, this.rateLockNames);
+      releaseRate = await holdAnyLock(locks, this.rateLockNames, signal);
     } catch (error) {
       releaseConcurrency();
       throw error;
     }
 
+    // The last lock can be granted in the same moment the signal aborts. No request will start, so give both back.
+    if (signal?.aborted) {
+      releaseRate();
+      releaseConcurrency();
+      throw signal.reason;
+    }
+
+    // Held for the full window even if the request is cancelled after this, since it may already
+    // have reached the server and counted against its limit.
     setTimeout(releaseRate, RATE_WINDOW_MS);
     return releaseConcurrency;
   }

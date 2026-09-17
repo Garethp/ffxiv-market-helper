@@ -28,4 +28,17 @@ describe("withOneRetry", () => {
     await expect(withOneRetry(fn)).rejects.toThrow("retry failure");
     expect(fn).toHaveBeenCalledTimes(2);
   });
+
+  it("should not retry once the signal has been aborted", async () => {
+    const controller = new AbortController();
+    const fn = vi.fn().mockImplementation(async () => {
+      controller.abort();
+      throw new Error("cancelled");
+    });
+
+    await expect(withOneRetry(fn, controller.signal)).rejects.toThrow(
+      "cancelled",
+    );
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
 });

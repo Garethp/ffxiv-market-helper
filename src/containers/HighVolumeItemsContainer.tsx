@@ -4,8 +4,8 @@ import { BULK_SALE_VELOCITY_BATCH_SIZE } from "../api/universalis";
 import { fetchItemNames } from "../api/xivapi";
 import { ScannedItemsTable } from "../components/ScannedItemsTable";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
-import { configService } from "../services/configService";
-import type { RegionInfo } from "../types";
+import type { TradingConfig } from "../services/tradingConfig";
+import type { Character } from "../types";
 import { withOneRetry } from "../utils/withOneRetry";
 
 /** How many of the highest-velocity results to display — scanning can surface thousands of traded items. */
@@ -14,29 +14,16 @@ const DISPLAY_LIMIT = 200;
 /** How many items checked has to advance before the next name lookup — infrequent enough not to hammer XIVAPI over an ~17,000-item scan. */
 const NAME_LOOKUP_INTERVAL = 200;
 
-export const HighVolumeItemsContainer = () => {
-  const [regions, setRegions] = useState<RegionInfo[]>([]);
-  const [world, setWorld] = useState("");
-  const [entriesPerItem, setEntriesPerItem] = useState<number | null>(null);
-  const [statsWithinMs, setStatsWithinMs] = useState<number | null>(null);
+export const HighVolumeItemsContainer = ({
+  config,
+  currentCharacter,
+}: {
+  config: TradingConfig;
+  currentCharacter: Character | null;
+}) => {
+  const { params } = config;
+  const world = currentCharacter?.homeWorld ?? "";
   const { status, results, startScan } = useHighVolumeItemScan(world);
-
-  useEffect(() => {
-    Promise.all([
-      configService.getRegions(),
-      configService.getCharacters(),
-      configService.getDefaultCharacterName(),
-      configService.getTradingParameters(),
-    ]).then(([loadedRegions, characters, defaultCharacterName, params]) => {
-      setRegions(loadedRegions);
-      setEntriesPerItem(params.sellHistoryFetchCount);
-      setStatsWithinMs(params.saleVelocityWindowMs);
-      const defaultCharacter = characters.find(
-        (character) => character.name === defaultCharacterName,
-      );
-      if (defaultCharacter) setWorld(defaultCharacter.homeWorld);
-    });
-  }, []);
 
   const topItems = useMemo(
     () =>
@@ -88,11 +75,7 @@ export const HighVolumeItemsContainer = () => {
       });
   }, [status, topItems, itemNames]);
 
-  const canStart =
-    world !== "" &&
-    entriesPerItem !== null &&
-    statsWithinMs !== null &&
-    status.state !== "running";
+  const canStart = world !== "" && status.state !== "running";
 
   return (
     <div className="app">
@@ -100,6 +83,7 @@ export const HighVolumeItemsContainer = () => {
       <header>
         <h1>High Volume Items</h1>
         <p className="subtitle">
+          Sale velocity on {world || "…"} ·{" "}
           <Link to="/" className="nav-link">
             ← Back to flip table
           </Link>
@@ -107,35 +91,12 @@ export const HighVolumeItemsContainer = () => {
       </header>
 
       <div className="toolbar">
-        <label className="character-select">
-          World
-          {/* Locked during a scan, since the results shown always belong to the selected world. */}
-          <select
-            value={world}
-            disabled={status.state === "running"}
-            onChange={(e) => setWorld(e.target.value)}
-          >
-            {regions.map((region) => (
-              <optgroup key={region.name} label={region.name}>
-                {region.dataCenters.flatMap((dataCenter) =>
-                  dataCenter.worlds.map((worldName) => (
-                    <option key={worldName} value={worldName}>
-                      {worldName} ({dataCenter.name})
-                    </option>
-                  )),
-                )}
-              </optgroup>
-            ))}
-          </select>
-        </label>
         <button
           type="button"
           disabled={!canStart}
-          onClick={() => {
-            if (entriesPerItem !== null && statsWithinMs !== null) {
-              startScan(entriesPerItem, statsWithinMs);
-            }
-          }}
+          onClick={() =>
+            startScan(params.sellHistoryFetchCount, params.saleVelocityWindowMs)
+          }
         >
           {status.state === "running" ? "Scanning…" : "Start scan"}
         </button>
@@ -170,11 +131,11 @@ export const HighVolumeItemsContainer = () => {
         <p>
           Scans every item Universalis has ever seen traded, in batches of up to{" "}
           {BULK_SALE_VELOCITY_BATCH_SIZE}, and ranks them by recent sale
-          velocity on the selected world. Names for the current top results are
-          looked up periodically as the scan runs, not just at the end. Click an
-          item's name for a quick profit scan (opens in a new tab, so the scan
-          here keeps going), or ↗ to view it on Universalis directly. Showing
-          the top {DISPLAY_LIMIT} by total units sold per day.
+          velocity on the selected character's home world. Names for the current
+          top results are looked up periodically as the scan runs, not just at
+          the end. Click an item's name for a quick profit scan (opens in a new
+          tab, so the scan here keeps going), or ↗ to view it on Universalis
+          directly. Showing the top {DISPLAY_LIMIT} by total units sold per day.
         </p>
       </footer>
     </div>

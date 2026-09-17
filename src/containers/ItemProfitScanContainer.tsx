@@ -1,35 +1,40 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { FlipTable } from "../components/FlipTable";
 import { useItemProfitScan } from "../hooks/useItemProfitScan";
+import type { TradingConfig } from "../services/tradingConfig";
+import type { Character } from "../types";
 
-export const ItemProfitScanContainer = () => {
+interface SharedStateProps {
+  config: TradingConfig;
+  currentCharacter: Character | null;
+}
+
+export const ItemProfitScanContainer = (props: SharedStateProps) => {
   const { itemId: itemIdParam } = useParams<{ itemId: string }>();
   return /^\d+$/.test(itemIdParam ?? "") ? (
-    <ItemProfitScan itemId={Number(itemIdParam)} />
+    <ItemProfitScan itemId={Number(itemIdParam)} {...props} />
   ) : (
     <Navigate to="/" replace />
   );
 };
 
-const ItemProfitScan = ({ itemId }: { itemId: number }) => {
+const ItemProfitScan = ({
+  itemId,
+  config,
+  currentCharacter,
+}: SharedStateProps & { itemId: number }) => {
   const {
     itemName,
-    allCharacterNames,
-    currentCharacterName,
-    setCurrentCharacterName,
     hq,
     setHq,
     targetQuantity,
     setTargetQuantity,
     sellPriceCeiling,
     setSellPriceCeiling,
-    buyingRegions,
     rowsByRegion,
-    sellWorld,
-    isScanning,
-    hasScanned,
-    runScan,
-  } = useItemProfitScan(itemId);
+  } = useItemProfitScan(itemId, config, currentCharacter);
+  const { buyingRegions } = config;
+  const sellWorld = currentCharacter?.homeWorld ?? "";
 
   return (
     <div className="app">
@@ -45,20 +50,6 @@ const ItemProfitScan = ({ itemId }: { itemId: number }) => {
       </header>
 
       <div className="toolbar">
-        <label className="character-select">
-          Selling as
-          <select
-            value={currentCharacterName ?? ""}
-            onChange={(e) => setCurrentCharacterName(e.target.value)}
-            disabled={allCharacterNames.length === 0}
-          >
-            {allCharacterNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
         <label className="character-select">
           <input
             type="checkbox"
@@ -92,22 +83,7 @@ const ItemProfitScan = ({ itemId }: { itemId: number }) => {
             }
           />
         </label>
-        <button
-          type="button"
-          onClick={runScan}
-          disabled={isScanning || !currentCharacterName}
-        >
-          {isScanning ? "Scanning…" : hasScanned ? "Rescan" : "Scan"}
-        </button>
       </div>
-
-      {!hasScanned && (
-        <p className="subtitle">
-          Loading — this prices the item across every buying region, the same
-          way a tracked item would be priced, without adding it to the tracked
-          list. Adjust the inputs above and rescan to try different numbers.
-        </p>
-      )}
 
       {buyingRegions.map((buyingRegion) => (
         <section key={buyingRegion.region} className="character-section">

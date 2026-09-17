@@ -1,19 +1,22 @@
 import { Link } from "react-router-dom";
 import { FlipTable } from "../components/FlipTable";
 import { useFlipAnalysis } from "../hooks/useFlipAnalysis";
+import type { TradingConfig } from "../services/tradingConfig";
+import type { Character } from "../types";
 
-export const FlipTableContainer = () => {
-  const {
-    buyingRegions,
-    allCharacterNames,
-    currentCharacterName,
-    setCurrentCharacterName,
-    sellWorld,
-    rowsByRegion,
-    lastUpdated,
-    refreshIntervalMs,
-    staleWarningThresholdMs,
-  } = useFlipAnalysis();
+export const FlipTableContainer = ({
+  config,
+  currentCharacter,
+}: {
+  config: TradingConfig;
+  currentCharacter: Character | null;
+}) => {
+  const { rowsByRegion, lastUpdated } = useFlipAnalysis(
+    config,
+    currentCharacter,
+  );
+  const { buyingRegions, params } = config;
+  const sellWorld = currentCharacter?.homeWorld ?? "";
 
   return (
     <div className="app">
@@ -24,29 +27,13 @@ export const FlipTableContainer = () => {
       </header>
 
       <div className="toolbar">
-        <label className="character-select">
-          Selling as
-          <select
-            value={currentCharacterName ?? ""}
-            onChange={(e) => setCurrentCharacterName(e.target.value)}
-            disabled={allCharacterNames.length === 0}
-          >
-            {allCharacterNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
         {lastUpdated && (
           <span className="last-updated">
             Last updated {lastUpdated.toLocaleTimeString()}
           </span>
         )}
         <span className="last-updated">
-          {refreshIntervalMs
-            ? `Rows refresh automatically every ${refreshIntervalMs / 1000}s`
-            : ""}
+          Rows refresh automatically every {params.refreshIntervalMs / 1000}s
         </span>
         <Link to="/high-volume-items" className="nav-link">
           Find high-volume items →
@@ -68,7 +55,7 @@ export const FlipTableContainer = () => {
           )}
           <FlipTable
             rows={rowsByRegion[buyingRegion.region] ?? []}
-            staleWarningThresholdMs={staleWarningThresholdMs}
+            staleWarningThresholdMs={params.staleWarningThresholdMs}
             sellWorld={sellWorld}
           />
         </section>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BULK_SALE_VELOCITY_BATCH_SIZE,
   fetchMarketableItemIds,
@@ -62,15 +62,23 @@ export type ScanStatus =
  *
  * Shows the latest completed scan of the world or data center, if there's a
  * recent enough one, and switches to that of the new one whenever it
- * changes. A new scan clears the completed one from view straight away, but
- * only replaces the saved scan once it completes.
+ * changes, abandoning any scan in progress. A new scan clears the completed
+ * one from view straight away, but only replaces the saved scan once it
+ * completes.
  *
- * @param worldOrDataCenter Empty until one has been picked.
+ * @param worldOrDataCenter Empty when there's nothing to scan.
  */
 export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
   const [status, setStatus] = useState<ScanStatus>({ state: "idle" });
   const [results, setResults] = useState<ScannedItem[]>([]);
   const generationTracker = useGeneration();
+  // The most recently started scan, so its remaining requests can be cancelled once it's abandoned.
+  const scanControllerRef = useRef<AbortController | null>(null);
+
+  // Switching world, or leaving the page, abandons any scan in progress.
+  useEffect(() => {
+    return () => scanControllerRef.current?.abort();
+  }, [worldOrDataCenter]);
 
   useEffect(() => {
     const generation = generationTracker.start();
@@ -94,6 +102,10 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
   const startScan = useCallback(
     async (entriesPerItem: number, statsWithinMs: number) => {
       const generation = generationTracker.start();
+      scanControllerRef.current?.abort();
+      const scanController = new AbortController();
+      scanControllerRef.current = scanController;
+      const { signal } = scanController;
       setResults([]);
       setStatus({ state: "running", scannedItems: 0, totalItems: 0 });
 
@@ -122,11 +134,14 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
       // Some Universalis bulk requests fail transiently (e.g. a gateway timeout under load) even
       // at a batch size that normally clears it comfortably.
       const fetchBatchWithRetry = (batch: number[]) =>
-        withOneRetry(() =>
-          fetchSaleVelocityBatch(worldOrDataCenter, batch, {
-            entries: entriesPerItem,
-            statsWithinMs,
-          }),
+        withOneRetry(
+          () =>
+            fetchSaleVelocityBatch(worldOrDataCenter, batch, {
+              entries: entriesPerItem,
+              statsWithinMs,
+              signal,
+            }),
+          signal,
         );
 
       // Every result so far, for saving once the scan completes — `results` state can't be read from here.

@@ -15,7 +15,12 @@ export type ReleasePermit = () => void;
 export interface RequestLimiter {
   /**
    * Waits until a request of the given priority may start, and resolves with
-   * the function to call once it has finished.
+   * the function to call once it has finished. Rejects with the signal's
+   * reason if it's aborted before a permit is granted, without using up any
+   * of the budget.
    */
-  acquire(priority: RequestPriority): Promise<ReleasePermit>;
+  acquire(
+    priority: RequestPriority,
+    signal?: AbortSignal,
+  ): Promise<ReleasePermit>;
 }

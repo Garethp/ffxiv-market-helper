@@ -1,4 +1,9 @@
-import { fetchMarketData, fetchTaxRates } from "../api/universalis";
+import {
+  fetchMarketData,
+  fetchTaxRates,
+  type TaxRatesByCity,
+  type UniversalisMarketData,
+} from "../api/universalis";
 import {
   buildReadyAnalysis,
   calculateAverageListingPrice,
@@ -61,6 +66,125 @@ export const applyFetchOutcome = (
   };
 };
 
+/** The market data a row's analysis is calculated from, for one item bought via one region. */
+export interface RowMarketData {
+  sell: UniversalisMarketData;
+  sellTaxRates: TaxRatesByCity;
+  /** One entry per data center in the buying region, in directory order. */
+  buy: { dataCenter: string; data: UniversalisMarketData }[];
+}
+
+/**
+ * Fetches the market data for a single item bought via a single region and
+ * sold through the given character. What's fetched doesn't depend on the
+ * item's quality, target quantity or sell price ceiling — those only affect
+ * how it's analyzed.
+ */
+export const fetchRowMarketData = async (
+  itemId: number,
+  region: string,
+  sellingCharacter: Character,
+  regions: RegionInfo[],
+  params: TradingParameters,
+): Promise<RowMarketData> => {
+  const sellWorld = sellingCharacter.homeWorld;
+  const [sell, sellTaxRates, buy] = await Promise.all([
+    fetchMarketData(sellWorld, itemId, {
+      listings: params.sellListingsFetchCount,
+      entries: params.sellHistoryFetchCount,
+      statsWithinMs: params.saleVelocityWindowMs,
+    }),
+    fetchTaxRates(sellWorld),
+    Promise.all(
+      findDataCentersForRegion(region, regions).map(async (dataCenter) => ({
+        dataCenter,
+        data: await fetchMarketData(dataCenter, itemId, {
+          listings: params.buyListingsFetchCount,
+          entries: 0,
+        }),
+      })),
+    ),
+  ]);
+  return { sell, sellTaxRates, buy };
+};
+
+/** Calculates the flip analysis for a single item from its already-fetched market data. */
+export const analyzeRow = (
+  marketData: RowMarketData,
+  item: TrackedItem,
+  sellingCharacter: Character,
+  ownRetainers: WorldRetainer[],
+  params: TradingParameters,
+): RowAnalysis => {
+  const sellWorld = sellingCharacter.homeWorld;
+  const matchesQuality = <T extends { hq: boolean }>(entry: T) =>
+    (item.hq ?? false) === entry.hq;
+
+  const sellTaxRate = resolveSellTaxRate(
+    sellingCharacter.retainers,
+    marketData.sellTaxRates,
+    params.defaultSellTaxRate,
+  );
+
+  // A single-world query never sets worldName on its listings (it's redundant — every listing
+  // is on sellWorld already), but isOwnRetainerListing needs it to recognize our own retainer.
+  const sellQualityListings = marketData.sell.listings
+    .filter(matchesQuality)
+    .map((listing) => ({
+      ...listing,
+      worldName: listing.worldName ?? sellWorld,
+    }));
+  const sellHistory = calculateAverageSalePrice(
+    marketData.sell.recentHistory.filter(matchesQuality),
+    params.saleSampleSize,
+  );
+  const sellListings = calculateAverageListingPrice(
+    sellQualityListings,
+    params.saleSampleSize,
+  );
+  const sellListingStatus = determineSellListingStatus(
+    sellQualityListings,
+    ownRetainers,
+    params.undercutListingThreshold,
+  );
+  const saleVelocityPerDay = item.hq
+    ? marketData.sell.hqSaleVelocity
+    : marketData.sell.nqSaleVelocity;
+
+  let best: {
+    dataCenter: string;
+    price: NonNullable<ReturnType<typeof calculateConsistentPrice>>;
+  } | null = null;
+  for (const { dataCenter, data } of marketData.buy) {
+    const buyableListings = data.listings
+      .filter(matchesQuality)
+      .filter((listing) => !isOwnRetainerListing(listing, ownRetainers));
+    const price = calculateConsistentPrice(
+      buyableListings,
+      item.targetQuantity,
+    );
+    if (price && (!best || price.pricePerUnit < best.price.pricePerUnit)) {
+      best = { dataCenter, price };
+    }
+  }
+
+  return buildReadyAnalysis(
+    best?.dataCenter ?? marketData.buy[0]?.dataCenter ?? "",
+    best?.price ?? null,
+    sellHistory,
+    sellListings,
+    item.stackSize,
+    item.sellPriceCeiling,
+    saleVelocityPerDay,
+    {
+      buyTaxRate: params.buyTaxRate,
+      sellTaxRate,
+      gapThresholdMultiplier: params.gapThresholdMultiplier,
+    },
+    sellListingStatus,
+  );
+};
+
 /** Fetches and computes the flip analysis for a single item bought via a single region. */
 export const fetchRowAnalysis = async (
   item: TrackedItem,
@@ -70,95 +194,24 @@ export const fetchRowAnalysis = async (
   ownRetainers: WorldRetainer[],
   params: TradingParameters,
 ): Promise<FetchOutcome> => {
-  const sellWorld = sellingCharacter.homeWorld;
-  const dataCenters = findDataCentersForRegion(region, regions);
-
-  const matchesQuality = <T extends { hq: boolean }>(entry: T) =>
-    (item.hq ?? false) === entry.hq;
-
   try {
-    const [sellData, taxRates, buyResults] = await Promise.all([
-      fetchMarketData(sellWorld, item.itemId, {
-        listings: params.sellListingsFetchCount,
-        entries: params.sellHistoryFetchCount,
-        statsWithinMs: params.saleVelocityWindowMs,
-      }),
-      fetchTaxRates(sellWorld),
-      Promise.all(
-        dataCenters.map(async (dataCenter) => ({
-          dataCenter,
-          data: await fetchMarketData(dataCenter, item.itemId, {
-            listings: params.buyListingsFetchCount,
-            entries: 0,
-          }),
-        })),
+    const marketData = await fetchRowMarketData(
+      item.itemId,
+      region,
+      sellingCharacter,
+      regions,
+      params,
+    );
+    return {
+      success: true,
+      analysis: analyzeRow(
+        marketData,
+        item,
+        sellingCharacter,
+        ownRetainers,
+        params,
       ),
-    ]);
-
-    const sellTaxRate = resolveSellTaxRate(
-      sellingCharacter.retainers,
-      taxRates,
-      params.defaultSellTaxRate,
-    );
-
-    // A single-world query never sets worldName on its listings (it's redundant — every listing
-    // is on sellWorld already), but isOwnRetainerListing needs it to recognize our own retainer.
-    const sellQualityListings = sellData.listings
-      .filter(matchesQuality)
-      .map((listing) => ({
-        ...listing,
-        worldName: listing.worldName ?? sellWorld,
-      }));
-    const sellHistory = calculateAverageSalePrice(
-      sellData.recentHistory.filter(matchesQuality),
-      params.saleSampleSize,
-    );
-    const sellListings = calculateAverageListingPrice(
-      sellQualityListings,
-      params.saleSampleSize,
-    );
-    const sellListingStatus = determineSellListingStatus(
-      sellQualityListings,
-      ownRetainers,
-      params.undercutListingThreshold,
-    );
-    const saleVelocityPerDay = item.hq
-      ? sellData.hqSaleVelocity
-      : sellData.nqSaleVelocity;
-
-    let best: {
-      dataCenter: string;
-      price: NonNullable<ReturnType<typeof calculateConsistentPrice>>;
-    } | null = null;
-    for (const { dataCenter, data } of buyResults) {
-      const buyableListings = data.listings
-        .filter(matchesQuality)
-        .filter((listing) => !isOwnRetainerListing(listing, ownRetainers));
-      const price = calculateConsistentPrice(
-        buyableListings,
-        item.targetQuantity,
-      );
-      if (price && (!best || price.pricePerUnit < best.price.pricePerUnit)) {
-        best = { dataCenter, price };
-      }
-    }
-
-    const analysis = buildReadyAnalysis(
-      best?.dataCenter ?? dataCenters[0] ?? "",
-      best?.price ?? null,
-      sellHistory,
-      sellListings,
-      item.stackSize,
-      item.sellPriceCeiling,
-      saleVelocityPerDay,
-      {
-        buyTaxRate: params.buyTaxRate,
-        sellTaxRate,
-        gapThresholdMultiplier: params.gapThresholdMultiplier,
-      },
-      sellListingStatus,
-    );
-    return { success: true, analysis };
+    };
   } catch (err) {
     return {
       success: false,

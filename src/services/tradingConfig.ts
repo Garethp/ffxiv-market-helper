@@ -1,7 +1,12 @@
 import type { WorldRetainer } from "../utils/pricing";
 import { findRegionNameForWorld } from "../utils/worldDirectory";
 import { configService } from "./configService";
-import type { Character, RegionInfo, TradingParameters } from "../types";
+import type {
+  Character,
+  RegionInfo,
+  TrackedItem,
+  TradingParameters,
+} from "../types";
 
 /**
  * A region as a buy-side source. Every character based there sees the same
@@ -45,8 +50,9 @@ export const deriveOwnRetainers = (
   );
 };
 
-/** The roster/region/parameter config shared by every page that prices flips. */
+/** Everything from ConfigService, loaded once and shared by every page. */
 export interface TradingConfig {
+  trackedItems: TrackedItem[];
   characters: Character[];
   regions: RegionInfo[];
   params: TradingParameters;
@@ -56,15 +62,16 @@ export interface TradingConfig {
 }
 
 export const loadTradingConfig = async (): Promise<TradingConfig> => {
-  const [characters, regions, params, defaultCharacterName] = await Promise.all(
-    [
+  const [trackedItems, characters, regions, params, defaultCharacterName] =
+    await Promise.all([
+      configService.getTrackedItems(),
       configService.getCharacters(),
       configService.getRegions(),
       configService.getTradingParameters(),
       configService.getDefaultCharacterName(),
-    ],
-  );
+    ]);
   return {
+    trackedItems,
     characters,
     regions,
     params,

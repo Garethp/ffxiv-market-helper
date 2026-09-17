@@ -135,7 +135,7 @@ export const BULK_SALE_VELOCITY_BATCH_SIZE = 20;
 export const fetchSaleVelocityBatch = async (
   worldOrDataCenter: string,
   itemIds: number[],
-  options: { entries: number; statsWithinMs?: number },
+  options: { entries: number; statsWithinMs?: number; signal?: AbortSignal },
 ): Promise<ItemSaleVelocity[]> => {
   if (itemIds.length === 0) return [];
   if (itemIds.length > BULK_SALE_VELOCITY_BATCH_SIZE) {
@@ -144,12 +144,12 @@ export const fetchSaleVelocityBatch = async (
     );
   }
 
-  const { entries, statsWithinMs } = options;
+  const { entries, statsWithinMs, signal } = options;
   const statsWithinParam =
     statsWithinMs !== undefined ? `&statsWithin=${statsWithinMs}` : "";
   const url = `${BASE_URL}/${encodeURIComponent(worldOrDataCenter)}/${itemIds.join(",")}?listings=0&entries=${entries}${statsWithinParam}`;
 
-  const response = await bulkScanClient.fetch(url);
+  const response = await bulkScanClient.fetch(url, { signal });
   if (!response.ok) {
     throw new Error(
       `Universalis bulk request failed (${response.status}) for ${itemIds.length} items on ${worldOrDataCenter}`,

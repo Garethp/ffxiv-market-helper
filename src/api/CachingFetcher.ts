@@ -16,6 +16,9 @@ interface CacheEntry {
  * callers that happen to want the same data) don't each hit the network.
  * A failed request is never cached — it's evicted immediately so a retry
  * always goes out fresh.
+ *
+ * Cancellation isn't passed through: a request can be shared by several
+ * callers, so one caller aborting `init.signal` mustn't fail it for the rest.
  */
 export class CachingFetcher implements Fetcher {
   private readonly ttlMs: number;
@@ -34,7 +37,10 @@ export class CachingFetcher implements Fetcher {
       return (await cached.response).clone();
     }
 
-    const responsePromise = this.inner.fetch(input, init);
+    const responsePromise = this.inner.fetch(input, {
+      ...init,
+      signal: undefined,
+    });
     const entry: CacheEntry = {
       expiresAt: Date.now() + this.ttlMs,
       response: responsePromise,

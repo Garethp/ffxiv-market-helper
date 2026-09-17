@@ -227,4 +227,40 @@ describe("useHighVolumeItemScan", () => {
       expect(result.current.results).toHaveLength(3);
     });
   });
+
+  describe("abandoning a scan", () => {
+    /** Starts a scan whose batches never finish, and returns the signal each batch was given. */
+    const startNeverEndingScan = async () => {
+      mockedFetchMarketableItemIds.mockResolvedValue([1, 2]);
+      mockedFetchSaleVelocityBatch.mockReturnValue(new Promise(() => {}));
+      const hook = renderHook(({ world }) => useHighVolumeItemScan(world), {
+        initialProps: { world: "Chaos" },
+      });
+      await act(async () => {
+        hook.result.current.startScan(10, 86_400_000);
+      });
+      await waitFor(() =>
+        expect(mockedFetchSaleVelocityBatch).toHaveBeenCalled(),
+      );
+      const signal = mockedFetchSaleVelocityBatch.mock.calls[0][2].signal!;
+      return { ...hook, signal };
+    };
+
+    it("should cancel its remaining requests when the world changes", async () => {
+      const { rerender, signal } = await startNeverEndingScan();
+      expect(signal.aborted).toBe(false);
+
+      rerender({ world: "Omega" });
+
+      expect(signal.aborted).toBe(true);
+    });
+
+    it("should cancel its remaining requests when the page is closed", async () => {
+      const { unmount, signal } = await startNeverEndingScan();
+
+      unmount();
+
+      expect(signal.aborted).toBe(true);
+    });
+  });
 });

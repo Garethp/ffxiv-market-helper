@@ -137,4 +137,42 @@ describe("CrossTabRequestLimiter", () => {
       ]);
     });
   });
+
+  describe("cancelling a wait", () => {
+    it("should reject with the abort reason when aborted before a permit is granted", async () => {
+      const [tab] = openTwoTabs({
+        maxConcurrent: 1,
+        maxRequestsPerSecond: 100,
+      });
+      const release = await tab.acquire("interactive");
+
+      const controller = new AbortController();
+      const waiting = tab.acquire("background", controller.signal);
+      controller.abort(new Error("abandoned"));
+
+      await expect(waiting).rejects.toThrow("abandoned");
+      release();
+    });
+
+    it("should not let a cancelled wait hold up requests queued behind it", async () => {
+      const [scanTab, itemTab] = openTwoTabs({
+        maxConcurrent: 1,
+        maxRequestsPerSecond: 100,
+      });
+      const releaseBlocker = await itemTab.acquire("interactive");
+
+      const controller = new AbortController();
+      const cancelled = scanTab
+        .acquire("background", controller.signal)
+        .catch(() => undefined);
+      const behind = scanTab.acquire("background");
+      await sleep(10);
+      controller.abort();
+      await cancelled;
+      releaseBlocker();
+
+      const release = await behind;
+      release();
+    });
+  });
 });
