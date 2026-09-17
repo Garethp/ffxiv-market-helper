@@ -15,6 +15,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 
 import { fetchItemNames } from "../api/xivapi";
 import { fetchRowMarketData } from "../services/rowAnalysis";
+import { withQueryClient } from "../testing/withQueryClient";
 import { useItemProfitScan } from "./useItemProfitScan";
 
 const mockedFetchItemNames = vi.mocked(fetchItemNames);
@@ -119,8 +120,9 @@ describe("useItemProfitScan", () => {
     const fetch = deferred<RowMarketData>();
     mockedFetchRowMarketData.mockReturnValue(fetch.promise);
 
-    const { result } = renderHook(() =>
-      useItemProfitScan(itemId, config, alice),
+    const { result } = renderHook(
+      () => useItemProfitScan(itemId, config, alice),
+      { wrapper: withQueryClient() },
     );
 
     await waitFor(() => expect(mockedFetchRowMarketData).toHaveBeenCalled());
@@ -128,12 +130,10 @@ describe("useItemProfitScan", () => {
       `Item #${itemId}`,
     );
 
-    await act(async () => {
-      name.resolve(new Map([[itemId, "Real Item Name"]]));
-    });
-    await act(async () => {
-      fetch.resolve(europeMarketData);
-    });
+    name.resolve(new Map([[itemId, "Real Item Name"]]));
+    await waitFor(() => expect(result.current.itemName).toBe("Real Item Name"));
+    fetch.resolve(europeMarketData);
+    await waitFor(() => europeAnalysis(result));
 
     expect(result.current.rowsByRegion["Europe"]?.[0]?.row.item.name).toBe(
       "Real Item Name",
@@ -144,7 +144,7 @@ describe("useItemProfitScan", () => {
     it("should fetch again for a newly selected character, since that changes the world it's sold on", async () => {
       const { rerender } = renderHook(
         ({ character }) => useItemProfitScan(itemId, config, character),
-        { initialProps: { character: alice } },
+        { initialProps: { character: alice }, wrapper: withQueryClient() },
       );
       await waitFor(() =>
         expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(1),
@@ -155,14 +155,15 @@ describe("useItemProfitScan", () => {
       await waitFor(() =>
         expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
       );
-      expect(mockedFetchRowMarketData.mock.calls[1][2]).toBe(bob);
+      expect(mockedFetchRowMarketData.mock.calls[1][3]).toBe(bob);
     });
 
     it("should report the region's error when its fetch fails", async () => {
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
 
-      const { result } = renderHook(() =>
-        useItemProfitScan(itemId, config, alice),
+      const { result } = renderHook(
+        () => useItemProfitScan(itemId, config, alice),
+        { wrapper: withQueryClient() },
       );
 
       await waitFor(() =>
@@ -180,8 +181,9 @@ describe("useItemProfitScan", () => {
 
   describe("when the item's settings change", () => {
     it("should reprice for the chosen quality without fetching again", async () => {
-      const { result } = renderHook(() =>
-        useItemProfitScan(itemId, config, alice),
+      const { result } = renderHook(
+        () => useItemProfitScan(itemId, config, alice),
+        { wrapper: withQueryClient() },
       );
       await waitFor(() => europeAnalysis(result));
       expect(europeAnalysis(result).sellPricePerUnit).toBe(1000);
@@ -193,8 +195,9 @@ describe("useItemProfitScan", () => {
     });
 
     it("should reprice for the target quantity without fetching again", async () => {
-      const { result } = renderHook(() =>
-        useItemProfitScan(itemId, config, alice),
+      const { result } = renderHook(
+        () => useItemProfitScan(itemId, config, alice),
+        { wrapper: withQueryClient() },
       );
       await waitFor(() => europeAnalysis(result));
 
@@ -208,8 +211,9 @@ describe("useItemProfitScan", () => {
     });
 
     it("should cap the sell price at the sell price ceiling without fetching again", async () => {
-      const { result } = renderHook(() =>
-        useItemProfitScan(itemId, config, alice),
+      const { result } = renderHook(
+        () => useItemProfitScan(itemId, config, alice),
+        { wrapper: withQueryClient() },
       );
       await waitFor(() => europeAnalysis(result));
 

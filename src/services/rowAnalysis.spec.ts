@@ -19,9 +19,9 @@ import {
   type UniversalisListing,
   type UniversalisMarketData,
 } from "../api/universalis";
-import { applyFetchOutcome, fetchRowAnalysis, pendingRow } from "./rowAnalysis";
-import type { FetchOutcome } from "./rowAnalysis";
-import type { ProfitRow, RowAnalysis } from "../types";
+import type { QueryClient } from "@tanstack/react-query";
+import { createQueryClient } from "../queryClient";
+import { analyzeRow, fetchRowMarketData } from "./rowAnalysis";
 
 const mockedFetchMarketData = vi.mocked(fetchMarketData);
 const mockedFetchTaxRates = vi.mocked(fetchTaxRates);
@@ -107,34 +107,39 @@ const marketDataByScope = (
   }));
 };
 
-const analyze = (
+/** Fetches the row's market data and prices it, bought via Europe. */
+const analyze = async (
   overrides: {
     item?: TrackedItem;
     regions?: RegionInfo[];
     character?: Character;
   } = {},
-) =>
-  fetchRowAnalysis(
-    overrides.item ?? item,
+) => {
+  const character = overrides.character ?? sellingCharacter;
+  const marketData = await fetchRowMarketData(
+    createQueryClient(),
+    (overrides.item ?? item).itemId,
     "Europe",
-    overrides.character ?? sellingCharacter,
+    character,
     overrides.regions ?? regions,
+    params,
+  );
+  const analysis = analyzeRow(
+    marketData,
+    overrides.item ?? item,
+    character,
     ownRetainers,
     params,
   );
-
-const readyAnalysisOf = (outcome: FetchOutcome) => {
-  if (!outcome.success) throw new Error("expected a successful fetch");
-  if (outcome.analysis.status !== "ready")
-    throw new Error("expected a ready analysis");
-  return outcome.analysis;
+  if (analysis.status !== "ready") throw new Error("expected a ready analysis");
+  return analysis;
 };
 
 beforeEach(() => {
   mockedFetchTaxRates.mockResolvedValue({});
 });
 
-describe("fetchRowAnalysis", () => {
+describe("pricing a row", () => {
   describe("recognizing our own listings", () => {
     it("should recognize our own retainer's listing even when the market data doesn't say which world it's on", async () => {
       marketDataByScope({
@@ -144,7 +149,7 @@ describe("fetchRowAnalysis", () => {
         },
       });
 
-      const analysis = readyAnalysisOf(await analyze());
+      const analysis = await analyze();
 
       expect(analysis.sellListingStatus).toEqual({
         state: "competitive",
@@ -166,7 +171,7 @@ describe("fetchRowAnalysis", () => {
         },
       });
 
-      const analysis = readyAnalysisOf(await analyze());
+      const analysis = await analyze();
 
       expect(analysis.buy?.pricePerUnit).toBe(300);
     });
@@ -179,9 +184,7 @@ describe("fetchRowAnalysis", () => {
         Chaos: { listings: [listing({ pricePerUnit: 200 })] },
       });
 
-      const analysis = readyAnalysisOf(
-        await analyze({ regions: twoDataCenterRegions }),
-      );
+      const analysis = await analyze({ regions: twoDataCenterRegions });
 
       expect(analysis.buyDataCenter).toBe("Chaos");
       expect(analysis.buy?.pricePerUnit).toBe(200);
@@ -193,9 +196,7 @@ describe("fetchRowAnalysis", () => {
         Chaos: { listings: [listing({ pricePerUnit: 200 })] },
       });
 
-      const analysis = readyAnalysisOf(
-        await analyze({ regions: twoDataCenterRegions }),
-      );
+      const analysis = await analyze({ regions: twoDataCenterRegions });
 
       expect(analysis.buyDataCenter).toBe("Light");
     });
@@ -203,9 +204,7 @@ describe("fetchRowAnalysis", () => {
     it("should report no buy price, naming the first data center, when nothing is buyable anywhere", async () => {
       marketDataByScope({});
 
-      const analysis = readyAnalysisOf(
-        await analyze({ regions: twoDataCenterRegions }),
-      );
+      const analysis = await analyze({ regions: twoDataCenterRegions });
 
       expect(analysis.buy).toBeNull();
       expect(analysis.buyDataCenter).toBe("Light");
@@ -225,7 +224,7 @@ describe("fetchRowAnalysis", () => {
         },
       });
 
-      const analysis = readyAnalysisOf(await analyze({ item: hqItem }));
+      const analysis = await analyze({ item: hqItem });
 
       expect(analysis.buy?.pricePerUnit).toBe(200);
     });
@@ -244,7 +243,7 @@ describe("fetchRowAnalysis", () => {
         },
       });
 
-      const analysis = readyAnalysisOf(await analyze({ item: hqItem }));
+      const analysis = await analyze({ item: hqItem });
 
       expect(analysis.sellPricePerUnit).toBe(1000);
       expect(analysis.gapDetected).toBe(false);
@@ -253,7 +252,7 @@ describe("fetchRowAnalysis", () => {
     it("should use HQ sale velocity for an HQ item", async () => {
       marketDataByScope({ WorldA: { hqSaleVelocity: 7, nqSaleVelocity: 3 } });
 
-      const analysis = readyAnalysisOf(await analyze({ item: hqItem }));
+      const analysis = await analyze({ item: hqItem });
 
       expect(analysis.saleVelocityPerDay).toBe(7);
     });
@@ -261,7 +260,7 @@ describe("fetchRowAnalysis", () => {
     it("should use NQ sale velocity for an item that isn't HQ", async () => {
       marketDataByScope({ WorldA: { hqSaleVelocity: 7, nqSaleVelocity: 3 } });
 
-      const analysis = readyAnalysisOf(await analyze());
+      const analysis = await analyze();
 
       expect(analysis.saleVelocityPerDay).toBe(3);
     });
@@ -274,104 +273,91 @@ describe("fetchRowAnalysis", () => {
         WorldA: { recentHistory: [sale({ pricePerUnit: 1000 })] },
       });
 
-      const analysis = readyAnalysisOf(
-        await analyze({
-          character: {
-            ...sellingCharacter,
-            retainers: [
-              { name: "RetainerA", city: "Ul'dah" },
-              { name: "RetainerB", city: "Kugane" },
-            ],
-          },
-        }),
-      );
+      const analysis = await analyze({
+        character: {
+          ...sellingCharacter,
+          retainers: [
+            { name: "RetainerA", city: "Ul'dah" },
+            { name: "RetainerB", city: "Kugane" },
+          ],
+        },
+      });
 
       expect(analysis.effectiveSellPricePerUnit).toBeCloseTo(970);
     });
   });
-
-  describe("handling failures", () => {
-    it("should fail the row with the error message when a market data fetch fails", async () => {
-      mockedFetchMarketData.mockRejectedValue(new Error("market down"));
-
-      expect(await analyze()).toEqual({
-        success: false,
-        message: "market down",
-      });
-    });
-
-    it("should fail the row with the error message when the tax rate fetch fails", async () => {
-      marketDataByScope({});
-      mockedFetchTaxRates.mockRejectedValue(new Error("tax rates down"));
-
-      expect(await analyze()).toEqual({
-        success: false,
-        message: "tax rates down",
-      });
-    });
-
-    it("should report an unknown error when something other than an Error is thrown", async () => {
-      mockedFetchMarketData.mockRejectedValue("not an error");
-
-      expect(await analyze()).toEqual({
-        success: false,
-        message: "Unknown error",
-      });
-    });
-  });
 });
 
-describe("applyFetchOutcome", () => {
-  const readyAnalysis: RowAnalysis = { status: "ready" } as RowAnalysis;
+describe("fetching a row's market data", () => {
+  const twoRegionDirectory: RegionInfo[] = [
+    ...regions,
+    { name: "Japan", dataCenters: [{ name: "Elemental", worlds: ["WorldJ"] }] },
+  ];
+
+  const fetchRow = (client: QueryClient, region = "Europe") =>
+    fetchRowMarketData(
+      client,
+      item.itemId,
+      region,
+      sellingCharacter,
+      twoRegionDirectory,
+      params,
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    marketDataByScope({});
+  });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it("should replace the row with the fresh analysis on success, stamped with the current time", () => {
-    const now = new Date("2026-01-01T12:00:00Z").getTime();
-    vi.useFakeTimers();
-    vi.setSystemTime(now);
-    const previous: ProfitRow = {
-      ...pendingRow(item),
-      lastAttemptFailed: true,
-      lastErrorMessage: "previous failure",
-    };
-    const outcome: FetchOutcome = { success: true, analysis: readyAnalysis };
+  it("should fail when a market data fetch fails", async () => {
+    mockedFetchMarketData.mockRejectedValue(new Error("market down"));
 
-    const next = applyFetchOutcome(previous, item, outcome);
-
-    expect(next.analysis).toBe(readyAnalysis);
-    expect(next.lastAttemptFailed).toBe(false);
-    expect(next.lastErrorMessage).toBeNull();
-    expect(next.lastSuccessAt).toBe(now);
+    await expect(fetchRow(createQueryClient())).rejects.toThrow("market down");
   });
 
-  it("should preserve the previous row's analysis on failure, only stamping the failure", () => {
-    const previous: ProfitRow = {
-      item,
-      analysis: readyAnalysis,
-      lastSuccessAt: 12345,
-      lastAttemptFailed: false,
-      lastErrorMessage: null,
-    };
-    const outcome: FetchOutcome = { success: false, message: "network error" };
+  it("should fail when the tax rate fetch fails", async () => {
+    mockedFetchTaxRates.mockRejectedValue(new Error("tax rates down"));
 
-    const next = applyFetchOutcome(previous, item, outcome);
-
-    expect(next.analysis).toBe(readyAnalysis);
-    expect(next.lastSuccessAt).toBe(12345);
-    expect(next.lastAttemptFailed).toBe(true);
-    expect(next.lastErrorMessage).toBe("network error");
+    await expect(fetchRow(createQueryClient())).rejects.toThrow(
+      "tax rates down",
+    );
   });
 
-  it("should fall back to a pending row when a failure has nothing previous to preserve", () => {
-    const outcome: FetchOutcome = { success: false, message: "network error" };
+  it("should share one request between rows that want the same data at around the same time", async () => {
+    const client = createQueryClient();
 
-    const next = applyFetchOutcome(undefined, item, outcome);
+    await Promise.all([fetchRow(client, "Europe"), fetchRow(client, "Japan")]);
 
-    expect(next.analysis).toEqual({ status: "pending" });
-    expect(next.lastAttemptFailed).toBe(true);
-    expect(next.lastErrorMessage).toBe("network error");
+    expect(mockedFetchTaxRates).toHaveBeenCalledTimes(1);
+    expect(
+      mockedFetchMarketData.mock.calls.map(
+        ([worldOrDataCenter]) => worldOrDataCenter,
+      ),
+    ).toEqual(["WorldA", "Light", "Elemental"]);
+  });
+
+  it("should fetch data again once it's more than 30 seconds old", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const client = createQueryClient();
+    await fetchRow(client);
+
+    vi.setSystemTime(Date.now() + 30_001);
+    await fetchRow(client);
+
+    expect(mockedFetchTaxRates).toHaveBeenCalledTimes(2);
+  });
+
+  it("should fetch data again after a failure rather than reusing the failure", async () => {
+    mockedFetchTaxRates.mockRejectedValueOnce(new Error("tax rates down"));
+    const client = createQueryClient();
+    await expect(fetchRow(client)).rejects.toThrow("tax rates down");
+
+    await fetchRow(client);
+
+    expect(mockedFetchTaxRates).toHaveBeenCalledTimes(2);
   });
 });

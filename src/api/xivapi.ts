@@ -1,4 +1,3 @@
-import { CachingFetcher } from "./CachingFetcher";
 import { RequestLimitedApiClient } from "./RequestLimitedApiClient";
 import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimiter";
 import { chunk } from "../utils/chunk";
@@ -11,13 +10,7 @@ const limiter = new CrossTabRequestLimiter("xivapi", {
   maxRequestsPerSecond: 10,
 });
 
-// Item names never change, so a long cache avoids re-fetching the same names on every scan.
-const client = new CachingFetcher(
-  new RequestLimitedApiClient(limiter, "interactive"),
-  {
-    ttlMs: 24 * 60 * 60_000,
-  },
-);
+const client = new RequestLimitedApiClient(limiter, "interactive");
 
 /** The most row IDs XIVAPI's sheet endpoint returns per request — it silently truncates beyond this. */
 const MAX_ROWS_PER_REQUEST = 100;

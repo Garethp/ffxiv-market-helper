@@ -1,4 +1,3 @@
-import type { Fetcher } from "./Fetcher";
 import type {
   RequestLimiter,
   RequestPriority,
@@ -11,7 +10,7 @@ import type {
  * limiter to draw from the same budget. Aborting `init.signal` cancels a
  * request whether it's still waiting for a permit or already in flight.
  */
-export class RequestLimitedApiClient implements Fetcher {
+export class RequestLimitedApiClient {
   constructor(
     private readonly limiter: RequestLimiter,
     private readonly priority: RequestPriority,

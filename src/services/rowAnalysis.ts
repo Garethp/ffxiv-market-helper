@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import {
   fetchMarketData,
   fetchTaxRates,
@@ -24,11 +25,6 @@ import type {
   TradingParameters,
 } from "../types";
 
-/** The outcome of one fetch attempt. A failure never carries pricing data — see ProfitRow's docs for why. */
-export type FetchOutcome =
-  | { success: true; analysis: RowAnalysis }
-  | { success: false; message: string };
-
 /** The target quantity assumed when pricing an item that isn't tracked, and so has no target quantity of its own. */
 export const UNTRACKED_ITEM_TARGET_QUANTITY = 99;
 
@@ -42,33 +38,6 @@ export const pendingRow = (item: TrackedItem): ProfitRow => {
   };
 };
 
-/**
- * Turns one fetch attempt's outcome into a row's next state. A success
- * replaces the row entirely; a failure never overwrites previously-known-good
- * analysis — it only stamps that the latest attempt failed, preserving
- * whatever the row already had (or a pending row, if it had nothing yet).
- */
-export const applyFetchOutcome = (
-  previous: ProfitRow | undefined,
-  item: TrackedItem,
-  outcome: FetchOutcome,
-): ProfitRow => {
-  if (outcome.success) {
-    return {
-      item,
-      analysis: outcome.analysis,
-      lastSuccessAt: Date.now(),
-      lastAttemptFailed: false,
-      lastErrorMessage: null,
-    };
-  }
-  return {
-    ...(previous ?? pendingRow(item)),
-    lastAttemptFailed: true,
-    lastErrorMessage: outcome.message,
-  };
-};
-
 /** The market data a row's analysis is calculated from, for one item bought via one region. */
 export interface RowMarketData {
   sell: UniversalisMarketData;
@@ -78,30 +47,53 @@ export interface RowMarketData {
 }
 
 /**
+ * How long a Universalis response is reused for an identical request, so
+ * rows that want the same data at around the same time (e.g. every tracked
+ * item's sell world tax rates, or one item's sell prices for each buying
+ * region) don't double up on requests.
+ */
+const UNIVERSALIS_REUSE_MS = 30_000;
+
+/**
  * Fetches the market data for a single item bought via a single region and
  * sold through the given character. What's fetched doesn't depend on the
  * item's quality, target quantity or sell price ceiling — those only affect
  * how it's analyzed.
  */
 export const fetchRowMarketData = async (
+  client: QueryClient,
   itemId: number,
   region: string,
   sellingCharacter: Character,
   regions: RegionInfo[],
   params: TradingParameters,
 ): Promise<RowMarketData> => {
+  const marketData = (
+    worldOrDataCenter: string,
+    options: Parameters<typeof fetchMarketData>[2],
+  ) =>
+    client.fetchQuery({
+      queryKey: ["marketData", worldOrDataCenter, itemId, options],
+      queryFn: () => fetchMarketData(worldOrDataCenter, itemId, options),
+      staleTime: UNIVERSALIS_REUSE_MS,
+    });
+
   const sellWorld = sellingCharacter.homeWorld;
   const [sell, sellTaxRates, buy] = await Promise.all([
-    fetchMarketData(sellWorld, itemId, {
+    marketData(sellWorld, {
       listings: params.sellListingsFetchCount,
       entries: params.sellHistoryFetchCount,
       statsWithinMs: params.saleVelocityWindowMs,
     }),
-    fetchTaxRates(sellWorld),
+    client.fetchQuery({
+      queryKey: ["taxRates", sellWorld],
+      queryFn: () => fetchTaxRates(sellWorld),
+      staleTime: UNIVERSALIS_REUSE_MS,
+    }),
     Promise.all(
       findDataCentersForRegion(region, regions).map(async (dataCenter) => ({
         dataCenter,
-        data: await fetchMarketData(dataCenter, itemId, {
+        data: await marketData(dataCenter, {
           listings: params.buyListingsFetchCount,
           entries: 0,
         }),
@@ -186,39 +178,4 @@ export const analyzeRow = (
     },
     sellListingStatus,
   );
-};
-
-/** Fetches and computes the profit analysis for a single item bought via a single region. */
-export const fetchRowAnalysis = async (
-  item: TrackedItem,
-  region: string,
-  sellingCharacter: Character,
-  regions: RegionInfo[],
-  ownRetainers: WorldRetainer[],
-  params: TradingParameters,
-): Promise<FetchOutcome> => {
-  try {
-    const marketData = await fetchRowMarketData(
-      item.itemId,
-      region,
-      sellingCharacter,
-      regions,
-      params,
-    );
-    return {
-      success: true,
-      analysis: analyzeRow(
-        marketData,
-        item,
-        sellingCharacter,
-        ownRetainers,
-        params,
-      ),
-    };
-  } catch (err) {
-    return {
-      success: false,
-      message: err instanceof Error ? err.message : "Unknown error",
-    };
-  }
 };

@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
 import { currentCharacterService } from "./services/currentCharacterService";
-import {
-  loadTradingConfig,
-  type TradingConfig,
-} from "./services/tradingConfig";
+import { loadTradingConfig } from "./services/tradingConfig";
 import type { Character } from "./types";
 
 /**
@@ -17,27 +15,21 @@ import type { Character } from "./types";
  * and can be changed from any page.
  */
 const App = () => {
-  const [config, setConfig] = useState<TradingConfig | null>(null);
-  // Null until a character has been picked, here or on an earlier visit, meaning the Default Character.
+  // Both are read once, when the app opens.
+  const { data: config } = useQuery({
+    queryKey: ["tradingConfig"],
+    queryFn: loadTradingConfig,
+    staleTime: Infinity,
+  });
+  const rememberedCharacterName = useQuery({
+    queryKey: ["rememberedCharacterName"],
+    queryFn: () => currentCharacterService.getCurrentCharacterName(),
+    staleTime: Infinity,
+  });
+  // Null until a character is picked during this visit.
   const [pickedCharacterName, setPickedCharacterName] = useState<string | null>(
     null,
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      loadTradingConfig(),
-      // Not being able to read the remembered character just means starting on the Default Character.
-      currentCharacterService.getCurrentCharacterName().catch(() => null),
-    ]).then(([loadedConfig, rememberedCharacterName]) => {
-      if (cancelled) return;
-      setConfig(loadedConfig);
-      setPickedCharacterName(rememberedCharacterName);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const setCurrentCharacter = useCallback((character: Character) => {
     setPickedCharacterName(character.name);
@@ -48,13 +40,15 @@ const App = () => {
       });
   }, []);
 
-  if (config === null) return null;
+  if (config === undefined || rememberedCharacterName.isPending) return null;
 
-  const findCharacter = (name: string | null) =>
+  const findCharacter = (name: string | null | undefined) =>
     config.characters.find((character) => character.name === name);
-  // A remembered character that's since been removed from the roster falls back to the Default Character.
+  // A remembered character that can't be read, or that's since been removed from the roster, falls
+  // back to the Default Character.
   const currentCharacter =
     findCharacter(pickedCharacterName) ??
+    findCharacter(rememberedCharacterName.data) ??
     findCharacter(config.defaultCharacterName) ??
     null;
 

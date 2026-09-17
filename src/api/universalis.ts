@@ -1,4 +1,3 @@
-import { CachingFetcher } from "./CachingFetcher";
 import { RequestLimitedApiClient } from "./RequestLimitedApiClient";
 import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimiter";
 
@@ -13,17 +12,11 @@ const limiter = new CrossTabRequestLimiter("universalis", {
   maxRequestsPerSecond: 15,
 });
 
-// A short cache means independent rows that happen to want the same data (e.g. two buying
-// characters checking the same item's sell price) don't double up on requests.
-const client = new CachingFetcher(
-  new RequestLimitedApiClient(limiter, "interactive"),
-  { ttlMs: 30_000 },
-);
+const client = new RequestLimitedApiClient(limiter, "interactive");
 
 // Used only for the bulk item-velocity scan (see fetchSaleVelocityBatch). Background priority
 // lets it use the whole budget while nothing else needs it, without starving pages someone is
-// looking at. It's deliberately uncached: a scan never repeats the same batch of item IDs, so
-// caching wouldn't help.
+// looking at.
 const bulkScanClient = new RequestLimitedApiClient(limiter, "background");
 
 export interface UniversalisListing {

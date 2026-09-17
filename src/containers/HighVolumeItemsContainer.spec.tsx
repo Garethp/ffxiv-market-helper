@@ -26,6 +26,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 import { fetchItemNames } from "../api/xivapi";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
 import { fetchRowMarketData } from "../services/rowAnalysis";
+import { withQueryClient } from "../testing/withQueryClient";
 import { HighVolumeItemsContainer } from "./HighVolumeItemsContainer";
 
 const mockedUseHighVolumeItemScan = vi.mocked(useHighVolumeItemScan);
@@ -89,7 +90,7 @@ describe("HighVolumeItemsContainer", () => {
     }));
     const fastestFifty = Array.from({ length: 50 }, (_, i) => 52 - i);
     const pricedItemIds = () =>
-      mockedFetchRowMarketData.mock.calls.map(([itemId]) => itemId);
+      mockedFetchRowMarketData.mock.calls.map(([, itemId]) => itemId);
 
     it("should price the 50 fastest-selling items once the scan finishes, and not while it's still running", async () => {
       mockedFetchItemNames.mockResolvedValue(new Map());
@@ -112,6 +113,7 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
+        { wrapper: withQueryClient() },
       );
       expect(mockedFetchRowMarketData).not.toHaveBeenCalled();
 
@@ -147,6 +149,7 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
+        { wrapper: withQueryClient() },
       );
 
       await waitFor(() => expect(pricedItemIds()).toEqual(fastestFifty));
@@ -230,6 +233,7 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
+        { wrapper: withQueryClient() },
       );
       const itemRow = () =>
         container.querySelector("table")!.querySelector(":scope > tbody > tr")!;
@@ -277,6 +281,7 @@ describe("HighVolumeItemsContainer", () => {
           <HighVolumeItemsContainer config={config} currentCharacter={null} />
         </MemoryRouter>
       </StrictMode>,
+      { wrapper: withQueryClient() },
     );
 
     await waitFor(() => expect(mockedFetchItemNames).toHaveBeenCalledWith([1]));
@@ -327,6 +332,7 @@ describe("HighVolumeItemsContainer", () => {
       <MemoryRouter>
         <HighVolumeItemsContainer config={config} currentCharacter={null} />
       </MemoryRouter>,
+      { wrapper: withQueryClient() },
     );
 
     // Short of the next 200-item checkpoint — no lookup should fire yet.
@@ -373,6 +379,7 @@ describe("HighVolumeItemsContainer", () => {
         <MemoryRouter>
           <HighVolumeItemsContainer config={config} currentCharacter={null} />
         </MemoryRouter>,
+        { wrapper: withQueryClient() },
       );
 
       await waitFor(() => screen.getByText("Cordial"));

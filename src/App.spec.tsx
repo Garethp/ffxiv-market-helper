@@ -29,6 +29,7 @@ vi.mock("./containers/ItemProfitScanContainer", () => ({
 }));
 
 import App from "./App";
+import { withQueryClient } from "./testing/withQueryClient";
 import { currentCharacterService } from "./services/currentCharacterService";
 import { loadTradingConfig } from "./services/tradingConfig";
 
@@ -47,6 +48,7 @@ const renderApp = (path = "/") =>
     <MemoryRouter initialEntries={[path]}>
       <App />
     </MemoryRouter>,
+    { wrapper: withQueryClient() },
   );
 
 const navLink = (name: string) => screen.getByRole("link", { name });
