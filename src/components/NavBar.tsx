@@ -1,8 +1,12 @@
 import { NavLink } from "react-router-dom";
 import type { Character } from "../types";
 import { CharacterSelection } from "./CharacterSelection";
+import { GitHubLink } from "./GitHubLink";
 
-/** Shared across every page: the Current Character picker, then links to the top-level pages. */
+/**
+ * Shared across every page: the Current Character picker, then links to the top-level pages,
+ * with a link out to the source at the far end.
+ */
 export const NavBar = ({
   characters,
   currentCharacter,
@@ -34,6 +38,9 @@ export const NavBar = ({
           <NavLink to="/manage-items" className="navbar-link">
             Manage Items
           </NavLink>
+        </div>
+        <div className="navbar-github">
+          <GitHubLink />
         </div>
       </div>
     </nav>

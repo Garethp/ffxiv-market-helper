@@ -98,6 +98,34 @@ body {
   border-bottom-color: #8ab4f8;
 }
 
+/* Pushed past the page links, to the far end of the bar. */
+.navbar-github {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 1.5rem;
+}
+
+.navbar-github-link {
+  display: flex;
+  align-items: center;
+  color: #9aa0aa;
+}
+
+.navbar-github-link:hover,
+.navbar-github-link:focus-visible {
+  color: #e8e8e8;
+}
+
+/* The bar sits at the top of the page, so this tooltip opens downwards, and inwards from the right. */
+.navbar-github .tooltip {
+  top: calc(100% + 0.4rem);
+  bottom: auto;
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 /* Narrow enough that the links wrap under the switcher, so the divider between them has nothing to divide. */
 @media (max-width: 600px) {
   .character-switcher {

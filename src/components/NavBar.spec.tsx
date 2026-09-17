@@ -115,4 +115,14 @@ describe("NavBar", () => {
       expect(pagesMarkedCurrent()).toEqual([]);
     });
   });
+
+  describe("the source link", () => {
+    it("should link out to the repository", () => {
+      renderNavBar();
+
+      expect(navLink("Source on GitHub").getAttribute("href")).toBe(
+        "https://github.com/Garethp/ffxiv-market-helper",
+      );
+    });
+  });
 });
