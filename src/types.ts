@@ -25,11 +25,14 @@ export interface TrackedItem {
 
 /**
  * A retainer that actually posts market listings — characters themselves
- * don't sell anything, their retainers do. A character has 0–2 of these.
+ * don't sell anything, their retainers do. A character can have any number
+ * of these: two come with a subscription, and more can be hired for a fee.
  * A retainer doesn't carry its own world: it's always tied to its owning
  * character's home world, so that's looked up via the character instead.
  */
 export interface Retainer {
+  /** Stays the same when the retainer is renamed or moved to another city. */
+  id: string;
   /** The retainer's name, used to recognize our own listings on the market board. */
   name: string;
   /** The market board city this retainer is parked in — determines the tax rate charged there. */
@@ -39,14 +42,14 @@ export interface Retainer {
 /**
  * A character in our roster. Every character can be used as a buying
  * source (its home world's region determines what it can reach), and
- * whichever one is the Current Character is the one we sell through. The
- * Default Character (ConfigService.getDefaultCharacterName) is the Current
- * Character until another is picked. Which data centers a character can
- * reach isn't stored here: it's inferred from `homeWorld` via the region
- * directory (ConfigService.getRegions), since a character always has access
- * to every data center in their own region.
+ * whichever one is the Current Character is the one we sell through. Which
+ * data centers a character can reach isn't stored here: it's inferred from
+ * `homeWorld` via the region directory (ConfigService.getRegions), since a
+ * character always has access to every data center in their own region.
  */
 export interface Character {
+  /** Stays the same through a name change or world transfer. */
+  id: string;
   name: string;
   homeWorld: string;
   /** This character's own retainers. For the Current Character, these determine the sell world's tax rate; for any other, they're excluded from buy-price calculations so we never end up buying from ourselves. */

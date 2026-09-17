@@ -50,7 +50,10 @@ describe("BuyingRegionSection", () => {
     it("should name the region and every character buying through it", () => {
       renderSection({
         region: "Japan",
-        characters: [{ name: "Bob" }, { name: "Carol" }],
+        characters: [
+          { id: "bob", name: "Bob" },
+          { id: "carol", name: "Carol" },
+        ],
       });
 
       expect(screen.getByRole("heading").textContent).toBe(
@@ -62,9 +65,9 @@ describe("BuyingRegionSection", () => {
       const { container } = renderSection({
         region: "Japan",
         characters: [
-          { name: "Bob", note: "Needs a meetup to hand goods over" },
-          { name: "Carol" },
-          { name: "Dave", note: "Retainers only" },
+          { id: "bob", name: "Bob", note: "Needs a meetup to hand goods over" },
+          { id: "carol", name: "Carol" },
+          { id: "dave", name: "Dave", note: "Retainers only" },
         ],
       });
 
@@ -82,7 +85,7 @@ describe("BuyingRegionSection", () => {
   describe("showing profit", () => {
     it("should show a row for each item, in the order given", () => {
       renderSection(
-        { region: "Europe", characters: [{ name: "Alice" }] },
+        { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
         {
           rows: [
             displayRow(1, "Wind Cluster"),
@@ -100,7 +103,7 @@ describe("BuyingRegionSection", () => {
 
     it("should give every row the stale threshold and the sell world", () => {
       const { container } = renderSection(
-        { region: "Europe", characters: [{ name: "Alice" }] },
+        { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
         {
           rows: [displayRow(1, "Wind Cluster", { lastAttemptFailed: true })],
           staleWarningThresholdMs: 0,

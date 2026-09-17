@@ -6,11 +6,17 @@ import type { Character, TradingParameters } from "./types";
 
 type PageProps = { currentCharacter: Character | null };
 
-vi.mock("./services/tradingConfig", () => ({ loadTradingConfig: vi.fn() }));
+vi.mock("./services/tradingConfig", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./services/tradingConfig")>()),
+  loadConfig: vi.fn(),
+}));
+vi.mock("./services/characterService", () => ({
+  characterService: { getCharacters: vi.fn() },
+}));
 vi.mock("./services/currentCharacterService", () => ({
   currentCharacterService: {
-    getCurrentCharacterName: vi.fn(),
-    setCurrentCharacterName: vi.fn(),
+    getCurrentCharacterId: vi.fn(),
+    setCurrentCharacterId: vi.fn(),
   },
 }));
 // Stand-ins that show which page is open and which character it was given.
@@ -27,21 +33,44 @@ vi.mock("./containers/HighVolumeItemsContainer", () => ({
 vi.mock("./containers/ItemProfitScanContainer", () => ({
   ItemProfitScanContainer: () => <p>Item profit scan</p>,
 }));
+vi.mock("./containers/CharactersContainer", () => ({
+  CharactersContainer: ({
+    onCharactersChanged,
+  }: {
+    onCharactersChanged: () => void;
+  }) => (
+    <button type="button" onClick={onCharactersChanged}>
+      Change the roster
+    </button>
+  ),
+}));
 
 import App from "./App";
 import { withQueryClient } from "./testing/withQueryClient";
+import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
-import { loadTradingConfig } from "./services/tradingConfig";
+import { loadConfig } from "./services/tradingConfig";
 
-const mockedGetCurrentCharacterName = vi.mocked(
-  currentCharacterService.getCurrentCharacterName,
+const mockedGetCharacters = vi.mocked(characterService.getCharacters);
+const mockedGetCurrentCharacterId = vi.mocked(
+  currentCharacterService.getCurrentCharacterId,
 );
-const mockedSetCurrentCharacterName = vi.mocked(
-  currentCharacterService.setCurrentCharacterName,
+const mockedSetCurrentCharacterId = vi.mocked(
+  currentCharacterService.setCurrentCharacterId,
 );
 
-const alice: Character = { name: "Alice", homeWorld: "WorldA", retainers: [] };
-const bob: Character = { name: "Bob", homeWorld: "WorldB", retainers: [] };
+const alice: Character = {
+  id: "alice",
+  name: "Alice",
+  homeWorld: "WorldA",
+  retainers: [],
+};
+const bob: Character = {
+  id: "bob",
+  name: "Bob",
+  homeWorld: "WorldB",
+  retainers: [],
+};
 
 const renderApp = (path = "/") =>
   render(
@@ -53,49 +82,52 @@ const renderApp = (path = "/") =>
 
 const navLink = (name: string) => screen.getByRole("link", { name });
 
+const pickCharacter = async (id: string) =>
+  fireEvent.change(await screen.findByLabelText("Selling as"), {
+    target: { value: id },
+  });
+
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(loadTradingConfig).mockResolvedValue({
+  vi.mocked(loadConfig).mockResolvedValue({
     trackedItems: [],
-    characters: [alice, bob],
     regions: [],
+    marketBoardCities: [],
     params: {} as TradingParameters,
-    defaultCharacterName: "Alice",
-    buyingRegions: [],
-    ownRetainers: [],
   });
-  mockedGetCurrentCharacterName.mockResolvedValue(null);
-  mockedSetCurrentCharacterName.mockResolvedValue();
+  mockedGetCharacters.mockResolvedValue([alice, bob]);
+  mockedGetCurrentCharacterId.mockResolvedValue(null);
+  mockedSetCurrentCharacterId.mockResolvedValue();
 });
 
 afterEach(cleanup);
 
 describe("App", () => {
   describe("the Current Character", () => {
-    it("should start out on the Default Character when none has been picked before", async () => {
+    it("should start out on the first character in the roster when none has been picked before", async () => {
       renderApp();
 
       await screen.findByText("Tracked items selling as Alice");
     });
 
     it("should start out on the character picked on an earlier visit", async () => {
-      mockedGetCurrentCharacterName.mockResolvedValue("Bob");
+      mockedGetCurrentCharacterId.mockResolvedValue("bob");
 
       renderApp();
 
       await screen.findByText("Tracked items selling as Bob");
     });
 
-    it("should fall back to the Default Character when the one picked earlier is no longer in the roster", async () => {
-      mockedGetCurrentCharacterName.mockResolvedValue("Retired Character");
+    it("should fall back to the first character when the one picked earlier is no longer in the roster", async () => {
+      mockedGetCurrentCharacterId.mockResolvedValue("retired");
 
       renderApp();
 
       await screen.findByText("Tracked items selling as Alice");
     });
 
-    it("should start out on the Default Character when the one picked earlier can't be read", async () => {
-      mockedGetCurrentCharacterName.mockRejectedValue(new Error("blocked"));
+    it("should start out on the first character when the one picked earlier can't be read", async () => {
+      mockedGetCurrentCharacterId.mockRejectedValue(new Error("blocked"));
 
       renderApp();
 
@@ -105,20 +137,16 @@ describe("App", () => {
     it("should remember a newly picked character for later visits", async () => {
       renderApp();
 
-      fireEvent.change(await screen.findByLabelText("Selling as"), {
-        target: { value: "Bob" },
-      });
+      await pickCharacter("bob");
 
       await screen.findByText("Tracked items selling as Bob");
-      expect(mockedSetCurrentCharacterName).toHaveBeenCalledWith("Bob");
+      expect(mockedSetCurrentCharacterId).toHaveBeenCalledWith("bob");
     });
 
     it("should keep a newly picked character when moving to another page", async () => {
       renderApp();
 
-      fireEvent.change(await screen.findByLabelText("Selling as"), {
-        target: { value: "Bob" },
-      });
+      await pickCharacter("bob");
       fireEvent.click(navLink("High Volume Items"));
 
       await screen.findByText("High volume items for Bob");
@@ -127,11 +155,89 @@ describe("App", () => {
     it("should show the Current Character's home world alongside it", async () => {
       renderApp();
 
-      fireEvent.change(await screen.findByLabelText("Selling as"), {
-        target: { value: "Bob" },
-      });
+      await pickCharacter("bob");
 
       await screen.findByText("WorldB");
+    });
+  });
+
+  describe("the character roster", () => {
+    it.each(["/", "/high-volume-items", "/item/5"])(
+      "should welcome someone with no characters on %s, and point them to adding one",
+      async (path) => {
+        mockedGetCharacters.mockResolvedValue([]);
+
+        renderApp(path);
+
+        await screen.findByRole("heading", { name: "Welcome!" });
+        expect(
+          screen.queryByText(/Tracked items|High volume|Item profit/),
+        ).toBe(null);
+        fireEvent.click(
+          screen.getByRole("link", { name: "Add your first character" }),
+        );
+        await screen.findByRole("button", { name: "Change the roster" });
+      },
+    );
+
+    it("should show the page once a first character has been added", async () => {
+      mockedGetCharacters.mockResolvedValue([]);
+      renderApp();
+      fireEvent.click(
+        await screen.findByRole("link", { name: "Add your first character" }),
+      );
+      mockedGetCharacters.mockResolvedValue([alice]);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Change the roster" }),
+      );
+      await screen.findByText("WorldA");
+      fireEvent.click(navLink("Tracked Items"));
+
+      await screen.findByText("Tracked items selling as Alice");
+    });
+
+    it("should offer to add a character from the navbar when there are none", async () => {
+      mockedGetCharacters.mockResolvedValue([]);
+
+      renderApp();
+
+      fireEvent.click(
+        await screen.findByRole("link", { name: "Add a character" }),
+      );
+      await screen.findByRole("button", { name: "Change the roster" });
+    });
+
+    it("should read the roster again after it's changed, so the change shows everywhere", async () => {
+      const carol: Character = {
+        id: "carol",
+        name: "Carol",
+        homeWorld: "WorldC",
+        retainers: [],
+      };
+      renderApp("/characters");
+      const changeButton = await screen.findByRole("button", {
+        name: "Change the roster",
+      });
+      mockedGetCharacters.mockResolvedValue([alice, bob, carol]);
+
+      fireEvent.click(changeButton);
+
+      await screen.findByRole("option", { name: "Carol" });
+    });
+
+    it("should move to another character when the Current Character is removed", async () => {
+      renderApp("/characters");
+      await pickCharacter("bob");
+      mockedGetCharacters.mockResolvedValue([alice]);
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Change the roster" }),
+      );
+      await screen.findByText("WorldA");
+      fireEvent.click(navLink("Tracked Items"));
+
+      await screen.findByText("Tracked items selling as Alice");
     });
   });
 
@@ -142,6 +248,9 @@ describe("App", () => {
 
       fireEvent.click(navLink("High Volume Items"));
       await screen.findByText("High volume items for Alice");
+
+      fireEvent.click(navLink("Characters"));
+      await screen.findByRole("button", { name: "Change the roster" });
 
       fireEvent.click(navLink("Tracked Items"));
       await screen.findByText("Tracked items selling as Alice");
@@ -155,6 +264,7 @@ describe("App", () => {
         "page",
       );
       expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
+      expect(navLink("Characters").hasAttribute("aria-current")).toBe(false);
     });
 
     it("should mark no page as current on a page it doesn't link to", async () => {
@@ -165,6 +275,7 @@ describe("App", () => {
         false,
       );
       expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
+      expect(navLink("Characters").hasAttribute("aria-current")).toBe(false);
     });
   });
 });

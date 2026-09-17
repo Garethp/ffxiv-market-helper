@@ -43,7 +43,7 @@ const config: TradingConfig = {
     sellHistoryFetchCount: 100,
     saleVelocityWindowMs: 86_400_000,
   } as TradingParameters,
-  defaultCharacterName: "",
+  marketBoardCities: [],
   buyingRegions: [],
   ownRetainers: [],
 };
@@ -73,13 +73,16 @@ afterEach(() => {
 describe("HighVolumeItemsContainer", () => {
   describe("pricing the top results", () => {
     const alice: Character = {
+      id: "alice",
       name: "Alice",
       homeWorld: "Raiden",
       retainers: [],
     };
     const pricingConfig: TradingConfig = {
       ...config,
-      buyingRegions: [{ region: "Europe", characters: [{ name: "Alice" }] }],
+      buyingRegions: [
+        { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
+      ],
     };
     /** Item 52 sells fastest, down to item 1 selling slowest. */
     const results: ScannedItem[] = Array.from({ length: 52 }, (_, i) => ({
@@ -158,6 +161,7 @@ describe("HighVolumeItemsContainer", () => {
 
   describe("highlighting profitable items", () => {
     const alice: Character = {
+      id: "alice",
       name: "Alice",
       homeWorld: "Raiden",
       retainers: [],
@@ -172,7 +176,9 @@ describe("HighVolumeItemsContainer", () => {
         saleSampleSize: 3,
         undercutListingThreshold: 5,
       },
-      buyingRegions: [{ region: "Europe", characters: [{ name: "Alice" }] }],
+      buyingRegions: [
+        { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
+      ],
     };
     /** Sells 10 a day at 100,000 and can be bought at 40,000 — 600,000 profit a day. */
     const marketData: RowMarketData = {

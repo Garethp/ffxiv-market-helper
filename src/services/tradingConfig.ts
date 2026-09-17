@@ -8,6 +8,9 @@ import type {
   TradingParameters,
 } from "../types";
 
+/** A character as listed under the region it buys through. */
+export type BuyingRegionCharacter = Pick<Character, "id" | "name" | "note">;
+
 /**
  * A region as a buy-side source. Every character based there sees the same
  * buy prices — a character reaches every data center in its own region — so
@@ -16,7 +19,7 @@ import type {
 export interface BuyingRegion {
   region: string;
   /** The characters based in this region, listed for display since they share this region's results. */
-  characters: { name: string; note?: string }[];
+  characters: BuyingRegionCharacter[];
 }
 
 /** Groups characters by region — every character in a region sees identical buy prices. */
@@ -24,12 +27,16 @@ export const groupCharactersByRegion = (
   characters: Character[],
   regions: RegionInfo[],
 ): BuyingRegion[] => {
-  const groups = new Map<string, { name: string; note?: string }[]>();
+  const groups = new Map<string, BuyingRegionCharacter[]>();
   characters.forEach((character) => {
     const region =
       findRegionNameForWorld(character.homeWorld, regions) ?? "Unknown region";
     const group = groups.get(region) ?? [];
-    group.push({ name: character.name, note: character.note });
+    group.push({
+      id: character.id,
+      name: character.name,
+      note: character.note,
+    });
     groups.set(region, group);
   });
   return Array.from(groups, ([region, group]) => ({
@@ -50,33 +57,37 @@ export const deriveOwnRetainers = (
   );
 };
 
-/** Everything from ConfigService, loaded once and shared by every page. */
-export interface TradingConfig {
+/** Everything from ConfigService, loaded once. */
+export interface LoadedConfig {
   trackedItems: TrackedItem[];
-  characters: Character[];
   regions: RegionInfo[];
+  marketBoardCities: string[];
   params: TradingParameters;
-  defaultCharacterName: string;
-  buyingRegions: BuyingRegion[];
-  ownRetainers: WorldRetainer[];
 }
 
-export const loadTradingConfig = async (): Promise<TradingConfig> => {
-  const [trackedItems, characters, regions, params, defaultCharacterName] =
-    await Promise.all([
-      configService.getTrackedItems(),
-      configService.getCharacters(),
-      configService.getRegions(),
-      configService.getTradingParameters(),
-      configService.getDefaultCharacterName(),
-    ]);
-  return {
-    trackedItems,
-    characters,
-    regions,
-    params,
-    defaultCharacterName,
-    buyingRegions: groupCharactersByRegion(characters, regions),
-    ownRetainers: deriveOwnRetainers(characters),
-  };
+export const loadConfig = async (): Promise<LoadedConfig> => {
+  const [trackedItems, regions, marketBoardCities, params] = await Promise.all([
+    configService.getTrackedItems(),
+    configService.getRegions(),
+    configService.getMarketBoardCities(),
+    configService.getTradingParameters(),
+  ]);
+  return { trackedItems, regions, marketBoardCities, params };
 };
+
+/** The loaded config together with the character roster and what's worked out from it, shared by every page. */
+export type TradingConfig = LoadedConfig & {
+  characters: Character[];
+  buyingRegions: BuyingRegion[];
+  ownRetainers: WorldRetainer[];
+};
+
+export const buildTradingConfig = (
+  config: LoadedConfig,
+  characters: Character[],
+): TradingConfig => ({
+  ...config,
+  characters,
+  buyingRegions: groupCharactersByRegion(characters, config.regions),
+  ownRetainers: deriveOwnRetainers(characters),
+});

@@ -28,8 +28,18 @@ import { useTrackedItemsAnalysis } from "./useTrackedItemsAnalysis";
 
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
-const alice: Character = { name: "Alice", homeWorld: "WorldA", retainers: [] };
-const bob: Character = { name: "Bob", homeWorld: "WorldB", retainers: [] };
+const alice: Character = {
+  id: "alice",
+  name: "Alice",
+  homeWorld: "WorldA",
+  retainers: [],
+};
+const bob: Character = {
+  id: "bob",
+  name: "Bob",
+  homeWorld: "WorldB",
+  retainers: [],
+};
 
 const startTime = new Date("2026-09-17T12:00:00Z").getTime();
 
@@ -48,10 +58,10 @@ const config: TradingConfig = {
     refreshIntervalMs: 90_000,
     retryDelayMs: 10_000,
   } as TradingParameters,
-  defaultCharacterName: "Alice",
+  marketBoardCities: [],
   buyingRegions: [
-    { region: "Europe", characters: [{ name: "Alice" }] },
-    { region: "Japan", characters: [{ name: "Bob" }] },
+    { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
+    { region: "Japan", characters: [{ id: "bob", name: "Bob" }] },
   ],
   ownRetainers: [],
 };

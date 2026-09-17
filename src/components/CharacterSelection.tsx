@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { Link } from "react-router-dom";
 import type { Character } from "../types";
 
 /** Picks the Current Character, which every page sells through. */
@@ -19,18 +20,23 @@ export const CharacterSelection = ({
         Selling as
       </label>
       <div className="character-switcher-control">
-        <select
-          id={selectId}
-          value={currentCharacter?.name ?? ""}
-          onChange={(e) => onSelect(characters[e.target.selectedIndex])}
-          disabled={characters.length === 0}
-        >
-          {characters.map(({ name }) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
+        {characters.length === 0 ? (
+          <Link to="/characters" className="character-switcher-empty">
+            Add a character
+          </Link>
+        ) : (
+          <select
+            id={selectId}
+            value={currentCharacter?.id ?? ""}
+            onChange={(e) => onSelect(characters[e.target.selectedIndex])}
+          >
+            {characters.map(({ id, name }) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        )}
         {currentCharacter && (
           <span className="character-switcher-world">
             {currentCharacter.homeWorld}

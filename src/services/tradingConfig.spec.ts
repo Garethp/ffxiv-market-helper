@@ -4,18 +4,18 @@ import type { Character, RegionInfo, TradingParameters } from "../types";
 vi.mock("./configService", () => ({
   configService: {
     getTrackedItems: vi.fn(),
-    getCharacters: vi.fn(),
     getRegions: vi.fn(),
+    getMarketBoardCities: vi.fn(),
     getTradingParameters: vi.fn(),
-    getDefaultCharacterName: vi.fn(),
   },
 }));
 
 import { configService } from "./configService";
 import {
+  buildTradingConfig,
   deriveOwnRetainers,
   groupCharactersByRegion,
-  loadTradingConfig,
+  loadConfig,
 } from "./tradingConfig";
 
 const regions: RegionInfo[] = [
@@ -31,6 +31,7 @@ const regions: RegionInfo[] = [
 
 const character = (overrides: Partial<Character> = {}): Character => {
   return {
+    id: "someone",
     name: "Someone",
     homeWorld: "WorldA",
     retainers: [],
@@ -40,20 +41,38 @@ const character = (overrides: Partial<Character> = {}): Character => {
 
 describe("groupCharactersByRegion", () => {
   it("should put characters in separate groups when they're based in different regions", () => {
-    const alice = character({ name: "Alice", homeWorld: "WorldA" });
-    const bob = character({ name: "Bob", homeWorld: "WorldB" });
+    const alice = character({
+      id: "alice",
+      name: "Alice",
+      homeWorld: "WorldA",
+    });
+    const bob = character({ id: "bob", name: "Bob", homeWorld: "WorldB" });
 
     const groups = groupCharactersByRegion([alice, bob], regions);
 
     expect(groups).toEqual([
-      { region: "Europe", characters: [{ name: "Alice", note: undefined }] },
-      { region: "Japan", characters: [{ name: "Bob", note: undefined }] },
+      {
+        region: "Europe",
+        characters: [{ id: "alice", name: "Alice", note: undefined }],
+      },
+      {
+        region: "Japan",
+        characters: [{ id: "bob", name: "Bob", note: undefined }],
+      },
     ]);
   });
 
   it("should combine multiple characters based in the same region into one group", () => {
-    const alice = character({ name: "Alice", homeWorld: "WorldA" });
-    const second = character({ name: "Second", homeWorld: "WorldA" });
+    const alice = character({
+      id: "alice",
+      name: "Alice",
+      homeWorld: "WorldA",
+    });
+    const second = character({
+      id: "second",
+      name: "Second",
+      homeWorld: "WorldA",
+    });
 
     const groups = groupCharactersByRegion([alice, second], regions);
 
@@ -61,8 +80,8 @@ describe("groupCharactersByRegion", () => {
       {
         region: "Europe",
         characters: [
-          { name: "Alice", note: undefined },
-          { name: "Second", note: undefined },
+          { id: "alice", name: "Alice", note: undefined },
+          { id: "second", name: "Second", note: undefined },
         ],
       },
     ]);
@@ -70,11 +89,16 @@ describe("groupCharactersByRegion", () => {
 
   it("should carry each character's note into its group", () => {
     const alice = character({
+      id: "alice",
       name: "Alice",
       homeWorld: "WorldA",
       note: "Needs a meetup to hand goods over",
     });
-    const second = character({ name: "Second", homeWorld: "WorldA" });
+    const second = character({
+      id: "second",
+      name: "Second",
+      homeWorld: "WorldA",
+    });
 
     const groups = groupCharactersByRegion([alice, second], regions);
 
@@ -82,8 +106,12 @@ describe("groupCharactersByRegion", () => {
       {
         region: "Europe",
         characters: [
-          { name: "Alice", note: "Needs a meetup to hand goods over" },
-          { name: "Second", note: undefined },
+          {
+            id: "alice",
+            name: "Alice",
+            note: "Needs a meetup to hand goods over",
+          },
+          { id: "second", name: "Second", note: undefined },
         ],
       },
     ]);
@@ -98,7 +126,7 @@ describe("groupCharactersByRegion", () => {
     expect(groups).toEqual([
       {
         region: "Unknown region",
-        characters: [{ name: "Someone", note: undefined }],
+        characters: [{ id: "someone", name: "Someone", note: undefined }],
       },
     ]);
   });
@@ -110,8 +138,8 @@ describe("deriveOwnRetainers", () => {
       name: "Alice",
       homeWorld: "WorldA",
       retainers: [
-        { name: "RetainerA", city: "Ul'dah" },
-        { name: "RetainerB", city: "Ul'dah" },
+        { id: "a", name: "RetainerA", city: "Ul'dah" },
+        { id: "b", name: "RetainerB", city: "Ul'dah" },
       ],
     });
 
@@ -125,14 +153,14 @@ describe("deriveOwnRetainers", () => {
     const alice = character({
       name: "Alice",
       homeWorld: "WorldA",
-      retainers: [{ name: "RetainerA", city: "Ul'dah" }],
+      retainers: [{ id: "a", name: "RetainerA", city: "Ul'dah" }],
     });
     const bob = character({
       name: "Bob",
       homeWorld: "WorldB",
       retainers: [
-        { name: "RetainerB", city: "Kugane" },
-        { name: "RetainerC", city: "Kugane" },
+        { id: "b", name: "RetainerB", city: "Kugane" },
+        { id: "c", name: "RetainerC", city: "Kugane" },
       ],
     });
 
@@ -148,35 +176,54 @@ describe("deriveOwnRetainers", () => {
   });
 });
 
-describe("loadTradingConfig", () => {
-  it("should build buying regions and own retainers from the loaded roster, passing everything else through", async () => {
-    const alice = character({
-      name: "Alice",
-      homeWorld: "WorldA",
-      retainers: [{ name: "RetainerA", city: "Ul'dah" }],
-    });
-    const bob = character({ name: "Bob", homeWorld: "WorldB" });
+describe("loadConfig", () => {
+  it("should load everything ConfigService provides", async () => {
     const params = { refreshIntervalMs: 90_000 } as TradingParameters;
     const trackedItems = [
       { itemId: 1, name: "Cordial", stackSize: 999, targetQuantity: 99 },
     ];
     vi.mocked(configService.getTrackedItems).mockResolvedValue(trackedItems);
-    vi.mocked(configService.getCharacters).mockResolvedValue([alice, bob]);
     vi.mocked(configService.getRegions).mockResolvedValue(regions);
+    vi.mocked(configService.getMarketBoardCities).mockResolvedValue(["Ul'dah"]);
     vi.mocked(configService.getTradingParameters).mockResolvedValue(params);
-    vi.mocked(configService.getDefaultCharacterName).mockResolvedValue("Alice");
 
-    const config = await loadTradingConfig();
-
-    expect(config).toEqual({
+    expect(await loadConfig()).toEqual({
       trackedItems,
-      characters: [alice, bob],
       regions,
+      marketBoardCities: ["Ul'dah"],
       params,
-      defaultCharacterName: "Alice",
+    });
+  });
+});
+
+describe("buildTradingConfig", () => {
+  it("should add the roster, with the buying regions and own retainers worked out from it", () => {
+    const alice = character({
+      id: "alice",
+      name: "Alice",
+      homeWorld: "WorldA",
+      retainers: [{ id: "a", name: "RetainerA", city: "Ul'dah" }],
+    });
+    const bob = character({ id: "bob", name: "Bob", homeWorld: "WorldB" });
+    const loaded = {
+      trackedItems: [],
+      regions,
+      marketBoardCities: ["Ul'dah"],
+      params: { refreshIntervalMs: 90_000 } as TradingParameters,
+    };
+
+    expect(buildTradingConfig(loaded, [alice, bob])).toEqual({
+      ...loaded,
+      characters: [alice, bob],
       buyingRegions: [
-        { region: "Europe", characters: [{ name: "Alice", note: undefined }] },
-        { region: "Japan", characters: [{ name: "Bob", note: undefined }] },
+        {
+          region: "Europe",
+          characters: [{ id: "alice", name: "Alice", note: undefined }],
+        },
+        {
+          region: "Japan",
+          characters: [{ id: "bob", name: "Bob", note: undefined }],
+        },
       ],
       ownRetainers: [{ name: "RetainerA", world: "WorldA" }],
     });

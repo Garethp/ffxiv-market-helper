@@ -1,51 +1,46 @@
-import type {
-  Character,
-  RegionInfo,
-  TrackedItem,
-  TradingParameters,
-} from "../types";
+import type { NewCharacter } from "./characterService";
+import type { RegionInfo, TrackedItem, TradingParameters } from "../types";
 
-/** Which items to track and which characters/retainers make up our roster — see personalConfig.example.ts. */
+/** Which items to track — see personalConfig.example.ts. */
 export interface PersonalConfig {
   trackedItems: TrackedItem[];
-  characters: Character[];
-  /** The name of the character (from characters) that starts out as the Current Character. */
-  defaultCharacterName: string;
+  /**
+   * Characters copied into the character roster the first time it's loaded
+   * in a browser that has none saved yet. Only read that once, so it can be
+   * removed after that.
+   */
+  characters?: NewCharacter[];
 }
 
 // personalConfig.ts lives at the project root (see personalConfig.example.ts) and is gitignored
 // so it never leaves this machine. import.meta.glob resolves to an empty object (rather than a
-// build error) when it's absent, e.g. on a fresh clone, and we fall back to an empty roster then.
+// build error) when it's absent, e.g. on a fresh clone, and we fall back to an empty config then.
 const personalConfigModules = import.meta.glob<{
   personalConfig: PersonalConfig;
 }>("../../personalConfig.ts", { eager: true });
-const personalConfig: PersonalConfig = Object.values(personalConfigModules)[0]
-  ?.personalConfig ?? {
-  trackedItems: [],
-  characters: [],
-  defaultCharacterName: "",
-};
+export const personalConfig: PersonalConfig = Object.values(
+  personalConfigModules,
+)[0]?.personalConfig ?? { trackedItems: [] };
 
 /**
- * Source of the app's domain configuration: which items to track, our
- * character roster, the FFXIV region/data-center/world directory, and the
+ * Source of the app's domain configuration: which items to track, the FFXIV
+ * region/data-center/world directory, the market board cities, and the
  * trading parameters that govern pricing and refresh behavior.
  * Implementations can be swapped out (e.g. for one backed by a real
  * database/API) without touching any calling code.
  */
 export interface ConfigService {
   getTrackedItems(): Promise<TrackedItem[]>;
-  getCharacters(): Promise<Character[]>;
-  /** The name of the character (from getCharacters) that starts out as the Current Character. */
-  getDefaultCharacterName(): Promise<string>;
   getRegions(): Promise<RegionInfo[]>;
+  /** The cities a retainer can be parked in to sell on the market board. */
+  getMarketBoardCities(): Promise<string[]>;
   getTradingParameters(): Promise<TradingParameters>;
 }
 
 /**
  * Hardcoded implementation of ConfigService. This is the only thing that
- * should need to change once tracked items, characters, and trading
- * parameters become user-configurable and move to a real database.
+ * should need to change once tracked items and trading parameters become
+ * user-configurable and move to a real database.
  */
 class HardcodedConfigService implements ConfigService {
   // Static reference data — which data centers exist in which region, and which worlds belong to
@@ -208,6 +203,19 @@ class HardcodedConfigService implements ConfigService {
     },
   ];
 
+  // Static reference data. Named exactly as Universalis' tax-rates endpoint names them, since a
+  // retainer's city is how its tax rate gets looked up there.
+  private readonly marketBoardCities: string[] = [
+    "Limsa Lominsa",
+    "Gridania",
+    "Ul'dah",
+    "Ishgard",
+    "Kugane",
+    "Crystarium",
+    "Old Sharlayan",
+    "Tuliyollal",
+  ];
+
   private readonly tradingParameters: TradingParameters = {
     buyTaxRate: 0.05,
     defaultSellTaxRate: 0.05,
@@ -229,16 +237,12 @@ class HardcodedConfigService implements ConfigService {
     return personalConfig.trackedItems;
   }
 
-  async getCharacters(): Promise<Character[]> {
-    return personalConfig.characters;
-  }
-
-  async getDefaultCharacterName(): Promise<string> {
-    return personalConfig.defaultCharacterName;
-  }
-
   async getRegions(): Promise<RegionInfo[]> {
     return this.regions;
+  }
+
+  async getMarketBoardCities(): Promise<string[]> {
+    return this.marketBoardCities;
   }
 
   async getTradingParameters(): Promise<TradingParameters> {

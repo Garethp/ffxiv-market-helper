@@ -1,7 +1,8 @@
 import type { PersonalConfig } from "./src/services/configService";
 
-// Template for personalConfig.ts (gitignored, holds your real roster/tracked items).
-// Copy this file to personalConfig.ts and fill in your own data.
+// Template for personalConfig.ts (gitignored, holds your real tracked items).
+// Copy this file to personalConfig.ts and fill in your own data. Characters and retainers are set up
+// on the Characters page.
 export const personalConfig: PersonalConfig = {
   trackedItems: [
     {
@@ -11,12 +12,4 @@ export const personalConfig: PersonalConfig = {
       targetQuantity: 99,
     },
   ],
-  characters: [
-    {
-      name: "Example Character",
-      homeWorld: "Gilgamesh",
-      retainers: [{ name: "Example Retainer", city: "Ul'dah" }],
-    },
-  ],
-  defaultCharacterName: "Example Character",
 };

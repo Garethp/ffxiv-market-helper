@@ -380,7 +380,7 @@ describe("resolveSellTaxRate", () => {
   it("should use the default rate when none of the retainers' cities have a known tax rate", () => {
     expect(
       resolveSellTaxRate(
-        [{ name: "RetainerA", city: "Nowhere" }],
+        [{ id: "retainer-a", name: "RetainerA", city: "Nowhere" }],
         { "Ul'dah": 5 },
         0.05,
       ),
@@ -389,8 +389,8 @@ describe("resolveSellTaxRate", () => {
 
   it("should use the known tax rate when only some retainers' cities have one", () => {
     const retainers = [
-      { name: "RetainerA", city: "Nowhere" },
-      { name: "RetainerB", city: "Kugane" },
+      { id: "retainer-a", name: "RetainerA", city: "Nowhere" },
+      { id: "retainer-b", name: "RetainerB", city: "Kugane" },
     ];
 
     expect(resolveSellTaxRate(retainers, { Kugane: 3 }, 0.05)).toBe(0.03);
@@ -399,7 +399,7 @@ describe("resolveSellTaxRate", () => {
   it("should use a retainer's own city tax rate when only one retainer is given", () => {
     expect(
       resolveSellTaxRate(
-        [{ name: "RetainerA", city: "Kugane" }],
+        [{ id: "retainer-a", name: "RetainerA", city: "Kugane" }],
         { Kugane: 0 },
         0.05,
       ),
@@ -408,8 +408,8 @@ describe("resolveSellTaxRate", () => {
 
   it("should use the lowest tax rate among multiple retainers", () => {
     const retainers = [
-      { name: "RetainerA", city: "Ul'dah" },
-      { name: "RetainerB", city: "Kugane" },
+      { id: "retainer-a", name: "RetainerA", city: "Ul'dah" },
+      { id: "retainer-b", name: "RetainerB", city: "Kugane" },
     ];
 
     expect(

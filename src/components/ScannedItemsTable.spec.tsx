@@ -20,10 +20,10 @@ const scannedItem = (overrides: Partial<ScannedItem> = {}): ScannedItem => ({
 });
 
 const buyingRegions: BuyingRegion[] = [
-  { region: "Europe", characters: [{ name: "Alice" }] },
+  { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
   {
     region: "Japan",
-    characters: [{ name: "Bob" }],
+    characters: [{ id: "bob", name: "Bob" }],
   },
 ];
 

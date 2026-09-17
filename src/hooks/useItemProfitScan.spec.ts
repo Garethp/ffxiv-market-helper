@@ -32,8 +32,18 @@ const deferred = <T>() => {
 
 const itemId = 42;
 
-const alice: Character = { name: "Alice", homeWorld: "WorldA", retainers: [] };
-const bob: Character = { name: "Bob", homeWorld: "WorldB", retainers: [] };
+const alice: Character = {
+  id: "alice",
+  name: "Alice",
+  homeWorld: "WorldA",
+  retainers: [],
+};
+const bob: Character = {
+  id: "bob",
+  name: "Bob",
+  homeWorld: "WorldB",
+  retainers: [],
+};
 
 const config: TradingConfig = {
   trackedItems: [],
@@ -46,8 +56,10 @@ const config: TradingConfig = {
     saleSampleSize: 3,
     undercutListingThreshold: 5,
   } as TradingParameters,
-  defaultCharacterName: "Alice",
-  buyingRegions: [{ region: "Europe", characters: [{ name: "Alice" }] }],
+  marketBoardCities: [],
+  buyingRegions: [
+    { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },
+  ],
   ownRetainers: [],
 };
 

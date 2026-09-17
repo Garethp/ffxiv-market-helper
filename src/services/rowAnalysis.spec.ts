@@ -31,9 +31,10 @@ const regions: RegionInfo[] = [
 ];
 
 const sellingCharacter: Character = {
+  id: "alice",
   name: "Alice",
   homeWorld: "WorldA",
-  retainers: [{ name: "RetainerA", city: "Ul'dah" }],
+  retainers: [{ id: "retainer-a", name: "RetainerA", city: "Ul'dah" }],
 };
 
 const ownRetainers: WorldRetainer[] = [{ name: "RetainerA", world: "WorldA" }];
@@ -277,8 +278,8 @@ describe("pricing a row", () => {
         character: {
           ...sellingCharacter,
           retainers: [
-            { name: "RetainerA", city: "Ul'dah" },
-            { name: "RetainerB", city: "Kugane" },
+            { id: "retainer-a", name: "RetainerA", city: "Ul'dah" },
+            { id: "retainer-b", name: "RetainerB", city: "Kugane" },
           ],
         },
       });

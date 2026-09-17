@@ -22,7 +22,7 @@ export const BuyingRegionSection = ({
       </h2>
       {buyingRegion.characters.map((character) =>
         character.note ? (
-          <p key={character.name} className="character-note">
+          <p key={character.id} className="character-note">
             {character.name}: {character.note}
           </p>
         ) : null,
