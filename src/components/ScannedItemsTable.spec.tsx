@@ -7,6 +7,7 @@ import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import type { ProfitRow } from "../types";
+import { descriptionOf } from "../testing/descriptionOf";
 import { ScannedItemsTable } from "./ScannedItemsTable";
 
 afterEach(cleanup);
@@ -43,6 +44,7 @@ const renderTable = (
         buyingRegions={buyingRegions}
         highlightProfitPerDay={highlightProfitPerDay}
         world={world}
+        gapThresholdMultiplier={1.1}
       />
     </MemoryRouter>,
   );
@@ -177,10 +179,22 @@ describe("ScannedItemsTable", () => {
       expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
     });
 
+    it("should explain what the item's own link opens", () => {
+      renderTable([scannedItem({ itemId: 42 })], { 42: "Grade 8 Dark Matter" });
+
+      expect(
+        descriptionOf(
+          screen.getByRole("link", { name: "Grade 8 Dark Matter" }),
+        ),
+      ).toBe(
+        "Quick profit scan (opens in a new tab, so this scan keeps running)",
+      );
+    });
+
     it("should link to the item's Universalis market page for the selected world, opening in a new tab without exposing this page", () => {
       renderTable([scannedItem({ itemId: 42 })], {}, "Raiden");
 
-      const link = screen.getByTitle("View on Universalis");
+      const link = screen.getByRole("link", { name: "View on Universalis" });
       expect(link.getAttribute("href")).toBe(buildMarketPageUrl(42, "Raiden"));
       expect(link.getAttribute("target")).toBe("_blank");
       expect(link.getAttribute("rel")).toBe("noopener noreferrer");

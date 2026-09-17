@@ -6,19 +6,19 @@ import type { RowMarketData } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, TradingParameters } from "../types";
 
-vi.mock("../api/xivapi", () => ({ fetchItemNames: vi.fn() }));
+vi.mock("../api/xivapi", () => ({ fetchItem: vi.fn() }));
 vi.mock("../services/rowAnalysis", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../services/rowAnalysis")>();
   return { ...actual, fetchRowMarketData: vi.fn() };
 });
 
-import { fetchItemNames } from "../api/xivapi";
+import { fetchItem, type ItemDetails } from "../api/xivapi";
 import { fetchRowMarketData } from "../services/rowAnalysis";
 import { withQueryClient } from "../testing/withQueryClient";
 import { useItemProfitScan } from "./useItemProfitScan";
 
-const mockedFetchItemNames = vi.mocked(fetchItemNames);
+const mockedFetchItem = vi.mocked(fetchItem);
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 /** A promise whose resolution is controlled from outside, to pin down fetch-ordering races. */
@@ -121,14 +121,14 @@ const europeAnalysis = (result: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedFetchItemNames.mockResolvedValue(new Map());
+  mockedFetchItem.mockResolvedValue(null);
   mockedFetchRowMarketData.mockResolvedValue(europeMarketData);
 });
 
 describe("useItemProfitScan", () => {
   it("should keep the item's real name even though a fetch that started before the name was known finishes afterward", async () => {
-    const name = deferred<Map<number, string>>();
-    mockedFetchItemNames.mockReturnValue(name.promise);
+    const details = deferred<ItemDetails | null>();
+    mockedFetchItem.mockReturnValue(details.promise);
     const fetch = deferred<RowMarketData>();
     mockedFetchRowMarketData.mockReturnValue(fetch.promise);
 
@@ -142,8 +142,10 @@ describe("useItemProfitScan", () => {
       `Item #${itemId}`,
     );
 
-    name.resolve(new Map([[itemId, "Real Item Name"]]));
-    await waitFor(() => expect(result.current.itemName).toBe("Real Item Name"));
+    details.resolve({ name: "Real Item Name", stackSize: 999 });
+    await waitFor(() =>
+      expect(result.current.itemDetails?.name).toBe("Real Item Name"),
+    );
     fetch.resolve(europeMarketData);
     await waitFor(() => europeAnalysis(result));
 

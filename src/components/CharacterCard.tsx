@@ -5,21 +5,10 @@ import type {
   RosterChangeResult,
 } from "../services/characterService";
 import type { Character, RegionInfo, Retainer } from "../types";
+import { afterSuccess } from "../utils/afterSuccess";
 import { findRegionNameForWorld } from "../utils/worldDirectory";
 import { CharacterForm } from "./CharacterForm";
 import { RetainerForm } from "./RetainerForm";
-
-/** Closes a form once its change has been made, leaving it open to show why if it wasn't. */
-const closingOnSuccess =
-  <T,>(
-    change: (details: T) => Promise<RosterChangeResult>,
-    close: () => void,
-  ) =>
-  async (details: T) => {
-    const result = await change(details);
-    if (result.ok) close();
-    return result;
-  };
 
 const RetainerRow = ({
   retainer,
@@ -41,7 +30,10 @@ const RetainerRow = ({
           marketBoardCities={marketBoardCities}
           initialDetails={retainer}
           submitLabel="Save retainer"
-          onSubmit={closingOnSuccess(onUpdate, () => setIsEditing(false))}
+          // Closed once the change is made, or left open to show why it wasn't.
+          onSubmit={(details) =>
+            afterSuccess(onUpdate(details), () => setIsEditing(false))
+          }
           onCancel={() => setIsEditing(false)}
         />
       </li>
@@ -49,7 +41,7 @@ const RetainerRow = ({
   }
 
   return (
-    <li className="retainer-row">
+    <li className="entry-row">
       <span>
         {retainer.name} <span className="muted">in {retainer.city}</span>
       </span>
@@ -105,13 +97,16 @@ export const CharacterCard = ({
   };
 
   return (
-    <section className="character-card" aria-label={character.name}>
+    <section className="card" aria-label={character.name}>
       {isEditing ? (
         <CharacterForm
           regions={regions}
           initialDetails={character}
           submitLabel="Save character"
-          onSubmit={closingOnSuccess(onUpdate, () => setIsEditing(false))}
+          // Closed once the change is made, or left open to show why it wasn't.
+          onSubmit={(details) =>
+            afterSuccess(onUpdate(details), () => setIsEditing(false))
+          }
           onCancel={() => setIsEditing(false)}
         />
       ) : (
@@ -146,7 +141,7 @@ export const CharacterCard = ({
       {character.retainers.length === 0 ? (
         <p className="muted">No retainers yet.</p>
       ) : (
-        <ul className="retainer-list">
+        <ul className="entry-list">
           {character.retainers.map((retainer) => (
             <RetainerRow
               key={retainer.id}

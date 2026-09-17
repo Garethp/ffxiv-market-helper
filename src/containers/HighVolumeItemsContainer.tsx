@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BULK_SALE_VELOCITY_BATCH_SIZE } from "../api/universalis";
 import { fetchItemNames } from "../api/xivapi";
 import { NumberInput } from "../components/NumberInput";
 import { ScannedItemsTable } from "../components/ScannedItemsTable";
@@ -109,6 +108,23 @@ export const HighVolumeItemsContainer = ({
         <p className="subtitle">Sale velocity on {world || "…"}</p>
       </header>
 
+      <div className="page-intro">
+        <p>
+          Scans every item Universalis has ever seen traded and ranks them by
+          recent sale velocity on the selected character's home world. Click an
+          item's name for a quick profit scan (opens in a new tab, so the scan
+          here keeps going), or ↗ to view it on Universalis directly. Showing
+          the top {DISPLAY_LIMIT} by total units sold per day.
+        </p>
+        <p>
+          Once the scan has completed, the top {PRICED_ITEM_LIMIT} will have
+          their expected profits fetched and calculated. For those items, hover
+          over their total/day to see the profit table for that item. Items
+          expected to make more than the highlight amount per day through any
+          buying region are highlighted.
+        </p>
+      </div>
+
       <div className="toolbar">
         <button
           type="button"
@@ -160,26 +176,8 @@ export const HighVolumeItemsContainer = ({
         buyingRegions={config.buyingRegions}
         highlightProfitPerDay={highlightProfitPerDay}
         world={world}
+        gapThresholdMultiplier={params.gapThresholdMultiplier}
       />
-
-      <footer>
-        <p>
-          Scans every item Universalis has ever seen traded, in batches of up to{" "}
-          {BULK_SALE_VELOCITY_BATCH_SIZE}, and ranks them by recent sale
-          velocity on the selected character's home world. Names for the current
-          top results are looked up periodically as the scan runs, not just at
-          the end. Click an item's name for a quick profit scan (opens in a new
-          tab, so the scan here keeps going), or ↗ to view it on Universalis
-          directly. Showing the top {DISPLAY_LIMIT} by total units sold per day.
-        </p>
-        <p>
-          Once no scan is running, the top {PRICED_ITEM_LIMIT} are priced once,
-          through each buying region, at whichever quality sells more per day.
-          Hover over a priced item's total per day to see its profit. Items
-          expected to make more than the highlight amount per day through any
-          buying region are highlighted.
-        </p>
-      </footer>
     </div>
   );
 };

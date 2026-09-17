@@ -24,6 +24,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 });
 
 import { fetchRowMarketData } from "../services/rowAnalysis";
+import { columnHeaderNames } from "../testing/columnHeaderNames";
 import { withQueryClient } from "../testing/withQueryClient";
 import { TrackedItemsContainer } from "./TrackedItemsContainer";
 
@@ -40,7 +41,13 @@ const startTime = new Date("2026-09-17T12:00:00Z").getTime();
 
 const config: TradingConfig = {
   trackedItems: [
-    { itemId: 1, name: "Wind Cluster", stackSize: 1, targetQuantity: 10 },
+    {
+      id: "wind-cluster",
+      itemId: 1,
+      name: "Wind Cluster",
+      stackSize: 1,
+      targetQuantity: 10,
+    },
   ],
   characters: [alice],
   regions: [],
@@ -124,9 +131,7 @@ const regionSection = (headingText: string) =>
 
 /** The text of a section's first item row, in the column with the given header. */
 const cellText = (section: HTMLElement, columnHeader: string) => {
-  const headers = within(section)
-    .getAllByRole("columnheader")
-    .map((header) => header.textContent);
+  const headers = columnHeaderNames(section);
   const [, itemRow] = within(section).getAllByRole("row");
   return within(itemRow).getAllByRole("cell")[headers.indexOf(columnHeader)]
     .textContent;

@@ -1,15 +1,36 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { DisplayRow } from "../types";
+import { Hint } from "./Hint";
+import { profitColumnHints } from "./pricingHints";
 import { ProfitTableRow } from "./ProfitTableRow";
+
+/**
+ * A column header with a hint explaining how the column is worked out. Named
+ * after the column alone, so the explanation isn't read out with every cell.
+ */
+const HintedColumnHeader = ({
+  name,
+  hint,
+}: {
+  name: string;
+  hint: ReactNode;
+}) => (
+  <th aria-label={name}>
+    {name} <Hint about={name}>{hint}</Hint>
+  </th>
+);
 
 export const ProfitTable = ({
   rows,
   staleWarningThresholdMs,
   sellWorld,
+  gapThresholdMultiplier,
 }: {
   rows: DisplayRow[];
   staleWarningThresholdMs: number | null;
   sellWorld: string;
+  /** Explained in the sell price column's hint. */
+  gapThresholdMultiplier: number;
 }) => {
   const [copiedItemId, setCopiedItemId] = useState<number | null>(null);
 
@@ -33,17 +54,30 @@ export const ProfitTable = ({
         <tr>
           <th>Item</th>
           <th>Buy DC</th>
-          <th>Buy price / unit</th>
-          <th>Sell price</th>
-          <th>Profit / item</th>
+          <HintedColumnHeader
+            name="Buy price / unit"
+            hint={profitColumnHints.buyPrice}
+          />
+          <HintedColumnHeader
+            name="Sell price"
+            hint={profitColumnHints.sellPrice(gapThresholdMultiplier)}
+          />
+          <HintedColumnHeader
+            name="Profit / item"
+            hint={profitColumnHints.profitPerItem}
+          />
           <th>Profit / stack</th>
-          <th>Expected profit / day</th>
+          <HintedColumnHeader
+            name="Expected profit / day"
+            hint={profitColumnHints.expectedProfitPerDay}
+          />
         </tr>
       </thead>
       <tbody>
         {rows.map((displayRow) => (
           <ProfitTableRow
-            key={displayRow.row.item.itemId}
+            // An item can be priced as both NQ and HQ, but only once as each.
+            key={`${displayRow.row.item.itemId}-${displayRow.row.item.hq ? "hq" : "nq"}`}
             displayRow={displayRow}
             staleWarningThresholdMs={staleWarningThresholdMs}
             sellWorld={sellWorld}

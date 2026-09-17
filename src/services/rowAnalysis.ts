@@ -26,14 +26,14 @@ import type {
   ProfitRow,
   RegionInfo,
   RowAnalysis,
-  TrackedItem,
+  PricedItem,
   TradingParameters,
 } from "../types";
 
 /** The target quantity assumed when pricing an item that isn't tracked, and so has no target quantity of its own. */
 export const UNTRACKED_ITEM_TARGET_QUANTITY = 99;
 
-export const pendingRow = (item: TrackedItem): ProfitRow => {
+export const pendingRow = (item: PricedItem): ProfitRow => {
   return {
     item,
     analysis: { status: "pending" },
@@ -160,7 +160,7 @@ export const fetchRowMarketData = async (
 /** Calculates the profit analysis for a single item from its already-fetched market data. */
 export const analyzeRow = (
   marketData: RowMarketData,
-  item: TrackedItem,
+  item: PricedItem,
   sellingCharacter: Character,
   ownRetainers: WorldRetainer[],
   params: TradingParameters,

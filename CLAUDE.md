@@ -10,8 +10,9 @@
 
 ## Tests
 
-- Follow red-green TDD. Write a test for the next piece of behavior first, run it and watch it fail for the expected reason, then write the minimum code to make it pass, then refactor with the tests green.
-- Bug fixes start with a failing test that reproduces the bug.
+- Tests don't have to come first. Write code and its tests together, in steps as large as a coherent piece of behavior.
+- Once a piece of work is done, review it for testing gaps (untested behavior, edge cases, error paths) and fill them before calling it done.
+- A bug fix comes with a test that reproduces the bug.
 - `it("should ...")` / `describe(...)`, phrased as sentences.
 - A test suite should read as a description of intended behavior, not a trace of the implementation. Group by behavior, not by which function happens to implement it.
 

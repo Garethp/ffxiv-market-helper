@@ -19,5 +19,5 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "personalConfig.s.ts", "personalConfig.example.ts"]
+  "include": ["src", "personalConfig.ts", "personalConfig.example.ts"]
 }

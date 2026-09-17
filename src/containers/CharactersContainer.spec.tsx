@@ -6,9 +6,8 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { useCallback, useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Character, TradingParameters } from "../types";
+import type { TradingParameters } from "../types";
 
 // The real localStorage implementation, checked against a small directory instead of the real one.
 vi.mock("../services/characterService", async (importOriginal) => {
@@ -28,12 +27,12 @@ vi.mock("../services/characterService", async (importOriginal) => {
   };
 });
 
+import { useReloadable } from "../hooks/useReloadable";
 import { characterService } from "../services/characterService";
 import { buildTradingConfig } from "../services/tradingConfig";
 import { CharactersContainer } from "./CharactersContainer";
 
 const loadedConfig = {
-  trackedItems: [],
   regions: [
     {
       name: "Europe",
@@ -45,18 +44,14 @@ const loadedConfig = {
 };
 
 /** Reads the roster again whenever the page reports a change, the way the app does. */
+const loadCharacters = () => characterService.getCharacters();
+
 const CharactersPage = () => {
-  const [characters, setCharacters] = useState<Character[] | null>(null);
-  const reload = useCallback(() => {
-    characterService.getCharacters().then(setCharacters);
-  }, []);
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  const [characters, reload] = useReloadable(loadCharacters);
 
   return characters ? (
     <CharactersContainer
-      config={buildTradingConfig(loadedConfig, characters)}
+      config={buildTradingConfig(loadedConfig, characters, [])}
       onCharactersChanged={reload}
     />
   ) : null;

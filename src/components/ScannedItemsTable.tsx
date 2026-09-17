@@ -1,10 +1,11 @@
-import { memo } from "react";
+import { memo, useId } from "react";
 import { Link } from "react-router-dom";
 import { buildMarketPageUrl } from "../api/universalis";
 import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import { BuyingRegionSection } from "./BuyingRegionSection";
+import { Tooltip } from "./Tooltip";
 
 const formatNumber = (value: number): string => {
   return Math.round(value).toLocaleString();
@@ -20,12 +21,15 @@ const TotalSaleVelocity = ({
   profit,
   buyingRegions,
   world,
+  gapThresholdMultiplier,
 }: {
   item: ScannedItem;
   profit: ScannedItemProfit | undefined;
   buyingRegions: BuyingRegion[];
   world: string;
+  gapThresholdMultiplier: number;
 }) => {
+  const breakdownId = useId();
   const total = formatNumber(item.totalSaleVelocity);
   switch (profit?.status) {
     case undefined:
@@ -34,9 +38,14 @@ const TotalSaleVelocity = ({
       return <span className="row-refreshing">{total}</span>;
     case "ready":
       return (
-        <span className="profit-tooltip-anchor">
+        // Focusable, and described by the breakdown, so it's reachable without a pointer.
+        <span
+          className="profit-tooltip-anchor"
+          tabIndex={0}
+          aria-describedby={breakdownId}
+        >
           {total}
-          <span className="profit-tooltip">
+          <span role="tooltip" id={breakdownId} className="profit-tooltip">
             <span className="profit-tooltip-content">
               {buyingRegions.map((buyingRegion) => {
                 const row = profit.rowByRegion[buyingRegion.region];
@@ -49,6 +58,7 @@ const TotalSaleVelocity = ({
                     // Priced once rather than kept refreshing, so a failed region is flagged straight away, as on the item page.
                     staleWarningThresholdMs={0}
                     sellWorld={world}
+                    gapThresholdMultiplier={gapThresholdMultiplier}
                   />
                 );
               })}
@@ -85,11 +95,13 @@ export const ScannedItemsTable = memo(
     buyingRegions,
     highlightProfitPerDay,
     world,
+    gapThresholdMultiplier,
   }: {
     items: ScannedItem[];
     itemNames: Record<number, string>;
     profits: Record<number, ScannedItemProfit>;
     buyingRegions: BuyingRegion[];
+    gapThresholdMultiplier: number;
     /** Items expected to make more than this per day through any buying region are highlighted. Omit to highlight nothing. */
     highlightProfitPerDay: number | undefined;
     world: string;
@@ -116,23 +128,32 @@ export const ScannedItemsTable = memo(
               }
             >
               <td>
-                <Link
-                  to={`/item/${item.itemId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Quick profit scan (opens in a new tab, so this scan keeps running)"
-                >
-                  {itemNames[item.itemId] ?? `#${item.itemId}`}
-                </Link>{" "}
-                <a
-                  href={buildMarketPageUrl(item.itemId, world)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="View on Universalis"
-                  className="external-link"
-                >
-                  ↗
-                </a>
+                <Tooltip text="Quick profit scan (opens in a new tab, so this scan keeps running)">
+                  {(tooltipId) => (
+                    <Link
+                      to={`/item/${item.itemId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-describedby={tooltipId}
+                    >
+                      {itemNames[item.itemId] ?? `#${item.itemId}`}
+                    </Link>
+                  )}
+                </Tooltip>{" "}
+                {/* Named by its tooltip, since the link itself is only an icon. */}
+                <Tooltip text="View on Universalis">
+                  {(tooltipId) => (
+                    <a
+                      href={buildMarketPageUrl(item.itemId, world)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-labelledby={tooltipId}
+                      className="external-link"
+                    >
+                      ↗
+                    </a>
+                  )}
+                </Tooltip>
               </td>
               <td>{formatNumber(item.nqSaleVelocity)}</td>
               <td>{formatNumber(item.hqSaleVelocity)}</td>
@@ -142,6 +163,7 @@ export const ScannedItemsTable = memo(
                   profit={profits[item.itemId]}
                   buyingRegions={buyingRegions}
                   world={world}
+                  gapThresholdMultiplier={gapThresholdMultiplier}
                 />
               </td>
             </tr>

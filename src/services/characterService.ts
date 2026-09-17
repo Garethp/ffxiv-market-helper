@@ -5,6 +5,7 @@ import {
   personalConfig,
   type ConfigService,
 } from "./configService";
+import { StoredList } from "./StoredList";
 
 /** A character's own details, as entered: everything but its ID and its retainers, which are managed separately. */
 export type CharacterDetails = Omit<Character, "id" | "retainers">;
@@ -144,16 +145,22 @@ const STORAGE_KEY = "ffxiv-trading:characters:v1";
  * the initial characters.
  */
 export class LocalStorageCharacterService implements CharacterService {
+  private readonly storedRoster: StoredList<Character>;
+
   constructor(
-    private readonly initialCharacters: NewCharacter[],
+    initialCharacters: NewCharacter[],
     private readonly config: Pick<
       ConfigService,
       "getRegions" | "getMarketBoardCities"
     >,
-  ) {}
+  ) {
+    this.storedRoster = new StoredList(STORAGE_KEY, () =>
+      initialCharacters.map(withIds),
+    );
+  }
 
   async getCharacters(): Promise<Character[]> {
-    return this.read();
+    return this.storedRoster.read();
   }
 
   addCharacter(details: CharacterDetails): Promise<RosterChangeResult> {
@@ -249,9 +256,12 @@ export class LocalStorageCharacterService implements CharacterService {
       this.config.getMarketBoardCities(),
     ]);
     // Read only after the reference data has loaded, so nothing saved in the meantime is lost.
-    const changed = change(this.read(), { regions, marketBoardCities });
+    const changed = change(this.storedRoster.read(), {
+      regions,
+      marketBoardCities,
+    });
     if (!Array.isArray(changed)) return { ok: false, error: changed };
-    this.write(changed);
+    this.storedRoster.write(changed);
     return { ok: true };
   }
 
@@ -272,25 +282,6 @@ export class LocalStorageCharacterService implements CharacterService {
         other.id === characterId ? { ...other, retainers } : other,
       );
     });
-  }
-
-  /** The saved roster. Saved data that can't be read counts as an empty roster, rather than a missing one to copy the initial characters into. */
-  private read(): Character[] {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === null) {
-      const roster = this.initialCharacters.map(withIds);
-      this.write(roster);
-      return roster;
-    }
-    try {
-      return JSON.parse(stored) as Character[];
-    } catch {
-      return [];
-    }
-  }
-
-  private write(roster: Character[]): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(roster));
   }
 }
 

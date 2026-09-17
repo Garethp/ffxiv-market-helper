@@ -8,11 +8,13 @@ export const BuyingRegionSection = ({
   rows,
   staleWarningThresholdMs,
   sellWorld,
+  gapThresholdMultiplier,
 }: {
   buyingRegion: BuyingRegion;
   rows: DisplayRow[];
   staleWarningThresholdMs: number | null;
   sellWorld: string;
+  gapThresholdMultiplier: number;
 }) => {
   return (
     <section className="character-section">
@@ -31,6 +33,7 @@ export const BuyingRegionSection = ({
         rows={rows}
         staleWarningThresholdMs={staleWarningThresholdMs}
         sellWorld={sellWorld}
+        gapThresholdMultiplier={gapThresholdMultiplier}
       />
     </section>
   );

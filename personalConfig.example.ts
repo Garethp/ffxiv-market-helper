@@ -1,8 +1,8 @@
 import type { PersonalConfig } from "./src/services/configService";
 
-// Template for personalConfig.ts (gitignored, holds your real tracked items).
-// Copy this file to personalConfig.ts and fill in your own data. Characters and retainers are set up
-// on the Characters page.
+// Template for personalConfig.ts (gitignored). Tracked items and characters are set up on the Manage
+// Items and Characters pages. Anything in personalConfig.ts is only copied in the first time the app
+// is opened in a browser with nothing saved yet, so this file is optional.
 export const personalConfig: PersonalConfig = {
   trackedItems: [
     {

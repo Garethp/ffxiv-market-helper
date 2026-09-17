@@ -45,7 +45,13 @@ const startTime = new Date("2026-09-17T12:00:00Z").getTime();
 
 const config: TradingConfig = {
   trackedItems: [
-    { itemId: 1, name: "Wind Cluster", stackSize: 1, targetQuantity: 10 },
+    {
+      id: "wind-cluster",
+      itemId: 1,
+      name: "Wind Cluster",
+      stackSize: 1,
+      targetQuantity: 10,
+    },
   ],
   characters: [alice, bob],
   regions: [],

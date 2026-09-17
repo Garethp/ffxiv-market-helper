@@ -40,7 +40,7 @@ export const RetainerForm = ({
   };
 
   return (
-    <form className="roster-form" onSubmit={submit}>
+    <form className="entry-form" onSubmit={submit}>
       <label>
         Retainer name
         <input
@@ -60,7 +60,7 @@ export const RetainerForm = ({
           ))}
         </select>
       </label>
-      <div className="roster-form-actions">
+      <div className="entry-form-actions">
         <button type="submit">{submitLabel}</button>
         {onCancel && (
           <button type="button" onClick={onCancel}>

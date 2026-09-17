@@ -1,14 +1,15 @@
 import type { NewCharacter } from "./characterService";
-import type { RegionInfo, TrackedItem, TradingParameters } from "../types";
+import type { PricedItem, RegionInfo, TradingParameters } from "../types";
 
-/** Which items to track — see personalConfig.example.ts. */
+/**
+ * Data copied into what this browser saves, the first time the app is opened
+ * in a browser with nothing saved yet — see personalConfig.example.ts. Each
+ * part is only read that once, so it can be removed after that.
+ */
 export interface PersonalConfig {
-  trackedItems: TrackedItem[];
-  /**
-   * Characters copied into the character roster the first time it's loaded
-   * in a browser that has none saved yet. Only read that once, so it can be
-   * removed after that.
-   */
+  /** Copied into the tracked items. */
+  trackedItems?: PricedItem[];
+  /** Copied into the character roster. */
   characters?: NewCharacter[];
 }
 
@@ -18,19 +19,16 @@ export interface PersonalConfig {
 const personalConfigModules = import.meta.glob<{
   personalConfig: PersonalConfig;
 }>("../../personalConfig.ts", { eager: true });
-export const personalConfig: PersonalConfig = Object.values(
-  personalConfigModules,
-)[0]?.personalConfig ?? { trackedItems: [] };
+export const personalConfig: PersonalConfig =
+  Object.values(personalConfigModules)[0]?.personalConfig ?? {};
 
 /**
- * Source of the app's domain configuration: which items to track, the FFXIV
- * region/data-center/world directory, the market board cities, and the
- * trading parameters that govern pricing and refresh behavior.
- * Implementations can be swapped out (e.g. for one backed by a real
- * database/API) without touching any calling code.
+ * Source of the app's domain configuration: the FFXIV region/data-center/world
+ * directory, the market board cities, and the trading parameters that govern
+ * pricing and refresh behavior. Implementations can be swapped out (e.g. for
+ * one backed by a real database/API) without touching any calling code.
  */
 export interface ConfigService {
-  getTrackedItems(): Promise<TrackedItem[]>;
   getRegions(): Promise<RegionInfo[]>;
   /** The cities a retainer can be parked in to sell on the market board. */
   getMarketBoardCities(): Promise<string[]>;
@@ -39,8 +37,8 @@ export interface ConfigService {
 
 /**
  * Hardcoded implementation of ConfigService. This is the only thing that
- * should need to change once tracked items and trading parameters become
- * user-configurable and move to a real database.
+ * should need to change once trading parameters become user-configurable and
+ * move to a real database.
  */
 class HardcodedConfigService implements ConfigService {
   // Static reference data — which data centers exist in which region, and which worlds belong to
@@ -232,10 +230,6 @@ class HardcodedConfigService implements ConfigService {
     staleWarningThresholdMs: 5 * 60_000,
     undercutListingThreshold: 5,
   };
-
-  async getTrackedItems(): Promise<TrackedItem[]> {
-    return personalConfig.trackedItems;
-  }
 
   async getRegions(): Promise<RegionInfo[]> {
     return this.regions;

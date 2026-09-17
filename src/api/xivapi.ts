@@ -2,7 +2,8 @@ import { RequestLimitedApiClient } from "./RequestLimitedApiClient";
 import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimiter";
 import { chunk } from "../utils/chunk";
 
-const BASE_URL = "https://v2.xivapi.com/api/sheet/Item";
+const ITEM_SHEET_URL = "https://v2.xivapi.com/api/sheet/Item";
+const SEARCH_URL = "https://v2.xivapi.com/api/search";
 
 // A conservative budget for being a polite citizen, shared by every open tab.
 const limiter = new CrossTabRequestLimiter("xivapi", {
@@ -11,6 +12,9 @@ const limiter = new CrossTabRequestLimiter("xivapi", {
 });
 
 const client = new RequestLimitedApiClient(limiter, "interactive");
+
+/** The most results an item search returns: enough to find an item by part of its name, without a long list to pick from. */
+const ITEM_SEARCH_RESULT_LIMIT = 20;
 
 /** The most row IDs XIVAPI's sheet endpoint returns per request — it silently truncates beyond this. */
 const MAX_ROWS_PER_REQUEST = 100;
@@ -35,7 +39,7 @@ export const fetchItemNames = async (
 const fetchItemNameBatch = async (
   itemIds: number[],
 ): Promise<[number, string][]> => {
-  const url = `${BASE_URL}?rows=${itemIds.join(",")}&fields=Name`;
+  const url = `${ITEM_SHEET_URL}?rows=${itemIds.join(",")}&fields=Name`;
   const response = await client.fetch(url);
   if (!response.ok) {
     throw new Error(`XIVAPI item-name request failed (${response.status})`);
@@ -47,4 +51,70 @@ const fetchItemNameBatch = async (
   return data.rows
     .filter((row) => row.fields.Name !== "")
     .map((row) => [row.row_id, row.fields.Name]);
+};
+
+/** What XIVAPI knows about an item that's needed to track it. */
+export interface ItemDetails {
+  name: string;
+  stackSize: number;
+}
+
+/** Looks up an item by its ID, giving nothing for an ID that isn't a real, named item. */
+export const fetchItem = async (
+  itemId: number,
+  options: { signal?: AbortSignal } = {},
+): Promise<ItemDetails | null> => {
+  const response = await client.fetch(
+    `${ITEM_SHEET_URL}/${itemId}?fields=Name,StackSize`,
+    { signal: options.signal },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`XIVAPI item request failed (${response.status})`);
+  }
+
+  const { fields } = (await response.json()) as {
+    fields: { Name: string; StackSize: number };
+  };
+  return fields.Name === ""
+    ? null
+    : { name: fields.Name, stackSize: fields.StackSize };
+};
+
+/** An item found by searching for its name. */
+export type ItemSearchResult = ItemDetails & { itemId: number };
+
+/**
+ * Finds items that can be sold on the market board whose names contain the
+ * text, ignoring case, best match first.
+ */
+export const searchItems = async (
+  text: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<ItemSearchResult[]> => {
+  // A quote or backslash would end or escape the quoted text in XIVAPI's query syntax.
+  const searchText = text.replace(/["\\]/g, "").trim();
+  const params = new URLSearchParams({
+    sheets: "Item",
+    // An item with no market board category can't be sold there.
+    query: `+Name~"${searchText}" -ItemSearchCategory=0`,
+    fields: "Name,StackSize",
+    limit: String(ITEM_SEARCH_RESULT_LIMIT),
+  });
+
+  const response = await client.fetch(`${SEARCH_URL}?${params}`, {
+    signal: options.signal,
+  });
+  if (!response.ok) {
+    throw new Error(`XIVAPI item search failed (${response.status})`);
+  }
+
+  const data = (await response.json()) as {
+    results: { row_id: number; fields: { Name: string; StackSize: number } }[];
+  };
+  return data.results.map(({ row_id, fields }) => ({
+    itemId: row_id,
+    name: fields.Name,
+    stackSize: fields.StackSize,
+  }));
 };

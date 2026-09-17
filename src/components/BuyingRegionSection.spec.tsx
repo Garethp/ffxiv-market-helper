@@ -30,9 +30,11 @@ const renderSection = (
     rows = [],
     staleWarningThresholdMs = null,
     sellWorld = "Raiden",
+    gapThresholdMultiplier = 1.1,
   }: {
     rows?: DisplayRow[];
     staleWarningThresholdMs?: number | null;
+    gapThresholdMultiplier?: number;
     sellWorld?: string;
   } = {},
 ) =>
@@ -42,6 +44,7 @@ const renderSection = (
       rows={rows}
       staleWarningThresholdMs={staleWarningThresholdMs}
       sellWorld={sellWorld}
+      gapThresholdMultiplier={gapThresholdMultiplier}
     />,
   );
 

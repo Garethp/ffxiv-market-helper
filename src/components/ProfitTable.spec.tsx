@@ -10,6 +10,9 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
+import { columnHeaderNames } from "../testing/columnHeaderNames";
+import { descriptionOf } from "../testing/descriptionOf";
+import { profitColumnHints } from "./pricingHints";
 import { ProfitTable } from "./ProfitTable";
 
 const displayRow = (itemId: number, name: string): DisplayRow => ({
@@ -55,18 +58,28 @@ const table = (
   {
     staleWarningThresholdMs = null,
     sellWorld = "WorldA",
-  }: { staleWarningThresholdMs?: number | null; sellWorld?: string } = {},
+    gapThresholdMultiplier = 1.1,
+  }: {
+    staleWarningThresholdMs?: number | null;
+    sellWorld?: string;
+    gapThresholdMultiplier?: number;
+  } = {},
 ) => (
   <ProfitTable
     rows={rows}
     staleWarningThresholdMs={staleWarningThresholdMs}
     sellWorld={sellWorld}
+    gapThresholdMultiplier={gapThresholdMultiplier}
   />
 );
 
 const renderTable = (
   rows: DisplayRow[],
-  options?: { staleWarningThresholdMs?: number | null; sellWorld?: string },
+  options?: {
+    staleWarningThresholdMs?: number | null;
+    sellWorld?: string;
+    gapThresholdMultiplier?: number;
+  },
 ) => render(table(rows, options));
 
 const bodyRows = () => screen.getAllByRole("row").slice(1);
@@ -84,7 +97,9 @@ const hasCopiedIndicator = (name: string) =>
 
 const copy = async (name: string) => {
   await act(async () => {
-    fireEvent.click(within(rowFor(name)).getByTitle("Copy item name"));
+    fireEvent.click(
+      within(rowFor(name)).getByRole("button", { name: "Copy item name" }),
+    );
   });
 };
 
@@ -108,10 +123,7 @@ describe("ProfitTable", () => {
     it("should show a header for every column", () => {
       renderTable([]);
 
-      const headers = screen
-        .getAllByRole("columnheader")
-        .map((header) => header.textContent);
-      expect(headers).toEqual([
+      expect(columnHeaderNames(document.body)).toEqual([
         "Item",
         "Buy DC",
         "Buy price / unit",
@@ -120,6 +132,27 @@ describe("ProfitTable", () => {
         "Profit / stack",
         "Expected profit / day",
       ]);
+    });
+
+    it.each([
+      ["buy price / unit", profitColumnHints.buyPrice],
+      ["sell price", profitColumnHints.sellPrice(1.1)],
+      ["profit / item", profitColumnHints.profitPerItem],
+      ["expected profit / day", profitColumnHints.expectedProfitPerDay],
+    ])("should explain how the %s is worked out", (column, explanation) => {
+      renderTable([]);
+
+      expect(
+        descriptionOf(screen.getByRole("button", { name: `About ${column}` })),
+      ).toBe(explanation);
+    });
+
+    it("should work the gap out from the gap threshold, so the two can't disagree", () => {
+      renderTable([], { gapThresholdMultiplier: 1.25 });
+
+      expect(
+        descriptionOf(screen.getByRole("button", { name: "About sell price" })),
+      ).toContain("at least 25% higher");
     });
 
     it("should show one row per item, in the order given", () => {
@@ -134,6 +167,24 @@ describe("ProfitTable", () => {
       expect(rows[0].textContent).toContain("Wind Cluster");
       expect(rows[1].textContent).toContain("Caramel Popcorn");
       expect(rows[2].textContent).toContain("Heavens' Eye Materia XII");
+    });
+
+    it("should keep an item priced as both NQ and HQ as two distinct rows", () => {
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const nq = displayRow(6141, "Cordial");
+      const hq = displayRow(6141, "Cordial");
+      hq.row.item.hq = true;
+
+      renderTable([nq, hq]);
+
+      expect(bodyRows()).toHaveLength(2);
+      expect(consoleError).not.toHaveBeenCalledWith(
+        expect.stringContaining("same key"),
+        expect.anything(),
+      );
+      consoleError.mockRestore();
     });
 
     it("should show no item rows when there are no items", () => {

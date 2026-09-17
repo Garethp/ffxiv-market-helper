@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SellListingStatus } from "../types";
+import { descriptionOf } from "../testing/descriptionOf";
 import { UndercutBadge } from "./UndercutBadge";
 
 type UndercutStatus = Extract<SellListingStatus, { state: "undercut" }>;
@@ -21,6 +22,18 @@ const listingRows = () => screen.getAllByRole("row").slice(1);
 afterEach(cleanup);
 
 describe("UndercutBadge", () => {
+  it("should describe the competition it's been undercut by, reachable without a pointer", () => {
+    render(
+      <UndercutBadge
+        status={undercutStatus({ ourPricePerUnit: 500, rank: 3 })}
+      />,
+    );
+
+    const badge = screen.getByText("undercut");
+    expect(descriptionOf(badge)).toContain("Your listing:");
+    expect(badge.getAttribute("tabindex")).toBe("0");
+  });
+
   it("should label the listing as undercut", () => {
     render(<UndercutBadge status={undercutStatus()} />);
 

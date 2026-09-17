@@ -1,9 +1,9 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { fetchItemNames } from "../api/xivapi";
+import { fetchItem } from "../api/xivapi";
 import { UNTRACKED_ITEM_TARGET_QUANTITY } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, DisplayRow, TrackedItem } from "../types";
+import type { Character, DisplayRow, PricedItem } from "../types";
 import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
 
 /**
@@ -31,11 +31,11 @@ export const useItemProfitScan = (
     undefined,
   );
 
-  // A name that can't be fetched just falls back to showing the item ID.
-  const { data: itemName = null } = useQuery({
-    queryKey: ["itemName", itemId],
-    queryFn: async () => (await fetchItemNames([itemId])).get(itemId) ?? null,
-    // Item names never change.
+  // Details that can't be fetched just leave the item called by its ID.
+  const { data: itemDetails = null } = useQuery({
+    queryKey: ["itemDetails", itemId],
+    queryFn: ({ signal }) => fetchItem(itemId, { signal }),
+    // Items only change with game patches.
     staleTime: Infinity,
   });
 
@@ -45,9 +45,9 @@ export const useItemProfitScan = (
     ),
   });
 
-  const item: TrackedItem = {
+  const item: PricedItem = {
     itemId,
-    name: itemName ?? `Item #${itemId}`,
+    name: itemDetails?.name ?? `Item #${itemId}`,
     hq,
     stackSize: 1,
     targetQuantity,
@@ -67,7 +67,7 @@ export const useItemProfitScan = (
   }
 
   return {
-    itemName,
+    itemDetails,
     hq,
     setHq,
     targetQuantity,

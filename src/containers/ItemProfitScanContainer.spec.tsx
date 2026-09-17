@@ -12,21 +12,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UniversalisMarketData } from "../api/universalis";
 import type { RowMarketData } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, TradingParameters } from "../types";
+import type { Character, TrackedItem, TradingParameters } from "../types";
 
-vi.mock("../api/xivapi", () => ({ fetchItemNames: vi.fn() }));
+vi.mock("../api/xivapi", () => ({ fetchItem: vi.fn() }));
+vi.mock("../services/trackedItemService", () => ({
+  trackedItemService: { trackItem: vi.fn() },
+}));
 vi.mock("../services/rowAnalysis", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../services/rowAnalysis")>();
   return { ...actual, fetchRowMarketData: vi.fn() };
 });
 
-import { fetchItemNames } from "../api/xivapi";
+import { fetchItem, type ItemDetails } from "../api/xivapi";
+import { trackedItemService } from "../services/trackedItemService";
 import { fetchRowMarketData } from "../services/rowAnalysis";
+import { columnHeaderNames } from "../testing/columnHeaderNames";
+import { descriptionOf } from "../testing/descriptionOf";
 import { withQueryClient } from "../testing/withQueryClient";
+import { pricingHints } from "../components/pricingHints";
 import { ItemProfitScanContainer } from "./ItemProfitScanContainer";
 
-const mockedFetchItemNames = vi.mocked(fetchItemNames);
+const mockedFetchItem = vi.mocked(fetchItem);
+const mockedTrackItem = vi.mocked(trackedItemService.trackItem);
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 /** A promise whose resolution is controlled from outside. */
@@ -127,7 +135,11 @@ const northAmericaMarketData: RowMarketData = {
   ],
 };
 
-const renderItemPage = (itemIdSegment: string = String(itemId)) =>
+const renderItemPage = (
+  itemIdSegment: string = String(itemId),
+  { trackedItems = [] }: { trackedItems?: TrackedItem[] } = {},
+) => {
+  const onTrackedItemsChanged = vi.fn();
   render(
     <MemoryRouter initialEntries={[`/item/${itemIdSegment}`]}>
       <Routes>
@@ -135,13 +147,19 @@ const renderItemPage = (itemIdSegment: string = String(itemId)) =>
         <Route
           path="/item/:itemId"
           element={
-            <ItemProfitScanContainer config={config} currentCharacter={alice} />
+            <ItemProfitScanContainer
+              config={{ ...config, trackedItems }}
+              currentCharacter={alice}
+              onTrackedItemsChanged={onTrackedItemsChanged}
+            />
           }
         />
       </Routes>
     </MemoryRouter>,
     { wrapper: withQueryClient() },
   );
+  return onTrackedItemsChanged;
+};
 
 const regionSection = (heading: string) =>
   screen.getByRole("heading", { name: heading }).closest("section")!;
@@ -149,9 +167,7 @@ const regionSection = (heading: string) =>
 /** The item's cell under the given column, in the section buying via the given region. */
 const cell = (sectionHeading: string, column: string) => {
   const section = regionSection(sectionHeading);
-  const columns = within(section)
-    .getAllByRole("columnheader")
-    .map((header) => header.textContent);
+  const columns = columnHeaderNames(section);
   const [itemRow] = within(section).getAllByRole("row").slice(1);
   return within(itemRow).getAllByRole("cell")[columns.indexOf(column)];
 };
@@ -166,7 +182,7 @@ const priced = () =>
   );
 
 beforeEach(() => {
-  mockedFetchItemNames.mockResolvedValue(new Map());
+  mockedFetchItem.mockResolvedValue(null);
   mockedFetchRowMarketData.mockImplementation(async (_client, _item, region) =>
     region === "Europe" ? europeMarketData : northAmericaMarketData,
   );
@@ -192,8 +208,8 @@ describe("ItemProfitScanContainer", () => {
 
   describe("naming the item", () => {
     it("should call the item by its number until its name is known, then by its name", async () => {
-      const names = deferred<Map<number, string>>();
-      mockedFetchItemNames.mockReturnValue(names.promise);
+      const details = deferred<ItemDetails | null>();
+      mockedFetchItem.mockReturnValue(details.promise);
 
       renderItemPage();
 
@@ -202,7 +218,7 @@ describe("ItemProfitScanContainer", () => {
       );
       await waitFor(() => expect(document.title).toBe("Item #42"));
 
-      names.resolve(new Map([[itemId, "Grade 8 Dark Matter"]]));
+      details.resolve({ name: "Grade 8 Dark Matter", stackSize: 999 });
 
       await waitFor(() =>
         expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
@@ -250,15 +266,28 @@ describe("ItemProfitScanContainer", () => {
 
       await waitFor(() =>
         expect(
-          within(cell(europe, "Item")).getByTitle(
-            "Data has never loaded successfully. Latest fetch failed: Gateway timeout",
-          ),
-        ).toBeTruthy(),
+          descriptionOf(cell(europe, "Item").querySelector(".stale-badge")),
+        ).toBe(
+          "Data has never loaded successfully. Latest fetch failed: Gateway timeout",
+        ),
       );
     });
   });
 
   describe("adjusting how the item is priced", () => {
+    it.each([
+      ["target qty", pricingHints.targetQuantity],
+      ["sell ceiling", pricingHints.sellPriceCeiling],
+    ])("should explain what the %s means", (setting, explanation) => {
+      renderItemPage();
+
+      const hint = screen.getByRole("button", { name: `About ${setting}` });
+      expect(
+        document.getElementById(hint.getAttribute("aria-describedby") ?? "")
+          ?.textContent,
+      ).toBe(explanation);
+    });
+
     it("should price as high quality once HQ is ticked", async () => {
       renderItemPage();
       await priced();
@@ -303,10 +332,157 @@ describe("ItemProfitScanContainer", () => {
       const sellCeiling = screen.getByLabelText("Sell ceiling");
 
       fireEvent.change(sellCeiling, { target: { value: "800" } });
-      expect(cell(europe, "Sell price").textContent).toBe("800 (capped)");
+      expect(cell(europe, "Sell price").textContent).toBe("800");
 
       fireEvent.change(sellCeiling, { target: { value: "" } });
       expect(cell(europe, "Sell price").textContent).toBe("1,000");
+    });
+  });
+
+  describe("tracking the item", () => {
+    const darkMatter: ItemDetails = {
+      name: "Grade 8 Dark Matter",
+      stackSize: 999,
+    };
+
+    beforeEach(() => {
+      mockedFetchItem.mockResolvedValue(darkMatter);
+      mockedTrackItem.mockResolvedValue({ ok: true });
+    });
+
+    it("should track the item by its name and stack size, with the quality, target quantity and sell price ceiling entered", async () => {
+      const onTrackedItemsChanged = renderItemPage();
+      fireEvent.click(screen.getByRole("checkbox", { name: "HQ" }));
+      fireEvent.change(screen.getByLabelText("Target qty"), {
+        target: { value: "60" },
+      });
+      fireEvent.change(screen.getByLabelText("Sell ceiling"), {
+        target: { value: "5000" },
+      });
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Track this item" }),
+      );
+
+      expect(mockedTrackItem).toHaveBeenCalledWith({
+        itemId,
+        name: "Grade 8 Dark Matter",
+        stackSize: 999,
+        hq: true,
+        targetQuantity: 60,
+        sellPriceCeiling: 5000,
+      });
+      await waitFor(() => expect(onTrackedItemsChanged).toHaveBeenCalled());
+    });
+
+    it("should only offer to track the item once its name and stack size are known", async () => {
+      const details = deferred<ItemDetails | null>();
+      mockedFetchItem.mockReturnValue(details.promise);
+      renderItemPage();
+
+      expect(
+        screen.queryByRole("button", { name: "Track this item" }),
+      ).toBeNull();
+
+      details.resolve(darkMatter);
+      await screen.findByRole("button", { name: "Track this item" });
+    });
+
+    it.each([
+      ["can't be found", () => mockedFetchItem.mockResolvedValue(null)],
+      [
+        "can't be fetched",
+        () => mockedFetchItem.mockRejectedValue(new Error("XIVAPI is down")),
+      ],
+    ])(
+      "should not offer to track the item when its details %s",
+      async (_, setUpDetails) => {
+        setUpDetails();
+        renderItemPage();
+        await priced();
+
+        expect(
+          screen.queryByRole("button", { name: "Track this item" }),
+        ).toBeNull();
+        expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+          "Item #42",
+        );
+      },
+    );
+
+    it("should show when the item is already tracked as HQ once HQ is ticked", async () => {
+      renderItemPage(String(itemId), {
+        trackedItems: [
+          {
+            id: "dark-matter",
+            itemId,
+            ...darkMatter,
+            hq: true,
+            targetQuantity: 99,
+          },
+        ],
+      });
+      await screen.findByRole("button", { name: "Track this item" });
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "HQ" }));
+
+      expect(screen.getByText("Tracked as HQ")).toBeTruthy();
+    });
+
+    it("should no longer explain an earlier refusal once the item is tracked", async () => {
+      mockedTrackItem
+        .mockResolvedValueOnce({
+          ok: false,
+          error: { reason: "invalid-sell-price-ceiling" },
+        })
+        .mockResolvedValueOnce({ ok: true });
+      renderItemPage();
+      const trackButton = await screen.findByRole("button", {
+        name: "Track this item",
+      });
+      fireEvent.click(trackButton);
+      await screen.findByRole("alert");
+
+      fireEvent.click(trackButton);
+
+      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    });
+
+    it("should show when the item is already tracked with the chosen quality", async () => {
+      renderItemPage(String(itemId), {
+        trackedItems: [
+          { id: "dark-matter", itemId, ...darkMatter, targetQuantity: 99 },
+        ],
+      });
+
+      await screen.findByText("Tracked as NQ");
+      expect(
+        screen.queryByRole("button", { name: "Track this item" }),
+      ).toBeNull();
+
+      fireEvent.click(screen.getByRole("checkbox", { name: "HQ" }));
+      await screen.findByRole("button", { name: "Track this item" });
+    });
+
+    it("should explain why the item couldn't be tracked", async () => {
+      mockedTrackItem.mockResolvedValue({
+        ok: false,
+        error: {
+          reason: "already-tracked",
+          name: "Grade 8 Dark Matter",
+          hq: false,
+        },
+      });
+      const onTrackedItemsChanged = renderItemPage();
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Track this item" }),
+      );
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Grade 8 Dark Matter is already tracked as NQ.",
+      );
+      expect(onTrackedItemsChanged).not.toHaveBeenCalled();
     });
   });
 });

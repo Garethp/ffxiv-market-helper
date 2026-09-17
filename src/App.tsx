@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { NoCharactersMessage } from "./components/NoCharactersMessage";
@@ -7,15 +7,22 @@ import { CharactersContainer } from "./containers/CharactersContainer";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
+import { ManageItemsContainer } from "./containers/ManageItemsContainer";
+import { useReloadable } from "./hooks/useReloadable";
 import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
+import { trackedItemService } from "./services/trackedItemService";
 import { buildTradingConfig, loadConfig } from "./services/tradingConfig";
 import type { Character } from "./types";
 
+const loadCharacters = () => characterService.getCharacters();
+const loadTrackedItems = () => trackedItemService.getTrackedItems();
+
 /**
- * Loads config and the character roster, and holds the Current Character, so
- * all of them are shared by every page. The Current Character is remembered
- * across visits and tabs, and can be changed from any page.
+ * Loads config, the character roster and the tracked items, and holds the
+ * Current Character, so all of them are shared by every page. The Current
+ * Character is remembered across visits and tabs, and can be changed from any
+ * page.
  */
 const App = () => {
   // Both are read once, when the app opens.
@@ -30,14 +37,9 @@ const App = () => {
     staleTime: Infinity,
   });
 
-  // Read when the app opens, and again after every change made to the roster.
-  const [characters, setCharacters] = useState<Character[] | null>(null);
-  const reloadCharacters = useCallback(() => {
-    characterService.getCharacters().then(setCharacters);
-  }, []);
-  useEffect(() => {
-    reloadCharacters();
-  }, [reloadCharacters]);
+  // Both are read when the app opens, and again after every change made to them.
+  const [characters, reloadCharacters] = useReloadable(loadCharacters);
+  const [trackedItems, reloadTrackedItems] = useReloadable(loadTrackedItems);
 
   // Null until a character is picked during this visit.
   const [pickedCharacterId, setPickedCharacterId] = useState<string | null>(
@@ -51,13 +53,13 @@ const App = () => {
     });
   }, []);
 
-  // Built once per roster, so pages only see a changed config when the roster has actually changed.
+  // Built once per load, so pages only see a changed config when something in it has actually changed.
   const config = useMemo(
     () =>
-      loadedConfig && characters
-        ? buildTradingConfig(loadedConfig, characters)
+      loadedConfig && characters && trackedItems
+        ? buildTradingConfig(loadedConfig, characters, trackedItems)
         : undefined,
-    [loadedConfig, characters],
+    [loadedConfig, characters, trackedItems],
   );
 
   if (config === undefined || rememberedCharacterId.isPending) return null;
@@ -80,8 +82,8 @@ const App = () => {
         onSelectCharacter={setCurrentCharacter}
       />
       <Routes>
-        {/* There's only no Current Character when the roster is empty, and then every page but
-            Characters has nothing to show. */}
+        {/* There's only no Current Character when the roster is empty, and then every page that
+            prices items has nothing to show. */}
         {currentCharacter ? (
           <>
             <Route
@@ -108,6 +110,7 @@ const App = () => {
                 <ItemProfitScanContainer
                   config={config}
                   currentCharacter={currentCharacter}
+                  onTrackedItemsChanged={reloadTrackedItems}
                 />
               }
             />
@@ -121,6 +124,15 @@ const App = () => {
             <CharactersContainer
               config={config}
               onCharactersChanged={reloadCharacters}
+            />
+          }
+        />
+        <Route
+          path="/manage-items"
+          element={
+            <ManageItemsContainer
+              config={config}
+              onTrackedItemsChanged={reloadTrackedItems}
             />
           }
         />

@@ -83,6 +83,7 @@ describe("NavBar", () => {
       ["Tracked Items", "/high-volume-items", "/"],
       ["High Volume Items", "/", "/high-volume-items"],
       ["Characters", "/", "/characters"],
+      ["Manage Items", "/", "/manage-items"],
     ])(
       "should go to %s from %s",
       (linkName: string, from: string, to: string) => {
@@ -98,6 +99,7 @@ describe("NavBar", () => {
       ["/", "Tracked Items"],
       ["/high-volume-items", "High Volume Items"],
       ["/characters", "Characters"],
+      ["/manage-items", "Manage Items"],
     ])(
       "should mark only the page being viewed as current on %s",
       (path: string, linkName: string) => {

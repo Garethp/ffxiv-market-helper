@@ -3,7 +3,6 @@ import type { Character, RegionInfo, TradingParameters } from "../types";
 
 vi.mock("./configService", () => ({
   configService: {
-    getTrackedItems: vi.fn(),
     getRegions: vi.fn(),
     getMarketBoardCities: vi.fn(),
     getTradingParameters: vi.fn(),
@@ -179,16 +178,11 @@ describe("deriveOwnRetainers", () => {
 describe("loadConfig", () => {
   it("should load everything ConfigService provides", async () => {
     const params = { refreshIntervalMs: 90_000 } as TradingParameters;
-    const trackedItems = [
-      { itemId: 1, name: "Cordial", stackSize: 999, targetQuantity: 99 },
-    ];
-    vi.mocked(configService.getTrackedItems).mockResolvedValue(trackedItems);
     vi.mocked(configService.getRegions).mockResolvedValue(regions);
     vi.mocked(configService.getMarketBoardCities).mockResolvedValue(["Ul'dah"]);
     vi.mocked(configService.getTradingParameters).mockResolvedValue(params);
 
     expect(await loadConfig()).toEqual({
-      trackedItems,
       regions,
       marketBoardCities: ["Ul'dah"],
       params,
@@ -197,7 +191,7 @@ describe("loadConfig", () => {
 });
 
 describe("buildTradingConfig", () => {
-  it("should add the roster, with the buying regions and own retainers worked out from it", () => {
+  it("should add the roster and tracked items, with the buying regions and own retainers worked out from the roster", () => {
     const alice = character({
       id: "alice",
       name: "Alice",
@@ -205,16 +199,25 @@ describe("buildTradingConfig", () => {
       retainers: [{ id: "a", name: "RetainerA", city: "Ul'dah" }],
     });
     const bob = character({ id: "bob", name: "Bob", homeWorld: "WorldB" });
+    const trackedItems = [
+      {
+        id: "cordial",
+        itemId: 6141,
+        name: "Cordial",
+        stackSize: 999,
+        targetQuantity: 99,
+      },
+    ];
     const loaded = {
-      trackedItems: [],
       regions,
       marketBoardCities: ["Ul'dah"],
       params: { refreshIntervalMs: 90_000 } as TradingParameters,
     };
 
-    expect(buildTradingConfig(loaded, [alice, bob])).toEqual({
+    expect(buildTradingConfig(loaded, [alice, bob], trackedItems)).toEqual({
       ...loaded,
       characters: [alice, bob],
+      trackedItems,
       buyingRegions: [
         {
           region: "Europe",

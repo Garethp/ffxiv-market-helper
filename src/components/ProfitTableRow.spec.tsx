@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProfitPricing, ProfitRow, TrackedItem } from "../types";
+import { descriptionOf } from "../testing/descriptionOf";
+import type { ProfitPricing, ProfitRow, PricedItem } from "../types";
 import { ProfitTableRow } from "./ProfitTableRow";
 
 const NOW = new Date("2026-01-01T12:00:00Z").getTime();
 
-const item: TrackedItem = {
+const item: PricedItem = {
   itemId: 42,
   name: "Wind Cluster",
   stackSize: 99,
@@ -55,6 +56,13 @@ const pendingRow = (rowOverrides: Partial<ProfitRow> = {}): ProfitRow => ({
   lastErrorMessage: null,
   ...rowOverrides,
 });
+
+/** The element showing a cell's figure, which carries the tooltip explaining it. */
+const figureElementIn = (cell: HTMLTableCellElement) =>
+  cell.querySelector("[aria-describedby]");
+
+const figureIn = (cell: HTMLTableCellElement) =>
+  figureElementIn(cell)?.textContent ?? cell.textContent;
 
 const renderRow = (
   row: ProfitRow,
@@ -148,6 +156,16 @@ describe("ProfitTableRow", () => {
       expect(itemCell.querySelector(".quality-badge")?.textContent).toBe("HQ");
     });
 
+    it("should explain the high quality label, reachable without a pointer", () => {
+      const { itemCell } = renderRow(
+        readyRow({}, { item: { ...item, hq: true } }),
+      );
+
+      const badge = itemCell.querySelector(".quality-badge");
+      expect(descriptionOf(badge)).toBe("Priced as high quality");
+      expect(badge?.getAttribute("tabindex")).toBe("0");
+    });
+
     it("should not label an item priced as normal quality", () => {
       const { itemCell } = renderRow(readyRow());
 
@@ -232,9 +250,9 @@ describe("ProfitTableRow", () => {
         pendingRow({ lastSuccessAt: null, lastAttemptFailed: true }),
       );
 
-      expect(
-        itemCell.querySelector(".stale-badge")?.getAttribute("title"),
-      ).toBe("Data has never loaded successfully");
+      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
+        "Data has never loaded successfully",
+      );
     });
 
     it("should say how long ago the last good data was", () => {
@@ -245,9 +263,9 @@ describe("ProfitTableRow", () => {
         ),
       );
 
-      expect(
-        itemCell.querySelector(".stale-badge")?.getAttribute("title"),
-      ).toBe("Last good data from 5m ago");
+      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
+        "Last good data from 5m ago",
+      );
     });
 
     it("should round how long ago the last good data was to the nearest minute", () => {
@@ -255,9 +273,9 @@ describe("ProfitTableRow", () => {
         readyRow({}, { lastSuccessAt: NOW - 90_000, lastAttemptFailed: true }),
       );
 
-      expect(
-        itemCell.querySelector(".stale-badge")?.getAttribute("title"),
-      ).toBe("Last good data from 2m ago");
+      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
+        "Last good data from 2m ago",
+      );
     });
 
     it("should include the latest fetch error when data has never loaded", () => {
@@ -269,9 +287,7 @@ describe("ProfitTableRow", () => {
         }),
       );
 
-      expect(
-        itemCell.querySelector(".stale-badge")?.getAttribute("title"),
-      ).toBe(
+      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
         "Data has never loaded successfully. Latest fetch failed: Failed to fetch",
       );
     });
@@ -288,9 +304,7 @@ describe("ProfitTableRow", () => {
         ),
       );
 
-      expect(
-        itemCell.querySelector(".stale-badge")?.getAttribute("title"),
-      ).toBe(
+      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
         "Last good data from 5m ago. Latest fetch failed: Failed to fetch",
       );
     });
@@ -302,6 +316,16 @@ describe("ProfitTableRow", () => {
 
       expect(itemCell.querySelector(".gap-badge")?.textContent).toBe("gap");
       expect(tr.classList.contains("row-gap")).toBe(true);
+    });
+
+    it("should explain the supply gap, reachable without a pointer", () => {
+      const { itemCell } = renderRow(readyRow({ gapDetected: true }));
+
+      const badge = itemCell.querySelector(".gap-badge");
+      expect(descriptionOf(badge)).toBe(
+        "Current listings are well above recent sale prices — room to undercut",
+      );
+      expect(badge?.getAttribute("tabindex")).toBe("0");
     });
 
     it("should not flag a supply gap when none was detected", () => {
@@ -407,30 +431,16 @@ describe("ProfitTableRow", () => {
       expect(sellPriceCell.textContent).toBe((250).toLocaleString());
     });
 
-    it("should note when the sell price comes from current listings", () => {
+    it("should leave the sell price unmarked when it comes from current listings, since the gap badge already says so", () => {
       const { sellPriceCell } = renderRow(
-        readyRow({ sellPriceSource: "listings" }),
-      );
-
-      expect(sellPriceCell.textContent).toContain(" (listed)");
-    });
-
-    it("should not note listings when the sell price comes from sale history", () => {
-      const { sellPriceCell } = renderRow(
-        readyRow({ sellPriceSource: "history" }),
+        readyRow({ sellPriceSource: "listings", gapDetected: true }),
       );
 
       expect(sellPriceCell.textContent).not.toContain("(listed)");
     });
 
-    it("should note when the sell price was capped", () => {
+    it("should leave the sell price unmarked when it was capped", () => {
       const { sellPriceCell } = renderRow(readyRow({ sellPriceCapped: true }));
-
-      expect(sellPriceCell.textContent).toContain(" (capped)");
-    });
-
-    it("should not note a cap when the sell price wasn't capped", () => {
-      const { sellPriceCell } = renderRow(readyRow({ sellPriceCapped: false }));
 
       expect(sellPriceCell.textContent).not.toContain("(capped)");
     });
@@ -453,7 +463,7 @@ describe("ProfitTableRow", () => {
       },
     );
 
-    it("should show every applicable sell price note together, in order", () => {
+    it("should note only the thin sample size, whatever else applies to the sell price", () => {
       const { sellPriceCell } = renderRow(
         readyRow({
           sellPricePerUnit: 250,
@@ -463,9 +473,7 @@ describe("ProfitTableRow", () => {
         }),
       );
 
-      expect(sellPriceCell.textContent).toBe(
-        `${(250).toLocaleString()} (listed) (capped) (n=2)`,
-      );
+      expect(sellPriceCell.textContent).toBe(`${(250).toLocaleString()} (n=2)`);
     });
 
     it("should flag our listing as undercut when it has been", () => {
@@ -573,7 +581,7 @@ describe("ProfitTableRow", () => {
 
       expect(profitPerItemCell.textContent).toBe((132).toLocaleString());
       expect(profitPerStackCell.textContent).toBe((13_068).toLocaleString());
-      expect(expectedProfitPerDayCell.textContent).toBe((500).toLocaleString());
+      expect(figureIn(expectedProfitPerDayCell)).toBe((500).toLocaleString());
     });
 
     it("should explain the daily sale velocity behind expected daily profit", () => {
@@ -581,7 +589,7 @@ describe("ProfitTableRow", () => {
         readyRow({ saleVelocityPerDay: 12.34 }),
       );
 
-      expect(expectedProfitPerDayCell.getAttribute("title")).toBe(
+      expect(descriptionOf(figureElementIn(expectedProfitPerDayCell))).toBe(
         "Based on 12.3 sold in the last day",
       );
     });
@@ -609,7 +617,9 @@ describe("ProfitTableRow", () => {
     it("should not explain a sale velocity it doesn't have", () => {
       const { expectedProfitPerDayCell } = renderRow(pendingRow());
 
-      expect(expectedProfitPerDayCell.getAttribute("title")).toBeNull();
+      expect(
+        descriptionOf(figureElementIn(expectedProfitPerDayCell)),
+      ).toBeNull();
     });
 
     it("should not show any pricing badges", () => {

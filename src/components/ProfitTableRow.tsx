@@ -1,6 +1,7 @@
 import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
 import { formatGil } from "../utils/format";
+import { Tooltip } from "./Tooltip";
 import { UndercutBadge } from "./UndercutBadge";
 
 const staleTooltip = (
@@ -54,35 +55,58 @@ export const ProfitTableRow = ({
     <tr className={rowClasses}>
       <td>
         {item.name}
-        <button
-          type="button"
-          className="copy-name-button"
-          title="Copy item name"
-          onClick={onCopyName}
-        >
-          📋
-          {isCopied ? <span className="copy-tooltip">Copied!</span> : null}
-        </button>
+        {/* Named by its tooltip, since the button itself is only an icon. */}
+        <Tooltip text="Copy item name">
+          {(tooltipId) => (
+            <button
+              type="button"
+              className="copy-name-button"
+              aria-labelledby={tooltipId}
+              onClick={onCopyName}
+            >
+              📋
+              {isCopied ? <span className="copy-tooltip">Copied!</span> : null}
+            </button>
+          )}
+        </Tooltip>
         {item.hq ? (
-          <span className="quality-badge" title="Priced as high quality">
-            HQ
-          </span>
+          <Tooltip text="Priced as high quality">
+            {(tooltipId) => (
+              <span
+                className="quality-badge"
+                tabIndex={0}
+                aria-describedby={tooltipId}
+              >
+                HQ
+              </span>
+            )}
+          </Tooltip>
         ) : null}
         {pricing?.gapDetected ? (
-          <span
-            className="gap-badge"
-            title="Current listings are well above recent sale prices — room to undercut"
-          >
-            gap
-          </span>
+          <Tooltip text="Current listings are well above recent sale prices — room to undercut">
+            {(tooltipId) => (
+              <span
+                className="gap-badge"
+                tabIndex={0}
+                aria-describedby={tooltipId}
+              >
+                gap
+              </span>
+            )}
+          </Tooltip>
         ) : null}
         {isStale ? (
-          <span
-            className="stale-badge"
-            title={staleTooltip(lastSuccessAt, lastErrorMessage)}
-          >
-            ⚠
-          </span>
+          <Tooltip text={staleTooltip(lastSuccessAt, lastErrorMessage)}>
+            {(tooltipId) => (
+              <span
+                className="stale-badge"
+                tabIndex={0}
+                aria-describedby={tooltipId}
+              >
+                ⚠
+              </span>
+            )}
+          </Tooltip>
         ) : null}
       </td>
       <td>
@@ -111,8 +135,6 @@ export const ProfitTableRow = ({
         ) : (
           formatGil(pricing?.sellPricePerUnit ?? null)
         )}
-        {pricing?.sellPriceSource === "listings" ? " (listed)" : ""}
-        {pricing?.sellPriceCapped ? " (capped)" : ""}
         {pricing && pricing.sellSampleSize > 0 && pricing.sellSampleSize < 3
           ? ` (n=${pricing.sellSampleSize})`
           : ""}
@@ -126,15 +148,20 @@ export const ProfitTableRow = ({
       <td className={numberClass(pricing?.profitPerStack ?? null)}>
         {formatGil(pricing?.profitPerStack ?? null)}
       </td>
-      <td
-        className={numberClass(pricing?.expectedProfitPerDay ?? null)}
-        title={
-          pricing
-            ? `Based on ${pricing.saleVelocityPerDay.toFixed(1)} sold in the last day`
-            : undefined
-        }
-      >
-        {formatGil(pricing?.expectedProfitPerDay ?? null)}
+      <td className={numberClass(pricing?.expectedProfitPerDay ?? null)}>
+        {pricing ? (
+          <Tooltip
+            text={`Based on ${pricing.saleVelocityPerDay.toFixed(1)} sold in the last day`}
+          >
+            {(tooltipId) => (
+              <span tabIndex={0} aria-describedby={tooltipId}>
+                {formatGil(pricing.expectedProfitPerDay)}
+              </span>
+            )}
+          </Tooltip>
+        ) : (
+          formatGil(null)
+        )}
       </td>
     </tr>
   );

@@ -1,5 +1,5 @@
-/** An item we want to track for trading opportunities. */
-export interface TrackedItem {
+/** An item to price for trading opportunities, and how to price it. */
+export interface PricedItem {
   itemId: number;
   name: string;
   /** Whether to price this item by its HQ listings/sales rather than NQ. */
@@ -22,6 +22,12 @@ export interface TrackedItem {
    */
   sellPriceCeiling?: number;
 }
+
+/** An item saved to be priced on the Tracked Items page. The same item can be tracked more than once, e.g. as both NQ and HQ. */
+export type TrackedItem = PricedItem & {
+  /** Stays the same when the item's settings are changed. */
+  id: string;
+};
 
 /**
  * A retainer that actually posts market listings — characters themselves
@@ -194,7 +200,7 @@ export type RowAnalysis =
 
 /** A single item's profit analysis for a single buying character. */
 export interface ProfitRow {
-  item: TrackedItem;
+  item: PricedItem;
   analysis: RowAnalysis;
   /** When the last successful fetch completed, or null if one never has. */
   lastSuccessAt: number | null;

@@ -5,6 +5,7 @@ import {
   type RosterChangeResult,
 } from "../services/characterService";
 import type { TradingConfig } from "../services/tradingConfig";
+import { afterSuccess } from "../utils/afterSuccess";
 
 /** Where the character roster is set up: adding, changing and removing characters and their retainers. */
 export const CharactersContainer = ({
@@ -17,13 +18,8 @@ export const CharactersContainer = ({
 }) => {
   const { characters, regions, marketBoardCities } = config;
 
-  const reportingChanges = async (
-    change: Promise<RosterChangeResult>,
-  ): Promise<RosterChangeResult> => {
-    const result = await change;
-    if (result.ok) onCharactersChanged();
-    return result;
-  };
+  const reportingChanges = (change: Promise<RosterChangeResult>) =>
+    afterSuccess(change, onCharactersChanged);
 
   return (
     <div className="app">
@@ -31,6 +27,23 @@ export const CharactersContainer = ({
       <header>
         <h1>Characters</h1>
       </header>
+
+      <div className="page-intro">
+        <p>
+          This is the list of your Final Fantasy XIV characters and their
+          retainers. Selecting a character to be "Selling as" will show profits
+          if you were to sell in that character's home world. If you have no
+          retainers, it'll calculate with the default city tax of 5%, however if
+          you add retainers it'll use the actual tax rate for that retainer's
+          city.
+        </p>
+        <p>
+          Entering characters over multiple regions (for example, North America
+          and Europe) will allow you to see what the profit would be if you were
+          to buy in either region and sell in your selected character's home
+          world.
+        </p>
+      </div>
 
       {characters.length === 0 && (
         <p className="muted">
@@ -74,7 +87,7 @@ export const CharactersContainer = ({
         />
       ))}
 
-      <section className="character-card" aria-label="Add a character">
+      <section className="card" aria-label="Add a character">
         <h2>Add a character</h2>
         <CharacterForm
           regions={regions}
@@ -84,16 +97,6 @@ export const CharactersContainer = ({
           }
         />
       </section>
-
-      <footer>
-        <p>
-          The character you're selling as sells on its home world, through its
-          retainers — each retainer's city decides the sell tax. Every character
-          is also somewhere to buy from: anywhere in its home world's region.
-          Retainer names are how your own listings are recognized on the market
-          board, so they need to match the names in-game.
-        </p>
-      </footer>
     </div>
   );
 };

@@ -59,25 +59,24 @@ export const deriveOwnRetainers = (
 
 /** Everything from ConfigService, loaded once. */
 export interface LoadedConfig {
-  trackedItems: TrackedItem[];
   regions: RegionInfo[];
   marketBoardCities: string[];
   params: TradingParameters;
 }
 
 export const loadConfig = async (): Promise<LoadedConfig> => {
-  const [trackedItems, regions, marketBoardCities, params] = await Promise.all([
-    configService.getTrackedItems(),
+  const [regions, marketBoardCities, params] = await Promise.all([
     configService.getRegions(),
     configService.getMarketBoardCities(),
     configService.getTradingParameters(),
   ]);
-  return { trackedItems, regions, marketBoardCities, params };
+  return { regions, marketBoardCities, params };
 };
 
-/** The loaded config together with the character roster and what's worked out from it, shared by every page. */
+/** The loaded config together with the character roster, the tracked items, and what's worked out from the roster, shared by every page. */
 export type TradingConfig = LoadedConfig & {
   characters: Character[];
+  trackedItems: TrackedItem[];
   buyingRegions: BuyingRegion[];
   ownRetainers: WorldRetainer[];
 };
@@ -85,9 +84,11 @@ export type TradingConfig = LoadedConfig & {
 export const buildTradingConfig = (
   config: LoadedConfig,
   characters: Character[],
+  trackedItems: TrackedItem[],
 ): TradingConfig => ({
   ...config,
   characters,
+  trackedItems,
   buyingRegions: groupCharactersByRegion(characters, config.regions),
   ownRetainers: deriveOwnRetainers(characters),
 });

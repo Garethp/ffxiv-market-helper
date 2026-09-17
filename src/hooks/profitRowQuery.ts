@@ -9,7 +9,7 @@ import {
   type RowMarketData,
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, ProfitRow, TrackedItem } from "../types";
+import type { Character, ProfitRow, PricedItem } from "../types";
 
 /**
  * The market data for one item bought via one region, sold through the given
@@ -50,7 +50,7 @@ export const profitRow = (
     QueryObserverResult<RowMarketData>,
     "data" | "dataUpdatedAt" | "error"
   >,
-  item: TrackedItem,
+  item: PricedItem,
   sellingCharacter: Character,
   config: TradingConfig,
 ): ProfitRow => ({

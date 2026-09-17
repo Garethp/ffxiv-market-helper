@@ -3,7 +3,7 @@ import type {
   Character,
   RegionInfo,
   TradingParameters,
-  TrackedItem,
+  PricedItem,
 } from "../types";
 import type { WorldRetainer } from "../utils/pricing";
 
@@ -39,7 +39,7 @@ const sellingCharacter: Character = {
 
 const ownRetainers: WorldRetainer[] = [{ name: "RetainerA", world: "WorldA" }];
 
-const item: TrackedItem = {
+const item: PricedItem = {
   itemId: 1,
   name: "Test Item",
   stackSize: 1,
@@ -111,7 +111,7 @@ const marketDataByScope = (
 /** Fetches the row's market data and prices it, bought via Europe. */
 const analyze = async (
   overrides: {
-    item?: TrackedItem;
+    item?: PricedItem;
     regions?: RegionInfo[];
     character?: Character;
   } = {},
@@ -213,7 +213,7 @@ describe("pricing a row", () => {
   });
 
   describe("matching the tracked quality", () => {
-    const hqItem: TrackedItem = { ...item, hq: true };
+    const hqItem: PricedItem = { ...item, hq: true };
 
     it("should only price purchases from listings of the tracked quality", async () => {
       marketDataByScope({

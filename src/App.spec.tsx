@@ -2,9 +2,13 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Character, TradingParameters } from "./types";
+import type { TradingConfig } from "./services/tradingConfig";
+import type { Character, TrackedItem, TradingParameters } from "./types";
 
-type PageProps = { currentCharacter: Character | null };
+type PageProps = {
+  config: TradingConfig;
+  currentCharacter: Character | null;
+};
 
 vi.mock("./services/tradingConfig", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./services/tradingConfig")>()),
@@ -12,6 +16,9 @@ vi.mock("./services/tradingConfig", async (importOriginal) => ({
 }));
 vi.mock("./services/characterService", () => ({
   characterService: { getCharacters: vi.fn() },
+}));
+vi.mock("./services/trackedItemService", () => ({
+  trackedItemService: { getTrackedItems: vi.fn() },
 }));
 vi.mock("./services/currentCharacterService", () => ({
   currentCharacterService: {
@@ -21,8 +28,15 @@ vi.mock("./services/currentCharacterService", () => ({
 }));
 // Stand-ins that show which page is open and which character it was given.
 vi.mock("./containers/TrackedItemsContainer", () => ({
-  TrackedItemsContainer: ({ currentCharacter }: PageProps) => (
-    <p>Tracked items selling as {currentCharacter?.name}</p>
+  TrackedItemsContainer: ({ config, currentCharacter }: PageProps) => (
+    <>
+      <p>Tracked items selling as {currentCharacter?.name}</p>
+      <ul>
+        {config.trackedItems.map((item) => (
+          <li key={item.id}>{item.name}</li>
+        ))}
+      </ul>
+    </>
   ),
 }));
 vi.mock("./containers/HighVolumeItemsContainer", () => ({
@@ -31,7 +45,29 @@ vi.mock("./containers/HighVolumeItemsContainer", () => ({
   ),
 }));
 vi.mock("./containers/ItemProfitScanContainer", () => ({
-  ItemProfitScanContainer: () => <p>Item profit scan</p>,
+  ItemProfitScanContainer: ({
+    onTrackedItemsChanged,
+  }: {
+    onTrackedItemsChanged: () => void;
+  }) => (
+    <>
+      <p>Item profit scan</p>
+      <button type="button" onClick={onTrackedItemsChanged}>
+        Track the item
+      </button>
+    </>
+  ),
+}));
+vi.mock("./containers/ManageItemsContainer", () => ({
+  ManageItemsContainer: ({
+    onTrackedItemsChanged,
+  }: {
+    onTrackedItemsChanged: () => void;
+  }) => (
+    <button type="button" onClick={onTrackedItemsChanged}>
+      Change the tracked items
+    </button>
+  ),
 }));
 vi.mock("./containers/CharactersContainer", () => ({
   CharactersContainer: ({
@@ -50,8 +86,10 @@ import { withQueryClient } from "./testing/withQueryClient";
 import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
 import { loadConfig } from "./services/tradingConfig";
+import { trackedItemService } from "./services/trackedItemService";
 
 const mockedGetCharacters = vi.mocked(characterService.getCharacters);
+const mockedGetTrackedItems = vi.mocked(trackedItemService.getTrackedItems);
 const mockedGetCurrentCharacterId = vi.mocked(
   currentCharacterService.getCurrentCharacterId,
 );
@@ -72,6 +110,14 @@ const bob: Character = {
   retainers: [],
 };
 
+const cordial: TrackedItem = {
+  id: "cordial",
+  itemId: 6141,
+  name: "Cordial",
+  stackSize: 999,
+  targetQuantity: 999,
+};
+
 const renderApp = (path = "/") =>
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -90,12 +136,12 @@ const pickCharacter = async (id: string) =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(loadConfig).mockResolvedValue({
-    trackedItems: [],
     regions: [],
     marketBoardCities: [],
     params: {} as TradingParameters,
   });
   mockedGetCharacters.mockResolvedValue([alice, bob]);
+  mockedGetTrackedItems.mockResolvedValue([]);
   mockedGetCurrentCharacterId.mockResolvedValue(null);
   mockedSetCurrentCharacterId.mockResolvedValue();
 });
@@ -241,6 +287,50 @@ describe("App", () => {
     });
   });
 
+  describe("tracked items", () => {
+    it("should give pages the tracked items", async () => {
+      mockedGetTrackedItems.mockResolvedValue([cordial]);
+
+      renderApp();
+
+      await screen.findByText("Cordial");
+    });
+
+    it("should read the tracked items again after they're changed, so the change shows everywhere", async () => {
+      renderApp("/manage-items");
+      const changeButton = await screen.findByRole("button", {
+        name: "Change the tracked items",
+      });
+      mockedGetTrackedItems.mockResolvedValue([cordial]);
+
+      fireEvent.click(changeButton);
+      fireEvent.click(navLink("Tracked Items"));
+
+      await screen.findByText("Cordial");
+    });
+
+    it("should read the tracked items again after an item is tracked from its own page", async () => {
+      renderApp("/item/6141");
+      const trackButton = await screen.findByRole("button", {
+        name: "Track the item",
+      });
+      mockedGetTrackedItems.mockResolvedValue([cordial]);
+
+      fireEvent.click(trackButton);
+      fireEvent.click(navLink("Tracked Items"));
+
+      await screen.findByText("Cordial");
+    });
+
+    it("should let items be managed before any character has been added", async () => {
+      mockedGetCharacters.mockResolvedValue([]);
+
+      renderApp("/manage-items");
+
+      await screen.findByRole("button", { name: "Change the tracked items" });
+    });
+  });
+
   describe("the navbar", () => {
     it("should move between pages", async () => {
       renderApp();
@@ -251,6 +341,9 @@ describe("App", () => {
 
       fireEvent.click(navLink("Characters"));
       await screen.findByRole("button", { name: "Change the roster" });
+
+      fireEvent.click(navLink("Manage Items"));
+      await screen.findByRole("button", { name: "Change the tracked items" });
 
       fireEvent.click(navLink("Tracked Items"));
       await screen.findByText("Tracked items selling as Alice");

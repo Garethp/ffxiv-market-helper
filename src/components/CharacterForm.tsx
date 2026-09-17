@@ -43,7 +43,7 @@ export const CharacterForm = ({
   };
 
   return (
-    <form className="roster-form" onSubmit={submit}>
+    <form className="entry-form" onSubmit={submit}>
       <label>
         Name
         <input
@@ -76,7 +76,7 @@ export const CharacterForm = ({
           )}
         </select>
       </label>
-      <label className="roster-form-wide">
+      <label className="entry-form-wide">
         Note
         <input
           value={note}
@@ -84,7 +84,7 @@ export const CharacterForm = ({
           placeholder="e.g. goods need a manual meetup to reach the seller"
         />
       </label>
-      <div className="roster-form-actions">
+      <div className="entry-form-actions">
         <button type="submit">{submitLabel}</button>
         {onCancel && (
           <button type="button" onClick={onCancel}>

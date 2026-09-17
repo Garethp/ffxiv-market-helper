@@ -1,6 +1,8 @@
 :root {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
+  /* Shared by every page and the navbar, so they line up. */
+  --page-width: 1300px;
 }
 
 body {
@@ -10,7 +12,7 @@ body {
 }
 
 .app {
-  max-width: 1100px;
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -24,7 +26,7 @@ body {
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  max-width: 1100px;
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: 0 1.5rem;
 }
@@ -112,6 +114,20 @@ header h1 {
 .subtitle {
   color: #9aa0aa;
   margin-top: 0;
+}
+
+/* What the page is for and how to read it, above everything it explains. */
+.page-intro {
+  max-width: 50rem;
+  margin-bottom: 1.25rem;
+  /* The page's own text colour: muted grey reads as small print worth skipping. */
+  color: #e8e8e8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.page-intro p {
+  margin: 0 0 0.5rem;
 }
 
 .toolbar {
@@ -223,7 +239,7 @@ header h1 {
   background: #aecbfa;
 }
 
-.character-card {
+.card {
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
   border: 1px solid #2a2d36;
@@ -231,17 +247,17 @@ header h1 {
   background: #181b22;
 }
 
-.character-card h2 {
+.card h2 {
   margin: 0;
   font-size: 1.1rem;
 }
 
-.character-card h2 .muted {
+.card h2 .muted {
   font-size: 0.9rem;
   font-weight: 400;
 }
 
-.character-card h3 {
+.card h3 {
   margin: 1rem 0 0.5rem;
   font-size: 0.95rem;
 }
@@ -257,13 +273,13 @@ header h1 {
   margin-right: auto;
 }
 
-.retainer-list {
+.entry-list {
   list-style: none;
   margin: 0 0 0.75rem;
   padding: 0;
 }
 
-.retainer-row {
+.entry-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -271,18 +287,19 @@ header h1 {
   border-bottom: 1px solid #2a2d36;
 }
 
-.retainer-row > span {
+/* The first part names the entry, and pushes everything after it to the end of the row. */
+.entry-row > span:first-child {
   margin-right: auto;
 }
 
-.roster-form {
+.entry-form {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.75rem;
 }
 
-.roster-form label {
+.entry-form label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -290,12 +307,12 @@ header h1 {
   font-size: 0.85rem;
 }
 
-.roster-form-wide {
+.entry-form-wide {
   flex: 1 1 16rem;
 }
 
-.roster-form input,
-.roster-form select {
+.entry-form input,
+.entry-form select {
   background: #1c1f27;
   color: #e8e8e8;
   border: 1px solid #3a3e4a;
@@ -305,12 +322,172 @@ header h1 {
   font-size: 0.9rem;
 }
 
-.roster-form-actions {
+.entry-form-actions {
   display: flex;
   gap: 0.5rem;
 }
 
-.character-card button {
+.entry-form .hinted-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
+
+.hinted-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Qualified enough to win over the button styles of whatever card or toolbar the hint sits in. */
+.tooltip-anchor button.hint-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 1px solid #5a5f6b;
+  border-radius: 50%;
+  background: transparent;
+  color: #9aa0aa;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+}
+
+.tooltip-anchor button.hint-icon:hover,
+.tooltip-anchor button.hint-icon:focus-visible {
+  border-color: #8ab4f8;
+  color: #e8e8e8;
+}
+
+.tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.25rem;
+  background: #2a2d36;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #e8e8e8;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+  transition: opacity 0.1s ease-in-out;
+}
+
+.tooltip-anchor:hover > .tooltip,
+.tooltip-anchor:focus-within > .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Right-aligned columns are read from their right edge, and the last sits at the page's edge. */
+.item-table th .tooltip,
+.item-table td:last-child .tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* The item column is at the page's left edge, so its badges' tooltips open rightwards. */
+.item-table td:first-child .tooltip {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+.item-table th .tooltip-anchor {
+  vertical-align: middle;
+}
+
+/* Badges and figures aren't controls, so they show a focus ring only when tabbed to. */
+.tooltip-anchor [tabindex] {
+  cursor: help;
+  outline: none;
+}
+
+.tooltip-anchor [tabindex]:focus-visible {
+  outline: 2px solid #8ab4f8;
+  outline-offset: 2px;
+}
+
+.quality-choice {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.quality-choice legend {
+  margin-bottom: 0.25rem;
+  padding: 0;
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
+
+.entry-form .quality-choice label {
+  flex-direction: row;
+  align-items: center;
+  color: #e8e8e8;
+  font-size: 0.9rem;
+}
+
+.item-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.item-search label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
+
+.item-search input {
+  max-width: 24rem;
+  background: #1c1f27;
+  color: #e8e8e8;
+  border: 1px solid #3a3e4a;
+  border-radius: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.item-search p {
+  margin: 0;
+}
+
+.item-search-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card button {
   background: #1c1f27;
   color: #e8e8e8;
   border: 1px solid #3a3e4a;
@@ -321,8 +498,13 @@ header h1 {
   cursor: pointer;
 }
 
-.character-card button:hover {
+.card button:not(:disabled):hover {
   border-color: #8ab4f8;
+}
+
+.card button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .form-error {
@@ -420,7 +602,6 @@ header h1 {
 }
 
 .undercut-badge {
-  position: relative;
   display: inline-block;
   margin-left: 0.5rem;
   padding: 0.1rem 0.4rem;
@@ -435,39 +616,15 @@ header h1 {
   user-select: none;
 }
 
-.undercut-tooltip {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  z-index: 1;
-  top: 100%;
-  right: 0;
-  margin-top: 0.3rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 0.25rem;
-  background: #2a2d36;
-  color: #e8e8e8;
-  font-size: 0.75rem;
-  font-weight: 400;
-  text-transform: none;
-  text-align: left;
-  white-space: nowrap;
-  pointer-events: none;
-  transition: opacity 0.1s ease-in-out;
-}
-
-.undercut-badge:hover .undercut-tooltip {
-  visibility: visible;
-  opacity: 1;
-}
-
-.undercut-tooltip table {
+/* A tooltip listing the cheaper listings needs room for its table. */
+.tooltip table {
   border-collapse: collapse;
   margin-top: 0.35rem;
+  white-space: nowrap;
 }
 
-.undercut-tooltip th,
-.undercut-tooltip td {
+.tooltip th,
+.tooltip td {
   padding: 0.1rem 0.5rem;
   text-align: right;
 }
@@ -497,7 +654,8 @@ header h1 {
   transition: opacity 0.12s ease-in-out;
 }
 
-.profit-tooltip-anchor:hover .profit-tooltip {
+.profit-tooltip-anchor:hover .profit-tooltip,
+.profit-tooltip-anchor:focus-within .profit-tooltip {
   visibility: visible;
   opacity: 1;
 }
@@ -525,6 +683,7 @@ header h1 {
 
 .copy-name-button {
   position: relative;
+  z-index: 1;
   margin-left: 0.4rem;
   padding: 0;
   border: none;
@@ -563,10 +722,4 @@ header h1 {
 
 .negative {
   color: #f44336;
-}
-
-footer {
-  margin-top: 1.5rem;
-  color: #9aa0aa;
-  font-size: 0.85rem;
 }

@@ -5,7 +5,7 @@ import {
   type RowMarketData,
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, ProfitRow, TrackedItem } from "../types";
+import type { Character, ProfitRow, PricedItem } from "../types";
 import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
 
 /**
@@ -32,7 +32,7 @@ const untrackedItem = (
   itemId: number,
   name: string,
   { sell }: RowMarketData,
-): TrackedItem => ({
+): PricedItem => ({
   itemId,
   name,
   hq: sell.hqSaleVelocity > sell.nqSaleVelocity,
