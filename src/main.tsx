@@ -11,7 +11,9 @@ const queryClient = createQueryClient();
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Served from /<repo>/ on GitHub Pages, so routes sit under the same prefix the
+          bundler was given. BASE_URL is Vite's `base`, which is "/" for a local build. */}
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>
