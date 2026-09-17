@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { CharacterSelection } from "./components/CharacterSelection";
-import { FlipTableContainer } from "./containers/FlipTableContainer";
+import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
 import { currentCharacterService } from "./services/currentCharacterService";
@@ -71,7 +71,7 @@ const App = () => {
         <Route
           path="/"
           element={
-            <FlipTableContainer
+            <TrackedItemsContainer
               config={config}
               currentCharacter={currentCharacter}
             />

@@ -21,7 +21,7 @@ const numberClass = (value: number | null): string => {
   return value >= 0 ? "positive" : "negative";
 };
 
-export const FlipTableRow = ({
+export const ProfitTableRow = ({
   displayRow: { row, isRefreshing },
   staleWarningThresholdMs,
   sellWorld,

@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { FlipTable } from "../components/FlipTable";
+import { ProfitTable } from "../components/ProfitTable";
 import { useItemProfitScan } from "../hooks/useItemProfitScan";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
@@ -45,7 +45,7 @@ const ItemProfitScan = ({
           <Link to="/high-volume-items" className="nav-link">
             ← High volume items
           </Link>{" "}
-          · <Link to="/">Flip table</Link>
+          · <Link to="/">Tracked items</Link>
         </p>
       </header>
 
@@ -91,7 +91,7 @@ const ItemProfitScan = ({
             Buying via {buyingRegion.characters.map((c) => c.name).join(", ")} (
             {buyingRegion.region})
           </h2>
-          <FlipTable
+          <ProfitTable
             rows={rowsByRegion[buyingRegion.region] ?? []}
             staleWarningThresholdMs={0}
             sellWorld={sellWorld}

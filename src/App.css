@@ -108,28 +108,28 @@ header h1 {
   margin-bottom: 0.75rem;
 }
 
-.flip-table {
+.item-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.flip-table th,
-.flip-table td {
+.item-table th,
+.item-table td {
   padding: 0.5rem 0.75rem;
   text-align: right;
   border-bottom: 1px solid #2a2d36;
 }
 
-.flip-table th:first-child,
-.flip-table td:first-child {
+.item-table th:first-child,
+.item-table td:first-child {
   text-align: left;
 }
 
-.flip-table a {
+.item-table a {
   color: #8ab4f8;
 }
 
-.flip-table a:hover {
+.item-table a:hover {
   color: #aecbfa;
 }
 

@@ -1,4 +1,4 @@
-/** An item we want to track for flipping opportunities. */
+/** An item we want to track for trading opportunities. */
 export interface TrackedItem {
   itemId: number;
   name: string;
@@ -67,7 +67,7 @@ export interface RegionInfo {
   dataCenters: DataCenterInfo[];
 }
 
-/** Tunable parameters governing how flips are priced and refreshed. */
+/** Tunable parameters governing how items are priced and refreshed. */
 export interface TradingParameters {
   buyTaxRate: number;
   /**
@@ -153,8 +153,8 @@ export interface ConsistentPrice {
   cheapestWorld: string | null;
 }
 
-/** The priced-out result of a successful flip analysis. */
-export interface FlipPricing {
+/** The priced-out result of a successful profit analysis. */
+export interface ProfitPricing {
   /** The data center within the buying character's region where the best price was found. */
   buyDataCenter: string;
   buy: ConsistentPrice | null;
@@ -184,13 +184,13 @@ export interface FlipPricing {
  * fields can still legitimately be null, e.g. no listings currently exist —
  * that's a real market state, not a loading state). There's no `error`
  * state here deliberately: a failed fetch never changes what's displayed —
- * see FlipRow's lastAttemptFailed/lastErrorMessage for that instead.
+ * see ProfitRow's lastAttemptFailed/lastErrorMessage for that instead.
  */
 export type RowAnalysis =
-  { status: "pending" } | ({ status: "ready" } & FlipPricing);
+  { status: "pending" } | ({ status: "ready" } & ProfitPricing);
 
-/** A single item's flip analysis for a single buying character. */
-export interface FlipRow {
+/** A single item's profit analysis for a single buying character. */
+export interface ProfitRow {
   item: TrackedItem;
   analysis: RowAnalysis;
   /** When the last successful fetch completed, or null if one never has. */
@@ -203,7 +203,7 @@ export interface FlipRow {
 
 /** A row paired with whether it's actively refreshing, for display. */
 export interface DisplayRow {
-  row: FlipRow;
+  row: ProfitRow;
   /** True while a fetch for this specific row is in flight. */
   isRefreshing: boolean;
 }

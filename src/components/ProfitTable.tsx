@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { DisplayRow } from "../types";
-import { FlipTableRow } from "./FlipTableRow";
+import { ProfitTableRow } from "./ProfitTableRow";
 
-export const FlipTable = ({
+export const ProfitTable = ({
   rows,
   staleWarningThresholdMs,
   sellWorld,
@@ -28,7 +28,7 @@ export const FlipTable = ({
   };
 
   return (
-    <table className="flip-table">
+    <table className="item-table">
       <thead>
         <tr>
           <th>Item</th>
@@ -42,7 +42,7 @@ export const FlipTable = ({
       </thead>
       <tbody>
         {rows.map((displayRow) => (
-          <FlipTableRow
+          <ProfitTableRow
             key={displayRow.row.item.itemId}
             displayRow={displayRow}
             staleWarningThresholdMs={staleWarningThresholdMs}

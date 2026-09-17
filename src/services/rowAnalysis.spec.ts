@@ -21,7 +21,7 @@ import {
 } from "../api/universalis";
 import { applyFetchOutcome, fetchRowAnalysis, pendingRow } from "./rowAnalysis";
 import type { FetchOutcome } from "./rowAnalysis";
-import type { FlipRow, RowAnalysis } from "../types";
+import type { ProfitRow, RowAnalysis } from "../types";
 
 const mockedFetchMarketData = vi.mocked(fetchMarketData);
 const mockedFetchTaxRates = vi.mocked(fetchTaxRates);
@@ -332,7 +332,7 @@ describe("applyFetchOutcome", () => {
     const now = new Date("2026-01-01T12:00:00Z").getTime();
     vi.useFakeTimers();
     vi.setSystemTime(now);
-    const previous: FlipRow = {
+    const previous: ProfitRow = {
       ...pendingRow(item),
       lastAttemptFailed: true,
       lastErrorMessage: "previous failure",
@@ -348,7 +348,7 @@ describe("applyFetchOutcome", () => {
   });
 
   it("should preserve the previous row's analysis on failure, only stamping the failure", () => {
-    const previous: FlipRow = {
+    const previous: ProfitRow = {
       item,
       analysis: readyAnalysis,
       lastSuccessAt: 12345,

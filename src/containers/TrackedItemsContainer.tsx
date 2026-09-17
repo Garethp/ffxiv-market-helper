@@ -1,17 +1,17 @@
 import { Link } from "react-router-dom";
-import { FlipTable } from "../components/FlipTable";
-import { useFlipAnalysis } from "../hooks/useFlipAnalysis";
+import { ProfitTable } from "../components/ProfitTable";
+import { useTrackedItemsAnalysis } from "../hooks/useTrackedItemsAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
 
-export const FlipTableContainer = ({
+export const TrackedItemsContainer = ({
   config,
   currentCharacter,
 }: {
   config: TradingConfig;
   currentCharacter: Character | null;
 }) => {
-  const { rowsByRegion, lastUpdated } = useFlipAnalysis(
+  const { rowsByRegion, lastUpdated } = useTrackedItemsAnalysis(
     config,
     currentCharacter,
   );
@@ -20,9 +20,9 @@ export const FlipTableContainer = ({
 
   return (
     <div className="app">
-      <title>FFXIV Flipping Helper</title>
+      <title>Tracked Items</title>
       <header>
-        <h1>FFXIV Flipping Helper</h1>
+        <h1>Tracked Items</h1>
         <p className="subtitle">Selling on {sellWorld || "…"}</p>
       </header>
 
@@ -53,7 +53,7 @@ export const FlipTableContainer = ({
               </p>
             ) : null,
           )}
-          <FlipTable
+          <ProfitTable
             rows={rowsByRegion[buyingRegion.region] ?? []}
             staleWarningThresholdMs={params.staleWarningThresholdMs}
             sellWorld={sellWorld}

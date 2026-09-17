@@ -5,18 +5,18 @@ import {
   pendingRow,
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, DisplayRow, FlipRow, TrackedItem } from "../types";
+import type { Character, DisplayRow, ProfitRow, TrackedItem } from "../types";
 import { useGeneration } from "./useGeneration";
 
 const rowKey = (region: string, item: TrackedItem): string => {
   return `${region}::${item.itemId}`;
 };
 
-export const useFlipAnalysis = (
+export const useTrackedItemsAnalysis = (
   config: TradingConfig,
   currentCharacter: Character | null,
 ) => {
-  const [rows, setRows] = useState<Record<string, FlipRow>>({});
+  const [rows, setRows] = useState<Record<string, ProfitRow>>({});
   const [refreshingKeys, setRefreshingKeys] = useState<ReadonlySet<string>>(
     new Set(),
   );
@@ -85,7 +85,7 @@ export const useFlipAnalysis = (
       })),
     );
 
-    const placeholderRows: Record<string, FlipRow> = {};
+    const placeholderRows: Record<string, ProfitRow> = {};
     rowDefs.forEach(({ item, region }) => {
       placeholderRows[rowKey(region, item)] = pendingRow(item);
     });

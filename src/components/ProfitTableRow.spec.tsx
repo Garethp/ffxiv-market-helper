@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FlipPricing, FlipRow, TrackedItem } from "../types";
-import { FlipTableRow } from "./FlipTableRow";
+import type { ProfitPricing, ProfitRow, TrackedItem } from "../types";
+import { ProfitTableRow } from "./ProfitTableRow";
 
 const NOW = new Date("2026-01-01T12:00:00Z").getTime();
 
@@ -14,9 +14,9 @@ const item: TrackedItem = {
 };
 
 const readyRow = (
-  pricingOverrides: Partial<FlipPricing> = {},
-  rowOverrides: Partial<FlipRow> = {},
-): FlipRow => ({
+  pricingOverrides: Partial<ProfitPricing> = {},
+  rowOverrides: Partial<ProfitRow> = {},
+): ProfitRow => ({
   item,
   analysis: {
     status: "ready",
@@ -47,7 +47,7 @@ const readyRow = (
   ...rowOverrides,
 });
 
-const pendingRow = (rowOverrides: Partial<FlipRow> = {}): FlipRow => ({
+const pendingRow = (rowOverrides: Partial<ProfitRow> = {}): ProfitRow => ({
   item,
   analysis: { status: "pending" },
   lastSuccessAt: null,
@@ -57,7 +57,7 @@ const pendingRow = (rowOverrides: Partial<FlipRow> = {}): FlipRow => ({
 });
 
 const renderRow = (
-  row: FlipRow,
+  row: ProfitRow,
   {
     isRefreshing = false,
     staleWarningThresholdMs = 60_000,
@@ -75,7 +75,7 @@ const renderRow = (
   const { container } = render(
     <table>
       <tbody>
-        <FlipTableRow
+        <ProfitTableRow
           displayRow={{ row, isRefreshing }}
           staleWarningThresholdMs={staleWarningThresholdMs}
           sellWorld={sellWorld}
@@ -109,7 +109,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("FlipTableRow", () => {
+describe("ProfitTableRow", () => {
   describe("identifying the item", () => {
     it("should show the item's name", () => {
       const { itemCell } = renderRow(readyRow());

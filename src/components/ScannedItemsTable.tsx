@@ -23,7 +23,7 @@ export const ScannedItemsTable = memo(
     world: string;
   }) => {
     return (
-      <table className="flip-table">
+      <table className="item-table">
         <thead>
           <tr>
             <th>Item</th>

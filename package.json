@@ -1,7 +1,7 @@
 {
   "name": "ffxiv-trading",
   "version": "1.0.0",
-  "description": "FFXIV market board flipping helper, backed by the Universalis API",
+  "description": "FFXIV market board tracking helper, backed by the Universalis API",
   "private": true,
   "license": "MIT",
   "type": "module",

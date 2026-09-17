@@ -58,7 +58,7 @@ export type ScanStatus =
  * Scans every marketable item on a given world or data center and reports
  * its recent sale velocity, so items worth adding to the tracked list can be
  * spotted by how much they actually trade. A one-shot operation — there's no
- * auto-refresh here, unlike the flip table.
+ * auto-refresh here, unlike the tracked items page.
  *
  * Shows the latest completed scan of the world or data center, if there's a
  * recent enough one, and switches to that of the new one whenever it

@@ -85,7 +85,7 @@ export const HighVolumeItemsContainer = ({
         <p className="subtitle">
           Sale velocity on {world || "…"} ·{" "}
           <Link to="/" className="nav-link">
-            ← Back to flip table
+            ← Back to tracked items
           </Link>
         </p>
       </header>

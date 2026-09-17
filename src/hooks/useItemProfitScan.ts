@@ -7,7 +7,7 @@ import {
   type RowMarketData,
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, DisplayRow, FlipRow, TrackedItem } from "../types";
+import type { Character, DisplayRow, ProfitRow, TrackedItem } from "../types";
 import { useGeneration } from "./useGeneration";
 
 /** Where fetching one buying region's market data has got to. */
@@ -23,7 +23,7 @@ type RegionMarketData =
   | { status: "failed"; message: string };
 
 /**
- * Prices a single arbitrary item the same way the flip table prices tracked
+ * Prices a single arbitrary item the same way the tracked items page prices tracked
  * items — across every buying region, selling through the Current Character — but
  * on demand and without adding it to the tracked list. Meant for checking
  * whether an item (e.g. one spotted on the high-volume-items scan) is worth
@@ -110,7 +110,7 @@ export const useItemProfitScan = (
       targetQuantity,
       sellPriceCeiling,
     };
-    const toRow = (regionData: RegionMarketData): FlipRow => {
+    const toRow = (regionData: RegionMarketData): ProfitRow => {
       switch (regionData.status) {
         case "loading":
           return pendingRow(item);

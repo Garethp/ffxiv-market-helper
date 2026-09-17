@@ -17,19 +17,19 @@ import {
 import { findDataCentersForRegion } from "../utils/worldDirectory";
 import type {
   Character,
-  FlipRow,
+  ProfitRow,
   RegionInfo,
   RowAnalysis,
   TrackedItem,
   TradingParameters,
 } from "../types";
 
-/** The outcome of one fetch attempt. A failure never carries pricing data — see FlipRow's docs for why. */
+/** The outcome of one fetch attempt. A failure never carries pricing data — see ProfitRow's docs for why. */
 export type FetchOutcome =
   | { success: true; analysis: RowAnalysis }
   | { success: false; message: string };
 
-export const pendingRow = (item: TrackedItem): FlipRow => {
+export const pendingRow = (item: TrackedItem): ProfitRow => {
   return {
     item,
     analysis: { status: "pending" },
@@ -46,10 +46,10 @@ export const pendingRow = (item: TrackedItem): FlipRow => {
  * whatever the row already had (or a pending row, if it had nothing yet).
  */
 export const applyFetchOutcome = (
-  previous: FlipRow | undefined,
+  previous: ProfitRow | undefined,
   item: TrackedItem,
   outcome: FetchOutcome,
-): FlipRow => {
+): ProfitRow => {
   if (outcome.success) {
     return {
       item,
@@ -108,7 +108,7 @@ export const fetchRowMarketData = async (
   return { sell, sellTaxRates, buy };
 };
 
-/** Calculates the flip analysis for a single item from its already-fetched market data. */
+/** Calculates the profit analysis for a single item from its already-fetched market data. */
 export const analyzeRow = (
   marketData: RowMarketData,
   item: TrackedItem,
@@ -185,7 +185,7 @@ export const analyzeRow = (
   );
 };
 
-/** Fetches and computes the flip analysis for a single item bought via a single region. */
+/** Fetches and computes the profit analysis for a single item bought via a single region. */
 export const fetchRowAnalysis = async (
   item: TrackedItem,
   region: string,

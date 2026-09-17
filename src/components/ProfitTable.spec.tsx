@@ -10,7 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
-import { FlipTable } from "./FlipTable";
+import { ProfitTable } from "./ProfitTable";
 
 const displayRow = (itemId: number, name: string): DisplayRow => ({
   row: {
@@ -57,7 +57,7 @@ const table = (
     sellWorld = "WorldA",
   }: { staleWarningThresholdMs?: number | null; sellWorld?: string } = {},
 ) => (
-  <FlipTable
+  <ProfitTable
     rows={rows}
     staleWarningThresholdMs={staleWarningThresholdMs}
     sellWorld={sellWorld}
@@ -103,7 +103,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("FlipTable", () => {
+describe("ProfitTable", () => {
   describe("layout", () => {
     it("should show a header for every column", () => {
       renderTable([]);

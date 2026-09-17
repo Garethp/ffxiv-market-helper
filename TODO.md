@@ -10,7 +10,7 @@ Split into two groups: features buildable now, and features blocked by (or best 
 | ------------------------ | ---------- | ---------------------- |
 | Trip-grouping            | Low        | Medium-High            |
 | Top N opportunities view | Low        | Medium                 |
-| Vendor-to-market flips   | Medium     | Medium-High            |
+| Vendor-to-market trades  | Medium     | Medium-High            |
 | Crafting cross-reference | High       | Low for now (deferred) |
 
 #### Trip-grouping
@@ -21,7 +21,7 @@ Group the current opportunities by where you'd actually buy them, so a shopping 
 
 Implementation notes:
 
-- `FlipPricing.buyDatacenter` (and `ConsistentPrice.cheapestWorld` within it) already identifies where each Flip's buy price came from — group ready rows by that instead of introducing new state.
+- `ProfitPricing.buyDatacenter` (and `ConsistentPrice.cheapestWorld` within it) already identifies where each row's buy price came from — group ready rows by that instead of introducing new state.
 - Render as sections per data center/world, each sorted by profit, rather than a flat table.
 
 #### Top N opportunities view
@@ -32,14 +32,14 @@ A condensed view showing just the best few opportunities across all Tracked Item
 
 Implementation notes:
 
-- Derive from the existing flip analysis results — sort by `expectedProfitPerDay` (configurable metric?) and take the top N.
-- Could be a panel above FlipTable or its own page.
+- Derive from the existing profit analysis results — sort by `expectedProfitPerDay` (configurable metric?) and take the top N.
+- Could be a panel above ProfitTable or its own page.
 
-#### Vendor-to-market flips
+#### Vendor-to-market trades
 
 **Complexity:** Medium. **Value:** Medium-High.
 
-Some items are sold infinitely by NPC vendors for gil, then resold on the market board for more. No buy-side listings or supply limits are involved, so this doesn't fit the existing Consistent-Price-from-listings model — it's a simpler, different risk profile (no risk of running out of stock to buy) and probably wants its own case in a buy-source union rather than being forced through Flip's current shape.
+Some items are sold infinitely by NPC vendors for gil, then resold on the market board for more. No buy-side listings or supply limits are involved, so this doesn't fit the existing Consistent-Price-from-listings model — it's a simpler, different risk profile (no risk of running out of stock to buy) and probably wants its own case in a buy-source union rather than being forced through `ProfitPricing`'s current shape.
 
 Implementation notes: needs a vendor price data source per item (XIVAPI has NPC vendor data). Profit calc is just `sellPrice - vendorPrice`, no `ConsistentPrice`/buy-side listings involved at all.
 
@@ -47,7 +47,7 @@ Implementation notes: needs a vendor price data source per item (XIVAPI has NPC 
 
 **Complexity:** High. **Value:** Low for now (deferred).
 
-Flag Tracked Items (or scan candidates) where the finished item's sell price beats the cost of its ingredients' Consistent Prices — a crafting flip, not just a buy-low-sell-high flip.
+Flag Tracked Items (or scan candidates) where the finished item's sell price beats the cost of its ingredients' Consistent Prices — a crafting trade, not just a buy-low-sell-high one.
 
 Deferred: not worth building until crafting level is high enough to actually make the relevant recipes. Needs a recipe data source (e.g. XIVAPI or Teamcraft's data) to map an item to its ingredient item IDs and required craft level.
 
@@ -55,20 +55,20 @@ Deferred: not worth building until crafting level is high enough to actually mak
 
 | Idea                           | Complexity                 | Value                                      |
 | ------------------------------ | -------------------------- | ------------------------------------------ |
-| Automatic flip log             | High                       | High                                       |
+| Automatic trade log            | High                       | High                                       |
 | Maybe-prune suggestions        | Low-Medium (given the log) | Medium                                     |
 | Own-listing stockout warning   | Low-Medium                 | Medium                                     |
 | Event-aware watchlist          | Medium                     | Medium                                     |
 | New-patch item radar           | Medium                     | Medium                                     |
 | Restock-timing patterns        | Medium                     | Medium                                     |
-| Currency-exchange flips        | Medium-High                | Medium                                     |
+| Currency-exchange trades       | Medium-High                | Medium                                     |
 | New-character worthiness check | High                       | Medium (rare, high payoff when it applies) |
 
-#### Automatic flip log
+#### Automatic trade log
 
 **Complexity:** High. **Value:** High.
 
-A log of flips actually completed (price bought/sold at, quantity, timing), sourced from Universalis rather than typed in by hand, so `expectedProfitPerDay` estimates can be checked against what actually happened.
+A log of trades actually completed (price bought/sold at, quantity, timing), sourced from Universalis rather than typed in by hand, so `expectedProfitPerDay` estimates can be checked against what actually happened.
 
 Blocked on persistence — no point rebuilding this from scratch every session.
 
@@ -79,11 +79,11 @@ Implementation notes:
 
 #### Maybe-prune suggestions
 
-**Complexity:** Low-Medium, given the flip log already exists. **Value:** Medium.
+**Complexity:** Low-Medium, given the trade log already exists. **Value:** Medium.
 
 Surface Tracked Items that haven't shown real profit over some recent window, as a suggestion to remove — never auto-removed.
 
-Blocked on persistence, and ideally builds on the automatic flip log above rather than just estimated figures.
+Blocked on persistence, and ideally builds on the automatic trade log above rather than just estimated figures.
 
 #### Own-listing stockout warning
 
@@ -123,7 +123,7 @@ Track what time of day a Tracked Item's cheap listings typically refill, so buy 
 
 Blocked on persistence — needs a history of listing refresh timestamps per item to find a pattern from.
 
-#### Currency-exchange flips
+#### Currency-exchange trades
 
 **Complexity:** Medium-High. **Value:** Medium.
 
@@ -137,4 +137,4 @@ Implementation notes: another buy-source case distinct from market listings and 
 
 If tracked items show a persistent (not one-off) price advantage in a Region none of the current Characters can reach, work out whether it'd be worth creating and provisioning a new Character there — rather than doing anything to an existing one — weighed against the setup cost (starting from scratch, gearing up a Retainer, no established gil).
 
-Implementation notes: an occasional/on-demand analysis rather than a live feature. Needs to compare the best flips reachable from existing Characters' Regions against what the same Tracked Items would fetch in an unreached Region, sustained over time rather than a single snapshot — which needs persisted history — before it's worth suggesting.
+Implementation notes: an occasional/on-demand analysis rather than a live feature. Needs to compare the best trades reachable from existing Characters' Regions against what the same Tracked Items would fetch in an unreached Region, sustained over time rather than a single snapshot — which needs persisted history — before it's worth suggesting.
