@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BULK_SALE_VELOCITY_BATCH_SIZE } from "../api/universalis";
 import { fetchItemNames } from "../api/xivapi";
+import { NumberInput } from "../components/NumberInput";
 import { ScannedItemsTable } from "../components/ScannedItemsTable";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
+import { useScannedItemProfits } from "../hooks/useScannedItemProfits";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
 import { withOneRetry } from "../utils/withOneRetry";
 
 /** How many of the highest-velocity results to display — scanning can surface thousands of traded items. */
 const DISPLAY_LIMIT = 200;
+
+/** How many of the top results get their profit priced once there's no scan running. */
+const PRICED_ITEM_LIMIT = 50;
+
+/** The expected profit per day an item has to beat, through any buying region, to be highlighted — until changed on the page. */
+const DEFAULT_HIGHLIGHT_PROFIT_PER_DAY = 500_000;
 
 /** How many items checked has to advance before the next name lookup — infrequent enough not to hammer XIVAPI over an ~17,000-item scan. */
 const NAME_LOOKUP_INTERVAL = 200;
@@ -74,6 +82,23 @@ export const HighVolumeItemsContainer = ({
       });
   }, [status, topItems, itemNames]);
 
+  // Only priced once the results have settled — a running scan keeps reshuffling its top items.
+  const hasSettledResults =
+    status.state === "done" || status.state === "previous";
+  const itemIdsToPrice = hasSettledResults
+    ? topItems.slice(0, PRICED_ITEM_LIMIT).map((item) => item.itemId)
+    : [];
+  const profits = useScannedItemProfits(
+    itemIdsToPrice,
+    itemNames,
+    config,
+    currentCharacter,
+  );
+
+  const [highlightProfitPerDay, setHighlightProfitPerDay] = useState<
+    number | undefined
+  >(DEFAULT_HIGHLIGHT_PROFIT_PER_DAY);
+
   const canStart = world !== "" && status.state !== "running";
 
   return (
@@ -117,9 +142,25 @@ export const HighVolumeItemsContainer = ({
         {status.state === "error" && (
           <span className="last-updated">Scan failed: {status.message}</span>
         )}
+        <label className="character-select">
+          Highlight profit / day over
+          <NumberInput
+            min={0}
+            placeholder="none"
+            value={highlightProfitPerDay}
+            onChange={setHighlightProfitPerDay}
+          />
+        </label>
       </div>
 
-      <ScannedItemsTable items={topItems} itemNames={itemNames} world={world} />
+      <ScannedItemsTable
+        items={topItems}
+        itemNames={itemNames}
+        profits={profits}
+        buyingRegions={config.buyingRegions}
+        highlightProfitPerDay={highlightProfitPerDay}
+        world={world}
+      />
 
       <footer>
         <p>
@@ -130,6 +171,13 @@ export const HighVolumeItemsContainer = ({
           the end. Click an item's name for a quick profit scan (opens in a new
           tab, so the scan here keeps going), or ↗ to view it on Universalis
           directly. Showing the top {DISPLAY_LIMIT} by total units sold per day.
+        </p>
+        <p>
+          Once no scan is running, the top {PRICED_ITEM_LIMIT} are priced once,
+          through each buying region, at whichever quality sells more per day.
+          Hover over a priced item's total per day to see its profit. Items
+          expected to make more than the highlight amount per day through any
+          buying region are highlighted.
         </p>
       </footer>
     </div>

@@ -139,6 +139,20 @@ describe("ProfitTableRow", () => {
 
       expect(itemCell.querySelector(".copy-tooltip")).toBeNull();
     });
+
+    it("should label an item priced as high quality", () => {
+      const { itemCell } = renderRow(
+        readyRow({}, { item: { ...item, hq: true } }),
+      );
+
+      expect(itemCell.querySelector(".quality-badge")?.textContent).toBe("HQ");
+    });
+
+    it("should not label an item priced as normal quality", () => {
+      const { itemCell } = renderRow(readyRow());
+
+      expect(itemCell.querySelector(".quality-badge")).toBeNull();
+    });
   });
 
   describe("warning about stale data", () => {

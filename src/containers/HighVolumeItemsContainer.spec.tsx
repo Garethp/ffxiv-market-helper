@@ -1,21 +1,36 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { StrictMode, useState } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScannedItem, ScanStatus } from "../hooks/useHighVolumeItemScan";
+import type { RowMarketData } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { TradingParameters } from "../types";
+import type { Character, TradingParameters } from "../types";
 
 vi.mock("../hooks/useHighVolumeItemScan");
 vi.mock("../api/xivapi", () => ({ fetchItemNames: vi.fn() }));
+vi.mock("../services/rowAnalysis", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../services/rowAnalysis")>();
+  return { ...actual, fetchRowMarketData: vi.fn() };
+});
 
 import { fetchItemNames } from "../api/xivapi";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
+import { fetchRowMarketData } from "../services/rowAnalysis";
 import { HighVolumeItemsContainer } from "./HighVolumeItemsContainer";
 
 const mockedUseHighVolumeItemScan = vi.mocked(useHighVolumeItemScan);
 const mockedFetchItemNames = vi.mocked(fetchItemNames);
+const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 type ScanState = ReturnType<typeof useHighVolumeItemScan>;
 
@@ -49,9 +64,188 @@ const statusAt = (scannedItems: number): ScanStatus => {
   };
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("HighVolumeItemsContainer", () => {
+  describe("pricing the top results", () => {
+    const alice: Character = {
+      name: "Alice",
+      homeWorld: "Raiden",
+      retainers: [],
+    };
+    const pricingConfig: TradingConfig = {
+      ...config,
+      buyingRegions: [{ region: "Europe", characters: [{ name: "Alice" }] }],
+    };
+    /** Item 52 sells fastest, down to item 1 selling slowest. */
+    const results: ScannedItem[] = Array.from({ length: 52 }, (_, i) => ({
+      itemId: i + 1,
+      nqSaleVelocity: i + 1,
+      hqSaleVelocity: 0,
+      totalSaleVelocity: i + 1,
+    }));
+    const fastestFifty = Array.from({ length: 50 }, (_, i) => 52 - i);
+    const pricedItemIds = () =>
+      mockedFetchRowMarketData.mock.calls.map(([itemId]) => itemId);
+
+    it("should price the 50 fastest-selling items once the scan finishes, and not while it's still running", async () => {
+      mockedFetchItemNames.mockResolvedValue(new Map());
+      mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
+      let setScanState!: (state: ScanState) => void;
+      mockedUseHighVolumeItemScan.mockImplementation(() => {
+        const [state, setState] = useState<ScanState>({
+          status: statusAt(500),
+          results,
+          startScan: vi.fn(),
+        });
+        setScanState = setState;
+        return state;
+      });
+
+      render(
+        <MemoryRouter>
+          <HighVolumeItemsContainer
+            config={pricingConfig}
+            currentCharacter={alice}
+          />
+        </MemoryRouter>,
+      );
+      expect(mockedFetchRowMarketData).not.toHaveBeenCalled();
+
+      await act(async () => {
+        setScanState({
+          status: {
+            state: "done",
+            scannedItems: 1000,
+            totalItems: 1000,
+            failedBatchCount: 0,
+          },
+          results,
+          startScan: vi.fn(),
+        });
+      });
+
+      expect(pricedItemIds()).toEqual(fastestFifty);
+    });
+
+    it("should price a previous scan's fastest-selling items straight away", async () => {
+      mockedFetchItemNames.mockResolvedValue(new Map());
+      mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
+      mockedUseHighVolumeItemScan.mockReturnValue({
+        status: { state: "previous", completedAt: Date.now() },
+        results,
+        startScan: vi.fn(),
+      });
+
+      render(
+        <MemoryRouter>
+          <HighVolumeItemsContainer
+            config={pricingConfig}
+            currentCharacter={alice}
+          />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => expect(pricedItemIds()).toEqual(fastestFifty));
+    });
+  });
+
+  describe("highlighting profitable items", () => {
+    const alice: Character = {
+      name: "Alice",
+      homeWorld: "Raiden",
+      retainers: [],
+    };
+    const pricingConfig: TradingConfig = {
+      ...config,
+      params: {
+        ...config.params,
+        buyTaxRate: 0,
+        defaultSellTaxRate: 0,
+        gapThresholdMultiplier: 1.1,
+        saleSampleSize: 3,
+        undercutListingThreshold: 5,
+      },
+      buyingRegions: [{ region: "Europe", characters: [{ name: "Alice" }] }],
+    };
+    /** Sells 10 a day at 100,000 and can be bought at 40,000 — 600,000 profit a day. */
+    const marketData: RowMarketData = {
+      sell: {
+        itemID: 1,
+        listings: [],
+        recentHistory: [1, 2, 3].map(() => ({
+          pricePerUnit: 100_000,
+          quantity: 1,
+          timestamp: 0,
+          hq: false,
+        })),
+        nqSaleVelocity: 10,
+        hqSaleVelocity: 0,
+      },
+      sellTaxRates: {},
+      buy: [
+        {
+          dataCenter: "Light",
+          data: {
+            itemID: 1,
+            listings: [
+              {
+                pricePerUnit: 40_000,
+                quantity: 100,
+                hq: false,
+                retainerName: "Someone Else",
+              },
+            ],
+            recentHistory: [],
+            nqSaleVelocity: 0,
+            hqSaleVelocity: 0,
+          },
+        },
+      ],
+    };
+
+    it("should highlight items expected to make more than 500,000 a day until the highlight amount is changed", async () => {
+      mockedFetchItemNames.mockResolvedValue(new Map());
+      mockedFetchRowMarketData.mockResolvedValue(marketData);
+      mockedUseHighVolumeItemScan.mockReturnValue({
+        status: { state: "previous", completedAt: Date.now() },
+        results: [
+          {
+            itemId: 1,
+            nqSaleVelocity: 10,
+            hqSaleVelocity: 0,
+            totalSaleVelocity: 10,
+          },
+        ],
+        startScan: vi.fn(),
+      });
+
+      const { container } = render(
+        <MemoryRouter>
+          <HighVolumeItemsContainer
+            config={pricingConfig}
+            currentCharacter={alice}
+          />
+        </MemoryRouter>,
+      );
+      const itemRow = () =>
+        container.querySelector("table")!.querySelector(":scope > tbody > tr")!;
+
+      await waitFor(() =>
+        expect(itemRow().classList.contains("row-highlight")).toBe(true),
+      );
+
+      fireEvent.change(screen.getByLabelText("Highlight profit / day over"), {
+        target: { value: "700k" },
+      });
+
+      expect(itemRow().classList.contains("row-highlight")).toBe(false);
+    });
+  });
+
   it("should not lose an item name that finishes loading after newer scan results have already arrived", async () => {
     const item: ScannedItem = {
       itemId: 1,

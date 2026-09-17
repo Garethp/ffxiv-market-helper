@@ -63,6 +63,11 @@ export const ProfitTableRow = ({
           📋
           {isCopied ? <span className="copy-tooltip">Copied!</span> : null}
         </button>
+        {item.hq ? (
+          <span className="quality-badge" title="Priced as high quality">
+            HQ
+          </span>
+        ) : null}
         {pricing?.gapDetected ? (
           <span
             className="gap-badge"

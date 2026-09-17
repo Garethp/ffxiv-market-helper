@@ -154,7 +154,7 @@ header h1 {
 }
 
 .character-select select,
-.character-select input[type="number"] {
+.character-select .number-input {
   background: #1c1f27;
   color: #e8e8e8;
   border: 1px solid #2a2d36;
@@ -218,6 +218,10 @@ header h1 {
   background: rgba(255, 193, 7, 0.08);
 }
 
+.row-highlight {
+  background: rgba(76, 175, 80, 0.15);
+}
+
 .row-refreshing {
   animation: pulse 1.2s ease-in-out infinite;
 }
@@ -241,6 +245,17 @@ header h1 {
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.quality-badge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   vertical-align: middle;
   user-select: none;
 }
@@ -303,6 +318,57 @@ header h1 {
 .undercut-tooltip td {
   padding: 0.1rem 0.5rem;
   text-align: right;
+}
+
+.profit-tooltip-anchor {
+  position: relative;
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+/* Opens to the left of the value rather than below it, so it never covers the totals further down
+   the column — moving the pointer down to the next item's total isn't blocked by this one's
+   tooltip. Starts flush against the value, with the gap as padding instead, so the pointer can
+   move from the value into the tooltip (e.g. to follow a link) without the tooltip closing. */
+.profit-tooltip {
+  display: block;
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 2;
+  top: -0.75rem;
+  right: 100%;
+  padding-right: 0.75rem;
+  width: max-content;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: opacity 0.12s ease-in-out;
+}
+
+.profit-tooltip-anchor:hover .profit-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.profit-tooltip-content {
+  display: block;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  background: #1c1f27;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.profit-tooltip .character-section {
+  margin-bottom: 1rem;
+}
+
+.profit-tooltip .character-section:last-child {
+  margin-bottom: 0;
+}
+
+.profit-tooltip .character-section h2 {
+  margin-top: 0;
+  font-size: 0.95rem;
 }
 
 .copy-name-button {

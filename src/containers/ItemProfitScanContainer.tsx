@@ -1,5 +1,6 @@
 import { Navigate, useParams } from "react-router-dom";
-import { ProfitTable } from "../components/ProfitTable";
+import { BuyingRegionSection } from "../components/BuyingRegionSection";
+import { NumberInput } from "../components/NumberInput";
 import { useItemProfitScan } from "../hooks/useItemProfitScan";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
@@ -54,43 +55,31 @@ const ItemProfitScan = ({
         </label>
         <label className="character-select">
           Target qty
-          <input
-            type="number"
+          <NumberInput
             min={1}
             value={targetQuantity}
-            onChange={(e) =>
-              setTargetQuantity(Math.max(1, Number(e.target.value) || 1))
-            }
+            onChange={(value) => setTargetQuantity(value ?? 1)}
           />
         </label>
         <label className="character-select">
           Sell ceiling
-          <input
-            type="number"
+          <NumberInput
             min={0}
             placeholder="none"
-            value={sellPriceCeiling ?? ""}
-            onChange={(e) =>
-              setSellPriceCeiling(
-                e.target.value === "" ? undefined : Number(e.target.value),
-              )
-            }
+            value={sellPriceCeiling}
+            onChange={setSellPriceCeiling}
           />
         </label>
       </div>
 
       {buyingRegions.map((buyingRegion) => (
-        <section key={buyingRegion.region} className="character-section">
-          <h2>
-            Buying via {buyingRegion.characters.map((c) => c.name).join(", ")} (
-            {buyingRegion.region})
-          </h2>
-          <ProfitTable
-            rows={rowsByRegion[buyingRegion.region] ?? []}
-            staleWarningThresholdMs={0}
-            sellWorld={sellWorld}
-          />
-        </section>
+        <BuyingRegionSection
+          key={buyingRegion.region}
+          buyingRegion={buyingRegion}
+          rows={rowsByRegion[buyingRegion.region] ?? []}
+          staleWarningThresholdMs={0}
+          sellWorld={sellWorld}
+        />
       ))}
     </div>
   );

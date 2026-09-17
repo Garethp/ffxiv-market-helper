@@ -1,4 +1,4 @@
-import { ProfitTable } from "../components/ProfitTable";
+import { BuyingRegionSection } from "../components/BuyingRegionSection";
 import { useTrackedItemsAnalysis } from "../hooks/useTrackedItemsAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
@@ -37,24 +37,13 @@ export const TrackedItemsContainer = ({
       </div>
 
       {buyingRegions.map((buyingRegion) => (
-        <section key={buyingRegion.region} className="character-section">
-          <h2>
-            Buying via {buyingRegion.characters.map((c) => c.name).join(", ")} (
-            {buyingRegion.region})
-          </h2>
-          {buyingRegion.characters.map((character) =>
-            character.note ? (
-              <p key={character.name} className="character-note">
-                {character.name}: {character.note}
-              </p>
-            ) : null,
-          )}
-          <ProfitTable
-            rows={rowsByRegion[buyingRegion.region] ?? []}
-            staleWarningThresholdMs={params.staleWarningThresholdMs}
-            sellWorld={sellWorld}
-          />
-        </section>
+        <BuyingRegionSection
+          key={buyingRegion.region}
+          buyingRegion={buyingRegion}
+          rows={rowsByRegion[buyingRegion.region] ?? []}
+          staleWarningThresholdMs={params.staleWarningThresholdMs}
+          sellWorld={sellWorld}
+        />
       ))}
 
       <footer>

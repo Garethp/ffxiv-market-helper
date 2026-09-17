@@ -29,6 +29,9 @@ export type FetchOutcome =
   | { success: true; analysis: RowAnalysis }
   | { success: false; message: string };
 
+/** The target quantity assumed when pricing an item that isn't tracked, and so has no target quantity of its own. */
+export const UNTRACKED_ITEM_TARGET_QUANTITY = 99;
+
 export const pendingRow = (item: TrackedItem): ProfitRow => {
   return {
     item,

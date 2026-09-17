@@ -4,6 +4,7 @@ import {
   analyzeRow,
   fetchRowMarketData,
   pendingRow,
+  UNTRACKED_ITEM_TARGET_QUANTITY,
   type RowMarketData,
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
@@ -41,7 +42,9 @@ export const useItemProfitScan = (
 ) => {
   const [itemName, setItemName] = useState<string | null>(null);
   const [hq, setHq] = useState(false);
-  const [targetQuantity, setTargetQuantity] = useState(99);
+  const [targetQuantity, setTargetQuantity] = useState(
+    UNTRACKED_ITEM_TARGET_QUANTITY,
+  );
   const [sellPriceCeiling, setSellPriceCeiling] = useState<number | undefined>(
     undefined,
   );
