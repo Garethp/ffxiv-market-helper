@@ -294,7 +294,11 @@ describe("fetching a row's market data", () => {
     { name: "Japan", dataCenters: [{ name: "Elemental", worlds: ["WorldJ"] }] },
   ];
 
-  const fetchRow = (client: QueryClient, region = "Europe") =>
+  const fetchRow = (
+    client: QueryClient,
+    region = "Europe",
+    signal?: AbortSignal,
+  ) =>
     fetchRowMarketData(
       client,
       item.itemId,
@@ -302,7 +306,24 @@ describe("fetching a row's market data", () => {
       sellingCharacter,
       twoRegionDirectory,
       params,
+      signal,
     );
+
+  /** Makes every request hang, and returns each one's cancellation signal by what it's for. */
+  const hangingRequests = () => {
+    const signals: Record<string, AbortSignal> = {};
+    mockedFetchMarketData.mockImplementation(
+      (worldOrDataCenter, _, options) => {
+        signals[worldOrDataCenter] = options.signal!;
+        return new Promise(() => {});
+      },
+    );
+    mockedFetchTaxRates.mockImplementation((_, options) => {
+      signals.taxRates = options!.signal!;
+      return new Promise(() => {});
+    });
+    return signals;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -359,5 +380,43 @@ describe("fetching a row's market data", () => {
     await fetchRow(client);
 
     expect(mockedFetchTaxRates).toHaveBeenCalledTimes(2);
+  });
+
+  describe("when a row stops waiting for its data", () => {
+    it("should stop waiting straight away, cancelling its requests", async () => {
+      const signals = hangingRequests();
+      const controller = new AbortController();
+      const row = fetchRow(createQueryClient(), "Europe", controller.signal);
+      await vi.waitFor(() => expect(Object.keys(signals)).toHaveLength(3));
+
+      controller.abort(new Error("Page closed"));
+
+      await expect(row).rejects.toThrow("Page closed");
+      await vi.waitFor(() =>
+        expect(signals).toMatchObject({
+          WorldA: { aborted: true },
+          taxRates: { aborted: true },
+          Light: { aborted: true },
+        }),
+      );
+    });
+
+    it("should keep requests going that another row is still waiting on", async () => {
+      const signals = hangingRequests();
+      const client = createQueryClient();
+      const controller = new AbortController();
+      fetchRow(client, "Europe", controller.signal).catch(() => {});
+      fetchRow(client, "Japan");
+      await vi.waitFor(() => expect(Object.keys(signals)).toHaveLength(4));
+
+      controller.abort();
+
+      await vi.waitFor(() => expect(signals.Light.aborted).toBe(true));
+      expect(signals).toMatchObject({
+        WorldA: { aborted: false },
+        taxRates: { aborted: false },
+        Elemental: { aborted: false },
+      });
+    });
   });
 });

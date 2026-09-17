@@ -1,4 +1,9 @@
-import type { QueryClient } from "@tanstack/react-query";
+import {
+  QueryObserver,
+  queryOptions,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import {
   fetchMarketData,
   fetchTaxRates,
@@ -54,11 +59,53 @@ export interface RowMarketData {
  */
 const UNIVERSALIS_REUSE_MS = 30_000;
 
+/** Settles the way `promise` does, unless the signal is aborted first, in which case it rejects with the abort reason straight away. */
+const unlessAborted = <T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> =>
+  new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
+    const onAbort = () => reject(signal?.reason);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    promise
+      .then(resolve, reject)
+      .finally(() => signal?.removeEventListener("abort", onAbort));
+  });
+
+/**
+ * Fetches a Universalis response through the query cache, reusing it while
+ * it's fresh and sharing a request that's already in flight with every row
+ * that wants the same data. Aborting `signal` stops this row waiting on it,
+ * and cancels the request once no other row is waiting on it either.
+ */
+const fetchShared = async <T>(
+  client: QueryClient,
+  queryKey: QueryKey,
+  request: (signal: AbortSignal) => Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> => {
+  const options = queryOptions({
+    queryKey,
+    queryFn: ({ signal: requestSignal }) => request(requestSignal),
+    staleTime: UNIVERSALIS_REUSE_MS,
+  });
+  // TanStack Query cancels a request once nothing is observing it, so each row observes the
+  // request for as long as it's waiting on it.
+  const stopObserving = new QueryObserver(client, options).subscribe(() => {});
+  try {
+    return await unlessAborted(client.fetchQuery(options), signal);
+  } finally {
+    stopObserving();
+  }
+};
+
 /**
  * Fetches the market data for a single item bought via a single region and
  * sold through the given character. What's fetched doesn't depend on the
  * item's quality, target quantity or sell price ceiling — those only affect
- * how it's analyzed.
+ * how it's analyzed. Aborting `signal` cancels whichever of its requests no
+ * other row is waiting on.
  */
 export const fetchRowMarketData = async (
   client: QueryClient,
@@ -67,16 +114,22 @@ export const fetchRowMarketData = async (
   sellingCharacter: Character,
   regions: RegionInfo[],
   params: TradingParameters,
+  signal?: AbortSignal,
 ): Promise<RowMarketData> => {
   const marketData = (
     worldOrDataCenter: string,
-    options: Parameters<typeof fetchMarketData>[2],
+    options: { listings: number; entries: number; statsWithinMs?: number },
   ) =>
-    client.fetchQuery({
-      queryKey: ["marketData", worldOrDataCenter, itemId, options],
-      queryFn: () => fetchMarketData(worldOrDataCenter, itemId, options),
-      staleTime: UNIVERSALIS_REUSE_MS,
-    });
+    fetchShared(
+      client,
+      ["marketData", worldOrDataCenter, itemId, options],
+      (requestSignal) =>
+        fetchMarketData(worldOrDataCenter, itemId, {
+          ...options,
+          signal: requestSignal,
+        }),
+      signal,
+    );
 
   const sellWorld = sellingCharacter.homeWorld;
   const [sell, sellTaxRates, buy] = await Promise.all([
@@ -85,11 +138,12 @@ export const fetchRowMarketData = async (
       entries: params.sellHistoryFetchCount,
       statsWithinMs: params.saleVelocityWindowMs,
     }),
-    client.fetchQuery({
-      queryKey: ["taxRates", sellWorld],
-      queryFn: () => fetchTaxRates(sellWorld),
-      staleTime: UNIVERSALIS_REUSE_MS,
-    }),
+    fetchShared(
+      client,
+      ["taxRates", sellWorld],
+      (requestSignal) => fetchTaxRates(sellWorld, { signal: requestSignal }),
+      signal,
+    ),
     Promise.all(
       findDataCentersForRegion(region, regions).map(async (dataCenter) => ({
         dataCenter,

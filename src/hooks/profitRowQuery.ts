@@ -24,8 +24,10 @@ export const rowMarketDataQuery = (
   queryOptions({
     // Only the sell world decides what's fetched, and config never changes once loaded.
     queryKey: ["rowMarketData", itemId, region, sellingCharacter?.homeWorld],
+    // Reading the signal is what makes TanStack Query cancel the fetch once nothing wants the
+    // row any more, e.g. its page closed or the character selling it changed.
     queryFn: sellingCharacter
-      ? ({ client }) =>
+      ? ({ client, signal }) =>
           fetchRowMarketData(
             client,
             itemId,
@@ -33,6 +35,7 @@ export const rowMarketDataQuery = (
             sellingCharacter,
             config.regions,
             config.params,
+            signal,
           )
       : skipToken,
   });

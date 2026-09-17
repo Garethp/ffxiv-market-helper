@@ -59,14 +59,19 @@ export interface UniversalisMarketData {
 export const fetchMarketData = async (
   worldOrDataCenter: string,
   itemId: number,
-  options: { listings: number; entries: number; statsWithinMs?: number },
+  options: {
+    listings: number;
+    entries: number;
+    statsWithinMs?: number;
+    signal?: AbortSignal;
+  },
 ): Promise<UniversalisMarketData> => {
-  const { listings, entries, statsWithinMs } = options;
+  const { listings, entries, statsWithinMs, signal } = options;
   const statsWithinParam =
     statsWithinMs !== undefined ? `&statsWithin=${statsWithinMs}` : "";
   const url = `${BASE_URL}/${encodeURIComponent(worldOrDataCenter)}/${itemId}?listings=${listings}&entries=${entries}${statsWithinParam}`;
 
-  const response = await client.fetch(url);
+  const response = await client.fetch(url, { signal });
   if (!response.ok) {
     throw new Error(
       `Universalis request failed (${response.status}) for item ${itemId} on ${worldOrDataCenter}`,
@@ -80,10 +85,13 @@ export const fetchMarketData = async (
 export type TaxRatesByCity = Record<string, number>;
 
 /** Fetches current retainer tax rates per market board city for a given world. */
-export const fetchTaxRates = async (world: string): Promise<TaxRatesByCity> => {
+export const fetchTaxRates = async (
+  world: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<TaxRatesByCity> => {
   const url = `${BASE_URL}/tax-rates?world=${encodeURIComponent(world)}`;
 
-  const response = await client.fetch(url);
+  const response = await client.fetch(url, { signal: options.signal });
   if (!response.ok) {
     throw new Error(
       `Universalis tax-rates request failed (${response.status}) for world ${world}`,

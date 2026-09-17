@@ -238,6 +238,77 @@ describe("useScannedItemProfits", () => {
     });
   });
 
+  describe("abandoning pricing that's still under way", () => {
+    /** The cancellation signal each fetch so far was given. */
+    const fetchSignals = () =>
+      mockedFetchRowMarketData.mock.calls.map((call) => call[6]!);
+
+    beforeEach(() => {
+      mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
+    });
+
+    it("should cancel fetches for items that are no longer being priced", async () => {
+      const { rerender } = renderHook(
+        ({ itemIds }) => useScannedItemProfits(itemIds, {}, config, alice),
+        { initialProps: { itemIds: [1, 2] }, wrapper: withQueryClient() },
+      );
+      await waitFor(() =>
+        expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4),
+      );
+
+      rerender({ itemIds: [2] });
+
+      await waitFor(() =>
+        expect(fetchSignals().map((signal) => signal.aborted)).toEqual([
+          true,
+          true,
+          false,
+          false,
+        ]),
+      );
+    });
+
+    it("should cancel fetches for the previous character when a new one is selected", async () => {
+      const itemIds = [1];
+      const { rerender } = renderHook(
+        ({ character }) =>
+          useScannedItemProfits(itemIds, {}, config, character),
+        { initialProps: { character: alice }, wrapper: withQueryClient() },
+      );
+      await waitFor(() =>
+        expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
+      );
+
+      rerender({ character: bob });
+
+      await waitFor(() =>
+        expect(fetchSignals().map((signal) => signal.aborted)).toEqual([
+          true,
+          true,
+          false,
+          false,
+        ]),
+      );
+    });
+
+    it("should cancel its fetches when the page is closed", async () => {
+      const itemIds = [1];
+      const { unmount } = renderHook(
+        () => useScannedItemProfits(itemIds, {}, config, alice),
+        { wrapper: withQueryClient() },
+      );
+      await waitFor(() =>
+        expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
+      );
+
+      unmount();
+
+      await waitFor(() =>
+        expect(fetchSignals().every((signal) => signal.aborted)).toBe(true),
+      );
+    });
+  });
+
   describe("when the same items are given again", () => {
     it("should not fetch them again", async () => {
       const { result, rerender } = renderHook(
