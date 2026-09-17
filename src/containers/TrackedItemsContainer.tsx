@@ -15,8 +15,6 @@ export const TrackedItemsContainer = ({
     currentCharacter,
   );
 
-  console.log(config);
-
   const { buyingRegions, params } = config;
   const sellWorld = currentCharacter?.homeWorld ?? "";
 
