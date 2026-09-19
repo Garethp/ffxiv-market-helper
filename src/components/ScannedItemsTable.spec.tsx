@@ -14,6 +14,7 @@ afterEach(cleanup);
 
 const scannedItem = (overrides: Partial<ScannedItem> = {}): ScannedItem => ({
   itemId: 1,
+  name: null,
   nqSaleVelocity: 10,
   hqSaleVelocity: 5,
   totalSaleVelocity: 15,
@@ -30,7 +31,6 @@ const buyingRegions: BuyingRegion[] = [
 
 const renderTable = (
   items: ScannedItem[],
-  itemNames: Record<number, string> = {},
   world = "Raiden",
   profits: Record<number, ScannedItemProfit> = {},
   highlightProfitPerDay?: number,
@@ -39,7 +39,6 @@ const renderTable = (
     <MemoryRouter>
       <ScannedItemsTable
         items={items}
-        itemNames={itemNames}
         profits={profits}
         buyingRegions={buyingRegions}
         highlightProfitPerDay={highlightProfitPerDay}
@@ -132,14 +131,11 @@ describe("ScannedItemsTable", () => {
     });
 
     it("should list items in the order given", () => {
-      const { container } = renderTable(
-        [
-          scannedItem({ itemId: 3 }),
-          scannedItem({ itemId: 1 }),
-          scannedItem({ itemId: 2 }),
-        ],
-        { 1: "Wind Cluster", 2: "Caramel Popcorn", 3: "Grade 8 Dark Matter" },
-      );
+      const { container } = renderTable([
+        scannedItem({ itemId: 3, name: "Grade 8 Dark Matter" }),
+        scannedItem({ itemId: 1, name: "Wind Cluster" }),
+        scannedItem({ itemId: 2, name: "Caramel Popcorn" }),
+      ]);
 
       expect(
         bodyRows(container).map(
@@ -157,13 +153,13 @@ describe("ScannedItemsTable", () => {
 
   describe("naming items", () => {
     it("should show the item's name when it's known", () => {
-      renderTable([scannedItem({ itemId: 42 })], { 42: "Grade 8 Dark Matter" });
+      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
 
       expect(screen.queryByText("Grade 8 Dark Matter")).not.toBeNull();
     });
 
-    it("should fall back to the item ID when its name isn't known yet", () => {
-      renderTable([scannedItem({ itemId: 42 })], {});
+    it("should fall back to the item ID when its name isn't known", () => {
+      renderTable([scannedItem({ itemId: 42, name: null })]);
 
       expect(screen.queryByText("#42")).not.toBeNull();
     });
@@ -171,7 +167,7 @@ describe("ScannedItemsTable", () => {
 
   describe("linking out", () => {
     it("should link the item's name to its profit scan, opening in a new tab without exposing this page", () => {
-      renderTable([scannedItem({ itemId: 42 })], { 42: "Grade 8 Dark Matter" });
+      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
 
       const link = screen.getByText("Grade 8 Dark Matter").closest("a");
       expect(link?.getAttribute("href")).toBe("/item/42");
@@ -180,7 +176,7 @@ describe("ScannedItemsTable", () => {
     });
 
     it("should explain what the item's own link opens", () => {
-      renderTable([scannedItem({ itemId: 42 })], { 42: "Grade 8 Dark Matter" });
+      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
 
       expect(
         descriptionOf(
@@ -192,7 +188,7 @@ describe("ScannedItemsTable", () => {
     });
 
     it("should link to the item's Universalis market page for the selected world, opening in a new tab without exposing this page", () => {
-      renderTable([scannedItem({ itemId: 42 })], {}, "Raiden");
+      renderTable([scannedItem({ itemId: 42 })], "Raiden");
 
       const link = screen.getByRole("link", { name: "View on Universalis" });
       expect(link.getAttribute("href")).toBe(buildMarketPageUrl(42, "Raiden"));
@@ -224,7 +220,6 @@ describe("ScannedItemsTable", () => {
     it("should keep showing a priced item's sale velocity", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1, totalSaleVelocity: 1234 })],
-        {},
         "Raiden",
         { 1: pricedProfit() },
       );
@@ -237,7 +232,6 @@ describe("ScannedItemsTable", () => {
     it("should show a priced item's profit through each buying region in a tooltip on its total per day", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         { 1: pricedProfit() },
       );
@@ -257,7 +251,6 @@ describe("ScannedItemsTable", () => {
     it("should warn about a buying region whose fetch failed", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         { 1: pricedProfit({ Europe: pricedRow("Chaos"), Japan: failedRow }) },
       );
@@ -270,7 +263,6 @@ describe("ScannedItemsTable", () => {
     it("should link the profit tables' sell prices to the selected world's market page", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         { 1: pricedProfit() },
       );
@@ -286,7 +278,6 @@ describe("ScannedItemsTable", () => {
     it("should mark an item's total per day while it's being priced, without a tooltip yet", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         {
           1: { status: "loading" },
@@ -314,7 +305,6 @@ describe("ScannedItemsTable", () => {
     it("should highlight an item expected to make more than the highlight amount per day through any buying region", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 }), scannedItem({ itemId: 2 })],
-        {},
         "Raiden",
         {
           1: pricedProfit({
@@ -335,7 +325,6 @@ describe("ScannedItemsTable", () => {
     it("should not highlight an item expected to make exactly the highlight amount per day", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         { 1: pricedProfit({ Europe: pricedRow("Chaos", 500_000) }) },
         500_000,
@@ -347,7 +336,6 @@ describe("ScannedItemsTable", () => {
     it("should not highlight an item with no expected profit through any buying region", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         {
           1: pricedProfit({
@@ -364,7 +352,6 @@ describe("ScannedItemsTable", () => {
     it("should not highlight an item that's still being priced or isn't priced", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 }), scannedItem({ itemId: 2 })],
-        {},
         "Raiden",
         { 1: { status: "loading" } },
         0,
@@ -376,7 +363,6 @@ describe("ScannedItemsTable", () => {
     it("should highlight nothing when there's no highlight amount", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
-        {},
         "Raiden",
         { 1: pricedProfit({ Europe: pricedRow("Chaos", 600_000) }) },
         undefined,

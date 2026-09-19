@@ -46,16 +46,15 @@ const untrackedItem = (
  * of items, without refreshing afterward.
  */
 export const useScannedItemProfits = (
-  itemIds: number[],
-  itemNames: Record<number, string>,
+  items: { itemId: number; name: string | null }[],
   config: TradingConfig,
   currentCharacter: Character | null,
 ): Record<number, ScannedItemProfit> => {
   const { buyingRegions } = config;
   // Keyed on which items there are, not on the array holding them, so a caller building a fresh
   // array with the same items each render doesn't make every profit get worked out again.
-  const itemIdsKey = itemIds.join(",");
-  const pricedItemIds = useMemo(() => itemIds, [itemIdsKey]);
+  const itemIdsKey = items.map((item) => item.itemId).join(",");
+  const pricedItems = useMemo(() => items, [itemIdsKey]);
 
   // Only reruns when a query's result or one of its own inputs changes, and its result keeps the
   // same identity while nothing in it has changed — so a memoized table showing it doesn't
@@ -65,7 +64,7 @@ export const useScannedItemProfits = (
       const profits: Record<number, ScannedItemProfit> = {};
       if (!currentCharacter) return profits;
 
-      pricedItemIds.forEach((itemId, i) => {
+      pricedItems.forEach(({ itemId, name }, i) => {
         const regionQueries = queries.slice(
           i * buyingRegions.length,
           (i + 1) * buyingRegions.length,
@@ -80,11 +79,7 @@ export const useScannedItemProfits = (
         )?.data;
         if (!loaded) return;
 
-        const item = untrackedItem(
-          itemId,
-          itemNames[itemId] ?? `#${itemId}`,
-          loaded,
-        );
+        const item = untrackedItem(itemId, name ?? `#${itemId}`, loaded);
         profits[itemId] = {
           status: "ready",
           rowByRegion: Object.fromEntries(
@@ -97,12 +92,12 @@ export const useScannedItemProfits = (
       });
       return profits;
     },
-    [pricedItemIds, itemNames, config, buyingRegions, currentCharacter],
+    [pricedItems, config, buyingRegions, currentCharacter],
   );
 
   return useQueries({
     queries: currentCharacter
-      ? pricedItemIds.flatMap((itemId) =>
+      ? pricedItems.flatMap(({ itemId }) =>
           buyingRegions.map(({ region }) =>
             rowMarketDataQuery(itemId, region, currentCharacter, config),
           ),

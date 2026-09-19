@@ -8,21 +8,22 @@ import type {
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, TradingParameters } from "../types";
 
-vi.mock("../services/expertDelivery", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../services/expertDelivery")>()),
-  listExpertDeliveryItems: vi.fn(),
+vi.mock("../services/itemService", () => ({
+  itemService: { getExpertDeliveryItems: vi.fn() },
 }));
 vi.mock("../hooks/useExpertDeliveryPrices", () => ({
   useExpertDeliveryPrices: vi.fn(),
 }));
 
 import { useExpertDeliveryPrices } from "../hooks/useExpertDeliveryPrices";
-import { listExpertDeliveryItems } from "../services/expertDelivery";
+import { itemService } from "../services/itemService";
 import { columnHeaderNames } from "../testing/columnHeaderNames";
 import { withQueryClient } from "../testing/withQueryClient";
 import { ExpertDeliveryContainer } from "./ExpertDeliveryContainer";
 
-const mockedListExpertDeliveryItems = vi.mocked(listExpertDeliveryItems);
+const mockedGetExpertDeliveryItems = vi.mocked(
+  itemService.getExpertDeliveryItems,
+);
 const mockedUseExpertDeliveryPrices = vi.mocked(useExpertDeliveryPrices);
 
 const alice: Character = {
@@ -98,18 +99,16 @@ afterEach(() => {
 describe("ExpertDeliveryContainer", () => {
   describe("the items", () => {
     it("should list only items worth at least 150 seals", async () => {
-      mockedListExpertDeliveryItems.mockResolvedValue([]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([]);
 
       renderPage();
 
       await screen.findByRole("table");
-      expect(mockedListExpertDeliveryItems).toHaveBeenCalledExactlyOnceWith(
-        150,
-      );
+      expect(mockedGetExpertDeliveryItems).toHaveBeenCalledExactlyOnceWith(150);
     });
 
     it("should say the items are loading until they've been fetched", () => {
-      mockedListExpertDeliveryItems.mockReturnValue(new Promise(() => {}));
+      mockedGetExpertDeliveryItems.mockReturnValue(new Promise(() => {}));
 
       renderPage();
 
@@ -118,7 +117,7 @@ describe("ExpertDeliveryContainer", () => {
     });
 
     it("should say why the items couldn't be fetched", async () => {
-      mockedListExpertDeliveryItems.mockRejectedValue(
+      mockedGetExpertDeliveryItems.mockRejectedValue(
         new Error("XIVAPI is down"),
       );
 
@@ -131,7 +130,7 @@ describe("ExpertDeliveryContainer", () => {
 
   describe("pricing", () => {
     it("should price the items in the order they're listed, across the selected character's region", async () => {
-      mockedListExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
 
       renderPage();
 
@@ -144,7 +143,7 @@ describe("ExpertDeliveryContainer", () => {
     });
 
     it("should say there's nowhere to price items, and price none, when the selected character's world isn't in a known region", async () => {
-      mockedListExpertDeliveryItems.mockResolvedValue([cuirass]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
 
       renderPage({ ...alice, homeWorld: "Nowhere" });
 
@@ -156,7 +155,7 @@ describe("ExpertDeliveryContainer", () => {
       expect(screen.queryByRole("table")).toBeNull();
       // Nothing on the page changes once the items have loaded, so give them time to.
       await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
-      expect(mockedListExpertDeliveryItems).toHaveBeenCalled();
+      expect(mockedGetExpertDeliveryItems).toHaveBeenCalled();
       expect(
         mockedUseExpertDeliveryPrices.mock.calls.map(([itemIds]) => itemIds),
       ).not.toContainEqual([8455]);
@@ -165,7 +164,7 @@ describe("ExpertDeliveryContainer", () => {
 
   describe("the table", () => {
     it("should show each item's seals, and its cheapest listing once priced", async () => {
-      mockedListExpertDeliveryItems.mockResolvedValue([cuirass]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
       pricesGiven({
         8455: {
           status: "listed",
@@ -199,7 +198,7 @@ describe("ExpertDeliveryContainer", () => {
     });
 
     it("should show an unknown data center for a world that isn't in the directory", async () => {
-      mockedListExpertDeliveryItems.mockResolvedValue([cuirass]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
       pricesGiven({
         8455: {
           status: "listed",
@@ -220,7 +219,7 @@ describe("ExpertDeliveryContainer", () => {
     ])(
       "should say so in place of a price when pricing has given %o",
       async (price, text) => {
-        mockedListExpertDeliveryItems.mockResolvedValue([cuirass]);
+        mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
         pricesGiven(price ? { 8455: price } : {});
 
         renderPage();
@@ -239,7 +238,7 @@ describe("ExpertDeliveryContainer", () => {
         itemLevel: 100,
         seals: 600,
       };
-      mockedListExpertDeliveryItems.mockResolvedValue([cuirass, shield, sword]);
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, shield, sword]);
       pricesGiven({
         8455: {
           status: "listed",

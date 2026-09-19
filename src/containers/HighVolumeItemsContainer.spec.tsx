@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { StrictMode, useState } from "react";
+import { useState } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ScannedItem, ScanStatus } from "../hooks/useHighVolumeItemScan";
@@ -16,21 +16,18 @@ import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, TradingParameters } from "../types";
 
 vi.mock("../hooks/useHighVolumeItemScan");
-vi.mock("../api/xivapi", () => ({ fetchItemNames: vi.fn() }));
 vi.mock("../services/rowAnalysis", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../services/rowAnalysis")>();
   return { ...actual, fetchRowMarketData: vi.fn() };
 });
 
-import { fetchItemNames } from "../api/xivapi";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
 import { fetchRowMarketData } from "../services/rowAnalysis";
 import { withQueryClient } from "../testing/withQueryClient";
 import { HighVolumeItemsContainer } from "./HighVolumeItemsContainer";
 
 const mockedUseHighVolumeItemScan = vi.mocked(useHighVolumeItemScan);
-const mockedFetchItemNames = vi.mocked(fetchItemNames);
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 type ScanState = ReturnType<typeof useHighVolumeItemScan>;
@@ -46,15 +43,6 @@ const config: TradingConfig = {
   marketBoardCities: [],
   buyingRegions: [],
   ownRetainers: [],
-};
-
-/** A promise whose resolution is controlled from outside. */
-const deferred = <T,>() => {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
 };
 
 const statusAt = (scannedItems: number): ScanStatus => {
@@ -87,6 +75,7 @@ describe("HighVolumeItemsContainer", () => {
     /** Item 52 sells fastest, down to item 1 selling slowest. */
     const results: ScannedItem[] = Array.from({ length: 52 }, (_, i) => ({
       itemId: i + 1,
+      name: null,
       nqSaleVelocity: i + 1,
       hqSaleVelocity: 0,
       totalSaleVelocity: i + 1,
@@ -96,7 +85,6 @@ describe("HighVolumeItemsContainer", () => {
       mockedFetchRowMarketData.mock.calls.map(([, itemId]) => itemId);
 
     it("should price the 50 fastest-selling items once the scan finishes, and not while it's still running", async () => {
-      mockedFetchItemNames.mockResolvedValue(new Map());
       mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
       let setScanState!: (state: ScanState) => void;
       mockedUseHighVolumeItemScan.mockImplementation(() => {
@@ -137,7 +125,6 @@ describe("HighVolumeItemsContainer", () => {
     });
 
     it("should price a previous scan's fastest-selling items straight away", async () => {
-      mockedFetchItemNames.mockResolvedValue(new Map());
       mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
       mockedUseHighVolumeItemScan.mockReturnValue({
         status: { state: "previous", completedAt: Date.now() },
@@ -217,13 +204,13 @@ describe("HighVolumeItemsContainer", () => {
     };
 
     it("should highlight items expected to make more than 500,000 a day until the highlight amount is changed", async () => {
-      mockedFetchItemNames.mockResolvedValue(new Map());
       mockedFetchRowMarketData.mockResolvedValue(marketData);
       mockedUseHighVolumeItemScan.mockReturnValue({
         status: { state: "previous", completedAt: Date.now() },
         results: [
           {
             itemId: 1,
+            name: null,
             nqSaleVelocity: 10,
             hqSaleVelocity: 0,
             totalSaleVelocity: 10,
@@ -253,142 +240,6 @@ describe("HighVolumeItemsContainer", () => {
       });
 
       expect(itemRow().classList.contains("row-highlight")).toBe(false);
-    });
-  });
-
-  it("should not lose an item name that finishes loading after newer scan results have already arrived", async () => {
-    const item: ScannedItem = {
-      itemId: 1,
-      nqSaleVelocity: 500,
-      hqSaleVelocity: 0,
-      totalSaleVelocity: 500,
-    };
-    const results = [item];
-
-    let setScanState!: (state: ScanState) => void;
-    mockedUseHighVolumeItemScan.mockImplementation(() => {
-      const [state, setState] = useState<ScanState>({
-        status: statusAt(400),
-        results,
-        startScan: vi.fn(),
-      });
-      setScanState = setState;
-      return state;
-    });
-
-    const nameLookup = deferred<Map<number, string>>();
-    mockedFetchItemNames.mockReturnValue(nameLookup.promise);
-
-    // StrictMode matches production (main.tsx) — its dev-mode double-invoke of effects on first
-    // render is what this test guards against re-triggering a duplicate lookup.
-    render(
-      <StrictMode>
-        <MemoryRouter>
-          <HighVolumeItemsContainer config={config} currentCharacter={null} />
-        </MemoryRouter>
-      </StrictMode>,
-      { wrapper: withQueryClient() },
-    );
-
-    await waitFor(() => expect(mockedFetchItemNames).toHaveBeenCalledWith([1]));
-
-    // Another batch completes — a fresh status object, but nowhere near the next checkpoint —
-    // while the lookup above is still in flight.
-    await act(async () => {
-      setScanState({
-        status: statusAt(420),
-        results,
-        startScan: vi.fn(),
-      });
-    });
-
-    // The lookup finally resolves. Its result should still be applied, not silently discarded.
-    await act(async () => {
-      nameLookup.resolve(new Map([[1, "Aetherpool Arm"]]));
-    });
-
-    await waitFor(() => screen.getByText("Aetherpool Arm"));
-  });
-
-  it("should still look up names for a final stretch too short to cross the interval on its own", async () => {
-    const item: ScannedItem = {
-      itemId: 2,
-      nqSaleVelocity: 300,
-      hqSaleVelocity: 0,
-      totalSaleVelocity: 300,
-    };
-    const results = [item];
-
-    let setScanState!: (state: ScanState) => void;
-    mockedUseHighVolumeItemScan.mockImplementation(() => {
-      const [state, setState] = useState<ScanState>({
-        status: statusAt(150),
-        results,
-        startScan: vi.fn(),
-      });
-      setScanState = setState;
-      return state;
-    });
-
-    mockedFetchItemNames.mockResolvedValue(
-      new Map([[2, "Grade 8 Dark Matter"]]),
-    );
-
-    render(
-      <MemoryRouter>
-        <HighVolumeItemsContainer config={config} currentCharacter={null} />
-      </MemoryRouter>,
-      { wrapper: withQueryClient() },
-    );
-
-    // Short of the next 200-item checkpoint — no lookup should fire yet.
-    expect(mockedFetchItemNames).not.toHaveBeenCalled();
-
-    // The scan finishes without the final stretch ever crossing the interval on its own.
-    await act(async () => {
-      setScanState({
-        status: {
-          state: "done",
-          scannedItems: 150,
-          totalItems: 1000,
-          failedBatchCount: 0,
-        },
-        results,
-        startScan: vi.fn(),
-      });
-    });
-
-    await waitFor(() => screen.getByText("Grade 8 Dark Matter"));
-  });
-
-  describe("showing a previous scan", () => {
-    const item: ScannedItem = {
-      itemId: 3,
-      nqSaleVelocity: 250,
-      hqSaleVelocity: 50,
-      totalSaleVelocity: 300,
-    };
-    const previousScan: ScanState = {
-      status: {
-        state: "previous",
-        completedAt: Date.now(),
-      },
-      results: [item],
-      startScan: vi.fn(),
-    };
-
-    it("should look up names for its results straight away", async () => {
-      mockedUseHighVolumeItemScan.mockReturnValue(previousScan);
-      mockedFetchItemNames.mockResolvedValue(new Map([[3, "Cordial"]]));
-
-      render(
-        <MemoryRouter>
-          <HighVolumeItemsContainer config={config} currentCharacter={null} />
-        </MemoryRouter>,
-        { wrapper: withQueryClient() },
-      );
-
-      await waitFor(() => screen.getByText("Cordial"));
     });
   });
 });

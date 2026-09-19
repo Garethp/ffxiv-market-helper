@@ -8,15 +8,17 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ItemSearchResult } from "../api/xivapi";
+import type { ItemSearchResult } from "../types";
 
-vi.mock("../api/xivapi", () => ({ searchItems: vi.fn() }));
+vi.mock("../services/itemService", () => ({
+  itemService: { searchItems: vi.fn() },
+}));
 
-import { searchItems } from "../api/xivapi";
+import { itemService } from "../services/itemService";
 import { withQueryClient } from "../testing/withQueryClient";
 import { ItemSearch } from "./ItemSearch";
 
-const mockedSearchItems = vi.mocked(searchItems);
+const mockedSearchItems = vi.mocked(itemService.searchItems);
 
 const cordial: ItemSearchResult = {
   itemId: 6141,

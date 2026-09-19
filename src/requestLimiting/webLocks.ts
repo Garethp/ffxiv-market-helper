@@ -2,10 +2,31 @@
 export interface LockRequester {
   request<T>(
     name: string,
-    options: Pick<LockOptions, "mode" | "signal">,
+    options: Pick<LockOptions, "mode" | "signal" | "ifAvailable">,
     callback: LockGrantedCallback<T>,
   ): Promise<T>;
 }
+
+/**
+ * Takes the lock only if it can be granted straight away, resolving with a
+ * function that releases it, or with null if it can't.
+ */
+export const tryHoldLock = (
+  locks: LockRequester,
+  name: string,
+  mode: LockMode,
+): Promise<(() => void) | null> =>
+  new Promise((resolve, reject) => {
+    locks
+      .request(name, { mode, ifAvailable: true }, (lock) => {
+        if (!lock) {
+          resolve(null);
+          return;
+        }
+        return new Promise<void>((release) => resolve(release));
+      })
+      .catch(reject);
+  });
 
 /**
  * Waits for the lock to be granted, and resolves with a function that

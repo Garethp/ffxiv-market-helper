@@ -5,19 +5,29 @@ import {
   fetchSaleVelocityBatch,
   type ItemSaleVelocity,
 } from "../api/universalis";
+import { itemService } from "../services/itemService";
 import { scanResultsService } from "../services/scanResultsService";
 import { chunk } from "../utils/chunk";
 import { withOneRetry } from "../utils/withOneRetry";
 import { useGeneration } from "./useGeneration";
 
 export interface ScannedItem extends ItemSaleVelocity {
+  /** Null when the item's name couldn't be found. */
+  name: string | null;
   totalSaleVelocity: number;
 }
 
-const toScannedItem = (item: ItemSaleVelocity): ScannedItem => ({
-  ...item,
-  totalSaleVelocity: item.nqSaleVelocity + item.hqSaleVelocity,
-});
+/** The items with their names. Items are still worth showing when their names can't be looked up. */
+const withNames = async (items: ItemSaleVelocity[]): Promise<ScannedItem[]> => {
+  const names = await itemService
+    .getItemNames(items.map((item) => item.itemId))
+    .catch(() => new Map<number, string>());
+  return items.map((item) => ({
+    ...item,
+    name: names.get(item.itemId) ?? null,
+    totalSaleVelocity: item.nqSaleVelocity + item.hqSaleVelocity,
+  }));
+};
 
 /**
  * How many completed network batches to accumulate before committing them to
@@ -87,10 +97,12 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
     if (worldOrDataCenter === "") return;
 
     scanResultsService.getLatestScan(worldOrDataCenter).then(
-      (scan) => {
+      async (scan) => {
+        if (scan === null) return;
+        const items = await withNames(scan.items);
         // A scan started while this was loading takes precedence over it.
-        if (scan === null || !generationTracker.isCurrent(generation)) return;
-        setResults(scan.items.map(toScannedItem));
+        if (!generationTracker.isCurrent(generation)) return;
+        setResults(items);
         setStatus({ state: "previous", completedAt: scan.completedAt });
       },
       () => {
@@ -162,9 +174,10 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
         batches.map(async (batch) => {
           try {
             const batchResults = await fetchBatchWithRetry(batch);
+            const namedResults = await withNames(batchResults);
             if (generationTracker.isCurrent(generation)) {
               allResults.push(...batchResults);
-              pendingResults.push(...batchResults.map(toScannedItem));
+              pendingResults.push(...namedResults);
               batchesSincePendingFlush++;
               const stillRampingUp =
                 flushedItemCount < EARLY_FEEDBACK_ITEM_THRESHOLD;

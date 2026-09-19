@@ -13,6 +13,8 @@ import {
   fetchExpertDeliveryCandidates,
   fetchExpertDeliverySealsByItemLevel,
   fetchItem,
+  fetchLatestGameVersion,
+  fetchMarketBoardItems,
   searchItems,
 } from "./xivapi";
 
@@ -308,6 +310,147 @@ describe("fetchExpertDeliveryCandidates", () => {
 
     await expect(fetchExpertDeliveryCandidates()).rejects.toThrow(
       "XIVAPI Expert Delivery item search failed (500)",
+    );
+  });
+});
+
+describe("fetchLatestGameVersion", () => {
+  it("should give the key of the version XIVAPI marks as latest", async () => {
+    mockedFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          versions: [
+            { key: "f815390159effefd", names: ["7.0"] },
+            { key: "541c0c12e07da325", names: ["7.56x1", "latest"] },
+          ],
+        }),
+      ),
+    );
+
+    expect(await fetchLatestGameVersion()).toBe("541c0c12e07da325");
+    expect(String(mockedFetch.mock.calls[0][0])).toBe(
+      "https://v2.xivapi.com/api/version",
+    );
+  });
+
+  it("should fail when no version is marked as latest", async () => {
+    mockedFetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          versions: [{ key: "f815390159effefd", names: ["7.0"] }],
+        }),
+      ),
+    );
+
+    await expect(fetchLatestGameVersion()).rejects.toThrow(
+      "XIVAPI didn't say which version is latest",
+    );
+  });
+
+  it("should fail when XIVAPI doesn't answer successfully", async () => {
+    mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    await expect(fetchLatestGameVersion()).rejects.toThrow(
+      "XIVAPI version request failed (500)",
+    );
+  });
+});
+
+describe("fetchMarketBoardItems", () => {
+  const itemsPage = (
+    results: { row_id: number; name: string; stackSize: number }[],
+    next?: string,
+  ) =>
+    new Response(
+      JSON.stringify({
+        next,
+        results: results.map(({ row_id, name, stackSize }) => ({
+          row_id,
+          fields: { Name: name, StackSize: stackSize },
+        })),
+      }),
+    );
+
+  const requestedSearches = () =>
+    mockedFetch.mock.calls.map(([url]) => new URL(String(url)).searchParams);
+
+  it("should look for items that can be sold on the market board, giving each one's ID, name and stack size", async () => {
+    mockedFetch.mockResolvedValue(
+      itemsPage([{ row_id: 6141, name: "Cordial", stackSize: 999 }]),
+    );
+
+    expect(await fetchMarketBoardItems("541c0c12e07da325")).toEqual([
+      { itemId: 6141, name: "Cordial", stackSize: 999 },
+    ]);
+    const [search] = requestedSearches();
+    expect(search.get("sheets")).toBe("Item");
+    expect(search.get("query")).toBe("-ItemSearchCategory=0");
+    expect(search.get("fields")).toBe("Name,StackSize");
+  });
+
+  it("should follow the search onto every page, asking for the same version and fields on each", async () => {
+    mockedFetch
+      .mockResolvedValueOnce(
+        itemsPage([{ row_id: 1, name: "First", stackSize: 1 }], "page-2"),
+      )
+      .mockResolvedValueOnce(
+        itemsPage([{ row_id: 2, name: "Second", stackSize: 1 }]),
+      );
+
+    const items = await fetchMarketBoardItems("541c0c12e07da325");
+
+    expect(items.map((item) => item.itemId)).toEqual([1, 2]);
+    const searches = requestedSearches();
+    expect(searches.map((search) => search.get("cursor"))).toEqual([
+      null,
+      "page-2",
+    ]);
+    searches.forEach((search) => {
+      expect(search.get("version")).toBe("541c0c12e07da325");
+      expect(search.get("fields")).toBe("Name,StackSize");
+      expect(search.get("limit")).toBe("500");
+    });
+  });
+
+  it("should report how many items have come back after each page", async () => {
+    mockedFetch
+      .mockResolvedValueOnce(
+        itemsPage(
+          [
+            { row_id: 1, name: "First", stackSize: 1 },
+            { row_id: 2, name: "Second", stackSize: 1 },
+          ],
+          "page-2",
+        ),
+      )
+      .mockResolvedValueOnce(
+        itemsPage([{ row_id: 3, name: "Third", stackSize: 1 }]),
+      );
+    const onProgress = vi.fn();
+
+    await fetchMarketBoardItems("541c0c12e07da325", onProgress);
+
+    expect(onProgress.mock.calls).toEqual([[2], [3]]);
+  });
+
+  it("should leave out items with no name", async () => {
+    mockedFetch.mockResolvedValue(
+      itemsPage([
+        { row_id: 1, name: "", stackSize: 1 },
+        { row_id: 6141, name: "Cordial", stackSize: 999 },
+      ]),
+    );
+
+    const items = await fetchMarketBoardItems("541c0c12e07da325");
+
+    expect(items.map((item) => item.itemId)).toEqual([6141]);
+  });
+
+  it("should fail when XIVAPI doesn't answer successfully", async () => {
+    mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    await expect(fetchMarketBoardItems("541c0c12e07da325")).rejects.toThrow(
+      "XIVAPI market board item search failed (500)",
     );
   });
 });

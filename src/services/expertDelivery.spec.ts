@@ -1,24 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("../api/xivapi", () => ({
-  fetchExpertDeliveryCandidates: vi.fn(),
-  fetchExpertDeliverySealsByItemLevel: vi.fn(),
-}));
-
+import { describe, expect, it } from "vitest";
 import {
-  fetchExpertDeliveryCandidates,
-  fetchExpertDeliverySealsByItemLevel,
-} from "../api/xivapi";
-import {
-  listExpertDeliveryItems,
+  selectExpertDeliveryItems,
   sealsPerGil,
   sortForBuying,
   type ExpertDeliveryItem,
   type ExpertDeliveryPrice,
 } from "./expertDelivery";
-
-const mockedFetchCandidates = vi.mocked(fetchExpertDeliveryCandidates);
-const mockedFetchSeals = vi.mocked(fetchExpertDeliverySealsByItemLevel);
 
 const sealsByItemLevel = new Map([
   [50, 100],
@@ -27,18 +14,15 @@ const sealsByItemLevel = new Map([
   [100, 600],
 ]);
 
-afterEach(() => {
-  vi.resetAllMocks();
-});
-
-describe("listExpertDeliveryItems", () => {
-  it("should give each item the seals it hands in for, by its item level", async () => {
-    mockedFetchCandidates.mockResolvedValue([
-      { itemId: 8455, name: "Augmented Wolfram Cuirass", itemLevel: 90 },
-    ]);
-    mockedFetchSeals.mockResolvedValue(sealsByItemLevel);
-
-    expect(await listExpertDeliveryItems(0)).toEqual([
+describe("selectExpertDeliveryItems", () => {
+  it("should give each item the seals it hands in for, by its item level", () => {
+    expect(
+      selectExpertDeliveryItems(
+        [{ itemId: 8455, name: "Augmented Wolfram Cuirass", itemLevel: 90 }],
+        sealsByItemLevel,
+        0,
+      ),
+    ).toEqual([
       {
         itemId: 8455,
         name: "Augmented Wolfram Cuirass",
@@ -48,15 +32,16 @@ describe("listExpertDeliveryItems", () => {
     ]);
   });
 
-  it("should list items fewest seals first", async () => {
-    mockedFetchCandidates.mockResolvedValue([
-      { itemId: 1, name: "Most", itemLevel: 100 },
-      { itemId: 2, name: "Fewest", itemLevel: 60 },
-      { itemId: 3, name: "Middle", itemLevel: 90 },
-    ]);
-    mockedFetchSeals.mockResolvedValue(sealsByItemLevel);
-
-    const items = await listExpertDeliveryItems(0);
+  it("should list items fewest seals first", () => {
+    const items = selectExpertDeliveryItems(
+      [
+        { itemId: 1, name: "Most", itemLevel: 100 },
+        { itemId: 2, name: "Fewest", itemLevel: 60 },
+        { itemId: 3, name: "Middle", itemLevel: 90 },
+      ],
+      sealsByItemLevel,
+      0,
+    );
 
     expect(items.map((item) => item.name)).toEqual([
       "Fewest",
@@ -65,14 +50,15 @@ describe("listExpertDeliveryItems", () => {
     ]);
   });
 
-  it("should list items worth the same seals by name", async () => {
-    mockedFetchCandidates.mockResolvedValue([
-      { itemId: 1, name: "Wolfram Cuirass", itemLevel: 90 },
-      { itemId: 2, name: "Augmented Wolfram Cuirass", itemLevel: 90 },
-    ]);
-    mockedFetchSeals.mockResolvedValue(sealsByItemLevel);
-
-    const items = await listExpertDeliveryItems(0);
+  it("should list items worth the same seals by name", () => {
+    const items = selectExpertDeliveryItems(
+      [
+        { itemId: 1, name: "Wolfram Cuirass", itemLevel: 90 },
+        { itemId: 2, name: "Augmented Wolfram Cuirass", itemLevel: 90 },
+      ],
+      sealsByItemLevel,
+      0,
+    );
 
     expect(items.map((item) => item.name)).toEqual([
       "Augmented Wolfram Cuirass",
@@ -80,36 +66,31 @@ describe("listExpertDeliveryItems", () => {
     ]);
   });
 
-  it("should leave out items worth fewer seals than the minimum, but keep those worth exactly the minimum", async () => {
-    mockedFetchCandidates.mockResolvedValue([
-      { itemId: 1, name: "Below", itemLevel: 50 },
-      { itemId: 2, name: "Exactly", itemLevel: 60 },
-      { itemId: 3, name: "Above", itemLevel: 90 },
-    ]);
-    mockedFetchSeals.mockResolvedValue(sealsByItemLevel);
-
-    const items = await listExpertDeliveryItems(150);
+  it("should leave out items worth fewer seals than the minimum, but keep those worth exactly the minimum", () => {
+    const items = selectExpertDeliveryItems(
+      [
+        { itemId: 1, name: "Below", itemLevel: 50 },
+        { itemId: 2, name: "Exactly", itemLevel: 60 },
+        { itemId: 3, name: "Above", itemLevel: 90 },
+      ],
+      sealsByItemLevel,
+      150,
+    );
 
     expect(items.map((item) => item.name)).toEqual(["Exactly", "Above"]);
   });
 
-  it("should leave out items whose item level has no seal value", async () => {
-    mockedFetchCandidates.mockResolvedValue([
-      { itemId: 1, name: "Unknown", itemLevel: 999 },
-      { itemId: 2, name: "Known", itemLevel: 90 },
-    ]);
-    mockedFetchSeals.mockResolvedValue(sealsByItemLevel);
-
-    const items = await listExpertDeliveryItems(0);
+  it("should leave out items whose item level has no seal value", () => {
+    const items = selectExpertDeliveryItems(
+      [
+        { itemId: 1, name: "Unknown", itemLevel: 999 },
+        { itemId: 2, name: "Known", itemLevel: 90 },
+      ],
+      sealsByItemLevel,
+      0,
+    );
 
     expect(items.map((item) => item.name)).toEqual(["Known"]);
-  });
-
-  it("should fail when either the items or the seal values can't be fetched", async () => {
-    mockedFetchCandidates.mockResolvedValue([]);
-    mockedFetchSeals.mockRejectedValue(new Error("XIVAPI is down"));
-
-    await expect(listExpertDeliveryItems(0)).rejects.toThrow("XIVAPI is down");
   });
 });
 

@@ -90,7 +90,6 @@ const exceedsProfitPerDay = (
 export const ScannedItemsTable = memo(
   ({
     items,
-    itemNames,
     profits,
     buyingRegions,
     highlightProfitPerDay,
@@ -98,7 +97,6 @@ export const ScannedItemsTable = memo(
     gapThresholdMultiplier,
   }: {
     items: ScannedItem[];
-    itemNames: Record<number, string>;
     profits: Record<number, ScannedItemProfit>;
     buyingRegions: BuyingRegion[];
     gapThresholdMultiplier: number;
@@ -136,7 +134,7 @@ export const ScannedItemsTable = memo(
                       rel="noopener noreferrer"
                       aria-describedby={tooltipId}
                     >
-                      {itemNames[item.itemId] ?? `#${item.itemId}`}
+                      {item.name ?? `#${item.itemId}`}
                     </Link>
                   )}
                 </Tooltip>{" "}

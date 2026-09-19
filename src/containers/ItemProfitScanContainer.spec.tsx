@@ -12,9 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UniversalisMarketData } from "../api/universalis";
 import type { RowMarketData } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, TrackedItem, TradingParameters } from "../types";
+import type {
+  Character,
+  ItemDetails,
+  TrackedItem,
+  TradingParameters,
+} from "../types";
 
-vi.mock("../api/xivapi", () => ({ fetchItem: vi.fn() }));
+vi.mock("../services/itemService", () => ({
+  itemService: { getItem: vi.fn() },
+}));
 vi.mock("../services/trackedItemService", () => ({
   trackedItemService: { trackItem: vi.fn() },
 }));
@@ -24,7 +31,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
   return { ...actual, fetchRowMarketData: vi.fn() };
 });
 
-import { fetchItem, type ItemDetails } from "../api/xivapi";
+import { itemService } from "../services/itemService";
 import { trackedItemService } from "../services/trackedItemService";
 import { fetchRowMarketData } from "../services/rowAnalysis";
 import { columnHeaderNames } from "../testing/columnHeaderNames";
@@ -33,7 +40,7 @@ import { withQueryClient } from "../testing/withQueryClient";
 import { pricingHints } from "../components/pricingHints";
 import { ItemProfitScanContainer } from "./ItemProfitScanContainer";
 
-const mockedFetchItem = vi.mocked(fetchItem);
+const mockedGetItem = vi.mocked(itemService.getItem);
 const mockedTrackItem = vi.mocked(trackedItemService.trackItem);
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
@@ -182,7 +189,7 @@ const priced = () =>
   );
 
 beforeEach(() => {
-  mockedFetchItem.mockResolvedValue(null);
+  mockedGetItem.mockResolvedValue(null);
   mockedFetchRowMarketData.mockImplementation(async (_client, _item, region) =>
     region === "Europe" ? europeMarketData : northAmericaMarketData,
   );
@@ -209,7 +216,7 @@ describe("ItemProfitScanContainer", () => {
   describe("naming the item", () => {
     it("should call the item by its number until its name is known, then by its name", async () => {
       const details = deferred<ItemDetails | null>();
-      mockedFetchItem.mockReturnValue(details.promise);
+      mockedGetItem.mockReturnValue(details.promise);
 
       renderItemPage();
 
@@ -346,7 +353,7 @@ describe("ItemProfitScanContainer", () => {
     };
 
     beforeEach(() => {
-      mockedFetchItem.mockResolvedValue(darkMatter);
+      mockedGetItem.mockResolvedValue(darkMatter);
       mockedTrackItem.mockResolvedValue({ ok: true });
     });
 
@@ -377,7 +384,7 @@ describe("ItemProfitScanContainer", () => {
 
     it("should only offer to track the item once its name and stack size are known", async () => {
       const details = deferred<ItemDetails | null>();
-      mockedFetchItem.mockReturnValue(details.promise);
+      mockedGetItem.mockReturnValue(details.promise);
       renderItemPage();
 
       expect(
@@ -389,10 +396,10 @@ describe("ItemProfitScanContainer", () => {
     });
 
     it.each([
-      ["can't be found", () => mockedFetchItem.mockResolvedValue(null)],
+      ["can't be found", () => mockedGetItem.mockResolvedValue(null)],
       [
         "can't be fetched",
-        () => mockedFetchItem.mockRejectedValue(new Error("XIVAPI is down")),
+        () => mockedGetItem.mockRejectedValue(new Error("XIVAPI is down")),
       ],
     ])(
       "should not offer to track the item when its details %s",

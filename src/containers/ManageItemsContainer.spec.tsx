@@ -7,10 +7,11 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ItemSearchResult } from "../api/xivapi";
-import type { TradingParameters } from "../types";
+import type { ItemSearchResult, TradingParameters } from "../types";
 
-vi.mock("../api/xivapi", () => ({ searchItems: vi.fn() }));
+vi.mock("../services/itemService", () => ({
+  itemService: { searchItems: vi.fn() },
+}));
 // The real localStorage implementation, starting out with nothing tracked.
 vi.mock("../services/trackedItemService", async (importOriginal) => {
   const actual =
@@ -21,14 +22,14 @@ vi.mock("../services/trackedItemService", async (importOriginal) => {
   };
 });
 
-import { searchItems } from "../api/xivapi";
+import { itemService } from "../services/itemService";
 import { useReloadable } from "../hooks/useReloadable";
 import { trackedItemService } from "../services/trackedItemService";
 import { buildTradingConfig } from "../services/tradingConfig";
 import { withQueryClient } from "../testing/withQueryClient";
 import { ManageItemsContainer } from "./ManageItemsContainer";
 
-const mockedSearchItems = vi.mocked(searchItems);
+const mockedSearchItems = vi.mocked(itemService.searchItems);
 
 const loadedConfig = {
   regions: [],

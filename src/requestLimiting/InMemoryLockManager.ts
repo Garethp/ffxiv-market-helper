@@ -20,7 +20,11 @@ export class InMemoryLockManager implements LockRequester {
 
   request<T>(
     name: string,
-    { mode = "exclusive", signal }: Pick<LockOptions, "mode" | "signal">,
+    {
+      mode = "exclusive",
+      signal,
+      ifAvailable = false,
+    }: Pick<LockOptions, "mode" | "signal" | "ifAvailable">,
     callback: LockGrantedCallback<T>,
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -30,6 +34,16 @@ export class InMemoryLockManager implements LockRequester {
       }
 
       const queue = this.queueFor(name);
+      // Only available if it would be granted straight away, without waiting behind anything.
+      if (
+        ifAvailable &&
+        (queue.length > 0 || !this.isGrantable({ name, mode }))
+      ) {
+        Promise.resolve()
+          .then(() => callback(null))
+          .then((value) => resolve(value as T), reject);
+        return;
+      }
       const onAbort = () => {
         queue.splice(queue.indexOf(request), 1);
         reject(signal?.reason);
@@ -84,7 +98,10 @@ export class InMemoryLockManager implements LockRequester {
     }
   }
 
-  private isGrantable({ name, mode }: PendingRequest): boolean {
+  private isGrantable({
+    name,
+    mode,
+  }: Pick<PendingRequest, "name" | "mode">): boolean {
     const holders = this.held.filter((lock) => lock.name === name);
     return mode === "exclusive"
       ? holders.length === 0

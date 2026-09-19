@@ -26,6 +26,9 @@ vi.mock("./services/currentCharacterService", () => ({
     setCurrentCharacterId: vi.fn(),
   },
 }));
+vi.mock("./hooks/useItemDataStatus", () => ({
+  useItemDataStatus: vi.fn(),
+}));
 // Stand-ins that show which page is open and which character it was given.
 vi.mock("./containers/TrackedItemsContainer", () => ({
   TrackedItemsContainer: ({ config, currentCharacter }: PageProps) => (
@@ -85,6 +88,7 @@ vi.mock("./containers/CharactersContainer", () => ({
 }));
 
 import App from "./App";
+import { useItemDataStatus } from "./hooks/useItemDataStatus";
 import { withQueryClient } from "./testing/withQueryClient";
 import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
@@ -138,6 +142,7 @@ const pickCharacter = async (id: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(useItemDataStatus).mockReturnValue({ state: "ready" });
   vi.mocked(loadConfig).mockResolvedValue({
     regions: [],
     marketBoardCities: [],
@@ -333,6 +338,23 @@ describe("App", () => {
       renderApp("/manage-items");
 
       await screen.findByRole("button", { name: "Change the tracked items" });
+    });
+  });
+
+  describe("loading item data", () => {
+    it("should show how it's going on every page", async () => {
+      vi.mocked(useItemDataStatus).mockReturnValue({
+        state: "loading",
+        itemsSoFar: 500,
+      });
+      renderApp();
+      await screen.findByText("Tracked items selling as Alice");
+      expect(screen.getByText(/Loading item data: 500 items/)).not.toBeNull();
+
+      fireEvent.click(navLink("Characters"));
+      await screen.findByRole("button", { name: "Change the roster" });
+
+      expect(screen.getByText(/Loading item data: 500 items/)).not.toBeNull();
     });
   });
 

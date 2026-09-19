@@ -4,21 +4,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UniversalisMarketData } from "../api/universalis";
 import type { RowMarketData } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character, TradingParameters } from "../types";
+import type { Character, ItemDetails, TradingParameters } from "../types";
 
-vi.mock("../api/xivapi", () => ({ fetchItem: vi.fn() }));
+vi.mock("../services/itemService", () => ({
+  itemService: { getItem: vi.fn() },
+}));
 vi.mock("../services/rowAnalysis", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../services/rowAnalysis")>();
   return { ...actual, fetchRowMarketData: vi.fn() };
 });
 
-import { fetchItem, type ItemDetails } from "../api/xivapi";
+import { itemService } from "../services/itemService";
 import { fetchRowMarketData } from "../services/rowAnalysis";
 import { withQueryClient } from "../testing/withQueryClient";
 import { useItemProfitScan } from "./useItemProfitScan";
 
-const mockedFetchItem = vi.mocked(fetchItem);
+const mockedGetItem = vi.mocked(itemService.getItem);
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 /** A promise whose resolution is controlled from outside, to pin down fetch-ordering races. */
@@ -121,14 +123,14 @@ const europeAnalysis = (result: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedFetchItem.mockResolvedValue(null);
+  mockedGetItem.mockResolvedValue(null);
   mockedFetchRowMarketData.mockResolvedValue(europeMarketData);
 });
 
 describe("useItemProfitScan", () => {
   it("should keep the item's real name even though a fetch that started before the name was known finishes afterward", async () => {
     const details = deferred<ItemDetails | null>();
-    mockedFetchItem.mockReturnValue(details.promise);
+    mockedGetItem.mockReturnValue(details.promise);
     const fetch = deferred<RowMarketData>();
     mockedFetchRowMarketData.mockReturnValue(fetch.promise);
 

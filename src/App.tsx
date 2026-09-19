@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { Route, Routes } from "react-router-dom";
+import { ItemDataStatusBar } from "./components/ItemDataStatusBar";
 import { NavBar } from "./components/NavBar";
 import { NoCharactersMessage } from "./components/NoCharactersMessage";
 import { CharactersContainer } from "./containers/CharactersContainer";
@@ -9,6 +10,7 @@ import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
 import { ManageItemsContainer } from "./containers/ManageItemsContainer";
+import { useItemDataStatus } from "./hooks/useItemDataStatus";
 import { useReloadable } from "./hooks/useReloadable";
 import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
@@ -41,6 +43,7 @@ const App = () => {
   // Both are read when the app opens, and again after every change made to them.
   const [characters, reloadCharacters] = useReloadable(loadCharacters);
   const [trackedItems, reloadTrackedItems] = useReloadable(loadTrackedItems);
+  const itemDataStatus = useItemDataStatus();
 
   // Null until a character is picked during this visit.
   const [pickedCharacterId, setPickedCharacterId] = useState<string | null>(
@@ -147,6 +150,7 @@ const App = () => {
           }
         />
       </Routes>
+      <ItemDataStatusBar status={itemDataStatus} />
     </>
   );
 };

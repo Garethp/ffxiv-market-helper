@@ -7,6 +7,9 @@ vi.mock("../api/universalis", () => ({
   fetchMarketableItemIds: vi.fn(),
   fetchSaleVelocityBatch: vi.fn(),
 }));
+vi.mock("../services/itemService", () => ({
+  itemService: { getItemNames: vi.fn() },
+}));
 vi.mock("../services/scanResultsService", () => ({
   scanResultsService: { getLatestScan: vi.fn(), saveScan: vi.fn() },
 }));
@@ -15,6 +18,7 @@ import {
   fetchMarketableItemIds,
   fetchSaleVelocityBatch,
 } from "../api/universalis";
+import { itemService } from "../services/itemService";
 import {
   scanResultsService,
   type CompletedScan,
@@ -25,11 +29,17 @@ const mockedFetchMarketableItemIds = vi.mocked(fetchMarketableItemIds);
 const mockedFetchSaleVelocityBatch = vi.mocked(fetchSaleVelocityBatch);
 const mockedGetLatestScan = vi.mocked(scanResultsService.getLatestScan);
 const mockedSaveScan = vi.mocked(scanResultsService.saveScan);
+const mockedGetItemNames = vi.mocked(itemService.getItemNames);
+
+/** Names every item after its ID. */
+const namedAfterIds = async (itemIds: number[]) =>
+  new Map(itemIds.map((itemId) => [itemId, `Item ${itemId}`]));
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockedGetLatestScan.mockResolvedValue(null);
   mockedSaveScan.mockResolvedValue();
+  mockedGetItemNames.mockImplementation(namedAfterIds);
 });
 
 const previousScan: CompletedScan = {
@@ -123,6 +133,7 @@ describe("useHighVolumeItemScan", () => {
       expect(result.current.results).toEqual([
         {
           itemId: 7,
+          name: "Item 7",
           nqSaleVelocity: 40,
           hqSaleVelocity: 2,
           totalSaleVelocity: 42,
@@ -225,6 +236,67 @@ describe("useHighVolumeItemScan", () => {
 
       await waitFor(() => expect(result.current.status.state).toBe("done"));
       expect(result.current.results).toHaveLength(3);
+    });
+  });
+
+  describe("naming items", () => {
+    const velocity = (itemId: number) => ({
+      itemId,
+      nqSaleVelocity: 1,
+      hqSaleVelocity: 0,
+    });
+
+    it("should name each batch's items as the batch comes in", async () => {
+      mockedFetchMarketableItemIds.mockResolvedValue(
+        Array.from({ length: 21 }, (_, i) => i + 1),
+      );
+      const secondBatch = deferred<void>();
+      mockedFetchSaleVelocityBatch.mockImplementation(async (_, batch) => {
+        if (batch.includes(21)) await secondBatch.promise;
+        return batch.map(velocity);
+      });
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+
+      await act(async () => {
+        result.current.startScan(10, 86_400_000);
+      });
+
+      await waitFor(() => expect(result.current.results).toHaveLength(20));
+      expect(result.current.results[0].name).toBe("Item 1");
+      expect(mockedGetItemNames).toHaveBeenCalledWith(
+        Array.from({ length: 20 }, (_, i) => i + 1),
+      );
+
+      secondBatch.resolve();
+      await waitFor(() => expect(result.current.results).toHaveLength(21));
+      expect(result.current.results[20].name).toBe("Item 21");
+      expect(mockedGetItemNames).toHaveBeenLastCalledWith([21]);
+    });
+
+    it("should still show a batch's items, without names, when their names can't be looked up", async () => {
+      mockedFetchMarketableItemIds.mockResolvedValue([1]);
+      mockedFetchSaleVelocityBatch.mockResolvedValue([velocity(1)]);
+      mockedGetItemNames.mockRejectedValue(new Error("XIVAPI is down"));
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+
+      await act(async () => {
+        result.current.startScan(10, 86_400_000);
+      });
+
+      await waitFor(() => expect(result.current.status.state).toBe("done"));
+      expect(result.current.results).toEqual([
+        { ...velocity(1), name: null, totalSaleVelocity: 1 },
+      ]);
+    });
+
+    it("should still show a completed scan's items, without names, when their names can't be looked up", async () => {
+      mockedGetLatestScan.mockResolvedValue(previousScan);
+      mockedGetItemNames.mockRejectedValue(new Error("XIVAPI is down"));
+
+      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
+
+      await waitFor(() => expect(result.current.results).toHaveLength(1));
+      expect(result.current.results[0].name).toBeNull();
     });
   });
 

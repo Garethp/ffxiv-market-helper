@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
-import type { ItemDetails } from "../api/xivapi";
 import { BuyingRegionSection } from "../components/BuyingRegionSection";
 import { HintedField } from "../components/Hint";
 import { NumberInput } from "../components/NumberInput";
@@ -12,7 +11,7 @@ import {
   type TrackedItemChangeError,
 } from "../services/trackedItemService";
 import type { TradingConfig } from "../services/tradingConfig";
-import type { Character } from "../types";
+import type { Character, ItemDetails } from "../types";
 import { afterSuccess } from "../utils/afterSuccess";
 
 interface ItemPageProps {

@@ -27,6 +27,10 @@ const deferred = <T>() => {
   return { promise, resolve };
 };
 
+/** The items, with no names known. */
+const unnamed = (itemIds: number[]) =>
+  itemIds.map((itemId) => ({ itemId, name: null }));
+
 const alice: Character = {
   id: "alice",
   name: "Alice",
@@ -150,7 +154,7 @@ describe("useScannedItemProfits", () => {
   describe("which items it prices", () => {
     it("should price nothing when there are no items to price", () => {
       const { result } = renderHook(
-        () => useScannedItemProfits([], {}, config, alice),
+        () => useScannedItemProfits(unnamed([]), config, alice),
         {
           wrapper: withQueryClient(),
         },
@@ -162,7 +166,7 @@ describe("useScannedItemProfits", () => {
 
     it("should price nothing without a character to sell through", () => {
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, null),
+        () => useScannedItemProfits(unnamed([1]), config, null),
         {
           wrapper: withQueryClient(),
         },
@@ -174,7 +178,7 @@ describe("useScannedItemProfits", () => {
 
     it("should fetch every item across every buying region, selling through the given character", async () => {
       const itemIds = [1, 2];
-      renderHook(() => useScannedItemProfits(itemIds, {}, config, alice), {
+      renderHook(() => useScannedItemProfits(unnamed(itemIds), config, alice), {
         wrapper: withQueryClient(),
       });
 
@@ -195,7 +199,7 @@ describe("useScannedItemProfits", () => {
 
     it("should stop showing items that are no longer being priced", async () => {
       const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(itemIds, {}, config, alice),
+        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
         { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
       );
       await waitFor(() => rowFor(result, 1));
@@ -209,7 +213,7 @@ describe("useScannedItemProfits", () => {
       const fetch = deferred<RowMarketData>();
       mockedFetchRowMarketData.mockReturnValue(fetch.promise);
       const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(itemIds, {}, config, alice),
+        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
         { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
       );
       await waitFor(() => expect(mockedFetchRowMarketData).toHaveBeenCalled());
@@ -232,7 +236,7 @@ describe("useScannedItemProfits", () => {
       const itemIds = [1];
       const { rerender } = renderHook(
         ({ character }) =>
-          useScannedItemProfits(itemIds, {}, config, character),
+          useScannedItemProfits(unnamed(itemIds), config, character),
         { initialProps: { character: alice }, wrapper: withQueryClient() },
       );
       await waitFor(() =>
@@ -259,7 +263,7 @@ describe("useScannedItemProfits", () => {
 
     it("should cancel fetches for items that are no longer being priced", async () => {
       const { rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(itemIds, {}, config, alice),
+        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
         { initialProps: { itemIds: [1, 2] }, wrapper: withQueryClient() },
       );
       await waitFor(() =>
@@ -282,7 +286,7 @@ describe("useScannedItemProfits", () => {
       const itemIds = [1];
       const { rerender } = renderHook(
         ({ character }) =>
-          useScannedItemProfits(itemIds, {}, config, character),
+          useScannedItemProfits(unnamed(itemIds), config, character),
         { initialProps: { character: alice }, wrapper: withQueryClient() },
       );
       await waitFor(() =>
@@ -304,7 +308,7 @@ describe("useScannedItemProfits", () => {
     it("should cancel its fetches when the page is closed", async () => {
       const itemIds = [1];
       const { unmount } = renderHook(
-        () => useScannedItemProfits(itemIds, {}, config, alice),
+        () => useScannedItemProfits(unnamed(itemIds), config, alice),
         { wrapper: withQueryClient() },
       );
       await waitFor(() =>
@@ -322,7 +326,7 @@ describe("useScannedItemProfits", () => {
   describe("when the same items are given again", () => {
     it("should not fetch them again", async () => {
       const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(itemIds, {}, config, alice),
+        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
         { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
       );
       await waitFor(() => rowFor(result, 1));
@@ -341,7 +345,7 @@ describe("useScannedItemProfits", () => {
       );
 
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, alice),
+        () => useScannedItemProfits(unnamed([1]), config, alice),
         {
           wrapper: withQueryClient(),
         },
@@ -367,7 +371,7 @@ describe("useScannedItemProfits", () => {
       });
 
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, alice),
+        () => useScannedItemProfits(unnamed([1]), config, alice),
         {
           wrapper: withQueryClient(),
         },
@@ -397,7 +401,7 @@ describe("useScannedItemProfits", () => {
         });
 
         const { result } = renderHook(
-          () => useScannedItemProfits([1], {}, config, alice),
+          () => useScannedItemProfits(unnamed([1]), config, alice),
           {
             wrapper: withQueryClient(),
           },
@@ -422,7 +426,7 @@ describe("useScannedItemProfits", () => {
         });
 
         const { result } = renderHook(
-          () => useScannedItemProfits([1], {}, config, alice),
+          () => useScannedItemProfits(unnamed([1]), config, alice),
           {
             wrapper: withQueryClient(),
           },
@@ -437,7 +441,7 @@ describe("useScannedItemProfits", () => {
 
       it("should price it at NQ when both qualities sell equally", async () => {
         const { result } = renderHook(
-          () => useScannedItemProfits([1], {}, config, alice),
+          () => useScannedItemProfits(unnamed([1]), config, alice),
           {
             wrapper: withQueryClient(),
           },
@@ -469,7 +473,7 @@ describe("useScannedItemProfits", () => {
         };
 
         const { result } = renderHook(
-          () => useScannedItemProfits([1], {}, threeRegionConfig, alice),
+          () => useScannedItemProfits(unnamed([1]), threeRegionConfig, alice),
           {
             wrapper: withQueryClient(),
           },
@@ -486,7 +490,7 @@ describe("useScannedItemProfits", () => {
 
     it("should price it with the target quantity assumed for untracked items", async () => {
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, alice),
+        () => useScannedItemProfits(unnamed([1]), config, alice),
         {
           wrapper: withQueryClient(),
         },
@@ -499,7 +503,7 @@ describe("useScannedItemProfits", () => {
     it("should report a buying region's error when its fetch fails, while still pricing the others", async () => {
       // Only Europe has market data — Japan's fetch fails.
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, alice),
+        () => useScannedItemProfits(unnamed([1]), config, alice),
         {
           wrapper: withQueryClient(),
         },
@@ -517,23 +521,23 @@ describe("useScannedItemProfits", () => {
       });
     });
 
-    it("should use the item's name once it's known, without fetching again", async () => {
-      const itemIds = [1];
-      const { result, rerender } = renderHook(
-        ({ itemNames }) =>
-          useScannedItemProfits(itemIds, itemNames, config, alice),
-        {
-          initialProps: { itemNames: {} as Record<number, string> },
-          wrapper: withQueryClient(),
-        },
+    it("should price the item under its name, or its ID when it has none", async () => {
+      const { result } = renderHook(
+        () =>
+          useScannedItemProfits(
+            [
+              { itemId: 1, name: "Wind Cluster" },
+              { itemId: 2, name: null },
+            ],
+            config,
+            alice,
+          ),
+        { wrapper: withQueryClient() },
       );
-      await waitFor(() => rowFor(result, 1));
-      expect(rowFor(result, 1).item.name).toBe("#1");
 
-      rerender({ itemNames: { 1: "Wind Cluster" } });
-
+      await waitFor(() => rowFor(result, 2));
       expect(rowFor(result, 1).item.name).toBe("Wind Cluster");
-      expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2);
+      expect(rowFor(result, 2).item.name).toBe("#2");
     });
   });
 
@@ -542,7 +546,7 @@ describe("useScannedItemProfits", () => {
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
 
       const { result } = renderHook(
-        () => useScannedItemProfits([1], {}, config, alice),
+        () => useScannedItemProfits(unnamed([1]), config, alice),
         {
           wrapper: withQueryClient(),
         },

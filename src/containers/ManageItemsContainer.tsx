@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ItemSearchResult } from "../api/xivapi";
+import type { ItemSearchResult } from "../types";
 import { ItemSearch } from "../components/ItemSearch";
 import { TrackedItemRow } from "../components/TrackedItemRow";
 import { TrackedItemSettingsForm } from "../components/TrackedItemSettingsForm";

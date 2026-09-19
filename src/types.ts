@@ -1,3 +1,19 @@
+/** What's known about an item from the game's data that's needed to track it. */
+export interface ItemDetails {
+  name: string;
+  stackSize: number;
+}
+
+/** An item found by searching for its name. */
+export type ItemSearchResult = ItemDetails & { itemId: number };
+
+/** An item on the market board that can be handed in for an Expert Delivery. */
+export interface ExpertDeliveryCandidate {
+  itemId: number;
+  name: string;
+  itemLevel: number;
+}
+
 /** An item to price for trading opportunities, and how to price it. */
 export interface PricedItem {
   itemId: number;

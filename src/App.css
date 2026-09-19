@@ -751,3 +751,48 @@ header h1 {
 .negative {
   color: #f44336;
 }
+
+/* Along the bottom of every page while item data loads, over whatever page is open. */
+.item-data-status {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #181b22;
+  border-top: 1px solid #2a2d36;
+  font-size: 0.85rem;
+  color: #b8bcc6;
+}
+
+.item-data-status p {
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem;
+}
+
+.item-data-status-failed {
+  color: #f44336;
+}
+
+/* No total is known up front, so the bar sweeps rather than filling. */
+.item-data-status-bar {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #8ab4f8 50%,
+    transparent 100%
+  );
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: item-data-sweep 1.4s linear infinite;
+}
+
+@keyframes item-data-sweep {
+  from {
+    background-position: -50% 0;
+  }
+  to {
+    background-position: 150% 0;
+  }
+}

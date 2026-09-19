@@ -1,6 +1,6 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { fetchItem } from "../api/xivapi";
+import { itemService } from "../services/itemService";
 import { UNTRACKED_ITEM_TARGET_QUANTITY } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, DisplayRow, PricedItem } from "../types";
@@ -34,7 +34,7 @@ export const useItemProfitScan = (
   // Details that can't be fetched just leave the item called by its ID.
   const { data: itemDetails = null } = useQuery({
     queryKey: ["itemDetails", itemId],
-    queryFn: ({ signal }) => fetchItem(itemId, { signal }),
+    queryFn: ({ signal }) => itemService.getItem(itemId, { signal }),
     // Items only change with game patches.
     staleTime: Infinity,
   });

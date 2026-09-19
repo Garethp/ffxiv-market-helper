@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { searchItems, type ItemSearchResult } from "../api/xivapi";
+import { itemService } from "../services/itemService";
+import type { ItemSearchResult } from "../types";
 
 /** How long typing has to pause before searching, so there isn't a search for every character typed. */
 const TYPING_PAUSE_MS = 300;
@@ -66,7 +67,7 @@ export const ItemSearch = ({
   // and its results are never shown in place of the latest ones.
   const search = useQuery({
     queryKey: ["itemSearch", searchText],
-    queryFn: ({ signal }) => searchItems(searchText, { signal }),
+    queryFn: ({ signal }) => itemService.searchItems(searchText, { signal }),
     enabled: canSearch,
     // Items only change with game patches.
     staleTime: Infinity,

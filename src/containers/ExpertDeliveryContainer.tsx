@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { ExpertDeliveryItemsTable } from "../components/ExpertDeliveryItemsTable";
 import { useExpertDeliveryPrices } from "../hooks/useExpertDeliveryPrices";
 import {
-  listExpertDeliveryItems,
   sortForBuying,
   type ExpertDeliveryItem,
 } from "../services/expertDelivery";
+import { itemService } from "../services/itemService";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
 import { findRegionNameForWorld } from "../utils/worldDirectory";
@@ -26,7 +26,7 @@ export const ExpertDeliveryContainer = ({
   // Game data, which only changes with a patch, so it's read once per visit.
   const { data: items, error } = useQuery({
     queryKey: ["expertDeliveryItems", MINIMUM_SEALS],
-    queryFn: () => listExpertDeliveryItems(MINIMUM_SEALS),
+    queryFn: () => itemService.getExpertDeliveryItems(MINIMUM_SEALS),
     staleTime: Infinity,
   });
 

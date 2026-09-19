@@ -1,26 +1,20 @@
 import type { CheapestListing } from "../api/universalis";
-import {
-  fetchExpertDeliveryCandidates,
-  fetchExpertDeliverySealsByItemLevel,
-  type ExpertDeliveryCandidate,
-} from "../api/xivapi";
+import type { ExpertDeliveryCandidate } from "../types";
 
 /** An item on the market board that can be handed in for an Expert Delivery, with the seals it's worth. */
 export type ExpertDeliveryItem = ExpertDeliveryCandidate & { seals: number };
 
 /**
- * Items on the market board that hand in for at least the given number of
- * seals, fewest seals first. An item whose item level has no seal value is
- * left out, since what it's worth can't be known.
+ * The candidates that hand in for at least the given number of seals, fewest
+ * seals first. A candidate whose item level has no seal value is left out,
+ * since what it's worth can't be known.
  */
-export const listExpertDeliveryItems = async (
+export const selectExpertDeliveryItems = (
+  candidates: ExpertDeliveryCandidate[],
+  sealsByItemLevel: Map<number, number>,
   minimumSeals: number,
-): Promise<ExpertDeliveryItem[]> => {
-  const [candidates, sealsByItemLevel] = await Promise.all([
-    fetchExpertDeliveryCandidates(),
-    fetchExpertDeliverySealsByItemLevel(),
-  ]);
-  return candidates
+): ExpertDeliveryItem[] =>
+  candidates
     .flatMap((candidate) => {
       const seals = sealsByItemLevel.get(candidate.itemLevel);
       return seals !== undefined && seals >= minimumSeals
@@ -28,7 +22,6 @@ export const listExpertDeliveryItems = async (
         : [];
     })
     .sort(bySealsThenName);
-};
 
 const bySealsThenName = (a: ExpertDeliveryItem, b: ExpertDeliveryItem) =>
   a.seals - b.seals || a.name.localeCompare(b.name);
