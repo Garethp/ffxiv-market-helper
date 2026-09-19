@@ -308,6 +308,43 @@ describe("ProfitTable", () => {
       expect(hasCopiedIndicator("Caramel Popcorn")).toBe(false);
     });
 
+    it("should not let an earlier copy's delay clear the confirmation of copying the same item again", async () => {
+      vi.useFakeTimers();
+      renderTable([displayRow(1, "Wind Cluster")]);
+
+      await copy("Wind Cluster");
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      await copy("Wind Cluster");
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(hasCopiedIndicator("Wind Cluster")).toBe(true);
+    });
+
+    it("should confirm the copy only on the row copied from, even when another row is the same item", async () => {
+      const nq = displayRow(1, "Wind Cluster");
+      const hq: DisplayRow = {
+        ...nq,
+        row: { ...nq.row, item: { ...nq.row.item, hq: true } },
+      };
+      renderTable([nq, hq, displayRow(2, "Caramel Popcorn")]);
+
+      await copy("Wind Cluster");
+
+      const windClusterRows = bodyRows().filter((row) =>
+        row.textContent?.includes("Wind Cluster"),
+      );
+      expect(
+        windClusterRows.map(
+          (row) => within(row).queryByText("Copied!") !== null,
+        ),
+      ).toEqual([true, false]);
+      expect(hasCopiedIndicator("Caramel Popcorn")).toBe(false);
+    });
+
     it("should show no confirmation when the clipboard refuses the write", async () => {
       writeText.mockRejectedValue(new Error("denied"));
       renderTable([displayRow(1, "Wind Cluster")]);

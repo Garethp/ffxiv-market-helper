@@ -134,6 +134,15 @@ describe("ProfitTableRow", () => {
       expect(onCopyName).toHaveBeenCalledTimes(1);
     });
 
+    it("should put the copy button ahead of the item's name", () => {
+      const { itemCell } = renderRow(readyRow());
+
+      expect(
+        itemCell.firstChild?.contains(itemCell.querySelector("button")),
+      ).toBe(true);
+      expect(itemCell.firstChild?.textContent).not.toContain("Wind Cluster");
+    });
+
     it("should confirm the name was copied when it has just been copied", () => {
       const { itemCell } = renderRow(readyRow(), { isCopied: true });
 

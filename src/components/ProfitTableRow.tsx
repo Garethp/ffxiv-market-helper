@@ -1,6 +1,7 @@
 import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
 import { formatGil } from "../utils/format";
+import { ItemNameWithCopy } from "./ItemNameWithCopy";
 import { Tooltip } from "./Tooltip";
 import { UndercutBadge } from "./UndercutBadge";
 
@@ -54,21 +55,11 @@ export const ProfitTableRow = ({
   return (
     <tr className={rowClasses}>
       <td>
-        {item.name}
-        {/* Named by its tooltip, since the button itself is only an icon. */}
-        <Tooltip text="Copy item name">
-          {(tooltipId) => (
-            <button
-              type="button"
-              className="copy-name-button"
-              aria-labelledby={tooltipId}
-              onClick={onCopyName}
-            >
-              📋
-              {isCopied ? <span className="copy-tooltip">Copied!</span> : null}
-            </button>
-          )}
-        </Tooltip>
+        <ItemNameWithCopy
+          name={item.name}
+          isCopied={isCopied}
+          onCopy={onCopyName}
+        />
         {item.hq ? (
           <Tooltip text="Priced as high quality">
             {(tooltipId) => (

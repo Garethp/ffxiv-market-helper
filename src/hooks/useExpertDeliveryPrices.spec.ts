@@ -1,18 +1,18 @@
 // @vitest-environment jsdom
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CheapestListing } from "../api/universalis";
+import type { RegionListing } from "../api/universalis";
 
 vi.mock("../api/universalis", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/universalis")>()),
-  fetchCheapestListings: vi.fn(),
+  fetchRegionListings: vi.fn(),
 }));
 
-import { fetchCheapestListings } from "../api/universalis";
+import { fetchRegionListings } from "../api/universalis";
 import { withQueryClient } from "../testing/withQueryClient";
 import { useExpertDeliveryPrices } from "./useExpertDeliveryPrices";
 
-const mockedFetchCheapestListings = vi.mocked(fetchCheapestListings);
+const mockedFetchRegionListings = vi.mocked(fetchRegionListings);
 
 /** A promise whose resolution is controlled from outside. */
 const deferred = <T>() => {
@@ -26,10 +26,10 @@ const deferred = <T>() => {
 const listings = (
   entries: [itemId: number, pricePerUnit: number, worldName: string][],
 ) =>
-  new Map<number, CheapestListing>(
+  new Map<number, RegionListing[]>(
     entries.map(([itemId, pricePerUnit, worldName]) => [
       itemId,
-      { pricePerUnit, worldName },
+      [{ pricePerUnit, worldName }],
     ]),
   );
 
@@ -43,11 +43,15 @@ afterEach(() => {
 });
 
 describe("useExpertDeliveryPrices", () => {
-  it("should price each item at its cheapest listing in the region", async () => {
-    mockedFetchCheapestListings.mockResolvedValue(
-      listings([
-        [1, 100, "Zodiark"],
-        [2, 50, "Cerberus"],
+  it("should price each item by its listings in the region", async () => {
+    const swordListings = [
+      { pricePerUnit: 100, worldName: "Zodiark" },
+      { pricePerUnit: 120, worldName: "Omega" },
+    ];
+    mockedFetchRegionListings.mockResolvedValue(
+      new Map([
+        [1, swordListings],
+        [2, [{ pricePerUnit: 50, worldName: "Cerberus" }]],
       ]),
     );
 
@@ -55,17 +59,14 @@ describe("useExpertDeliveryPrices", () => {
 
     await waitFor(() =>
       expect(result.current).toEqual({
-        1: {
-          status: "listed",
-          listing: { pricePerUnit: 100, worldName: "Zodiark" },
-        },
+        1: { status: "listed", listings: swordListings },
         2: {
           status: "listed",
-          listing: { pricePerUnit: 50, worldName: "Cerberus" },
+          listings: [{ pricePerUnit: 50, worldName: "Cerberus" }],
         },
       }),
     );
-    expect(mockedFetchCheapestListings).toHaveBeenCalledWith(
+    expect(mockedFetchRegionListings).toHaveBeenCalledWith(
       "Europe",
       [1, 2],
       expect.anything(),
@@ -73,7 +74,7 @@ describe("useExpertDeliveryPrices", () => {
   });
 
   it("should say an item listed nowhere in the region has no listings", async () => {
-    mockedFetchCheapestListings.mockResolvedValue(new Map());
+    mockedFetchRegionListings.mockResolvedValue(new Map());
 
     const { result } = renderPrices([1]);
 
@@ -83,16 +84,16 @@ describe("useExpertDeliveryPrices", () => {
   });
 
   it("should ask for the items in batches of 100, in the order given", async () => {
-    mockedFetchCheapestListings.mockResolvedValue(new Map());
+    mockedFetchRegionListings.mockResolvedValue(new Map());
     const itemIds = Array.from({ length: 250 }, (_, i) => 1000 - i);
 
     renderPrices(itemIds);
 
     await waitFor(() =>
-      expect(mockedFetchCheapestListings).toHaveBeenCalledTimes(3),
+      expect(mockedFetchRegionListings).toHaveBeenCalledTimes(3),
     );
     expect(
-      mockedFetchCheapestListings.mock.calls.map(([, batch]) => batch),
+      mockedFetchRegionListings.mock.calls.map(([, batch]) => batch),
     ).toEqual([
       itemIds.slice(0, 100),
       itemIds.slice(100, 200),
@@ -101,8 +102,8 @@ describe("useExpertDeliveryPrices", () => {
   });
 
   it("should give a batch's prices as soon as it comes back, without waiting for the rest", async () => {
-    const secondBatch = deferred<Map<number, CheapestListing>>();
-    mockedFetchCheapestListings.mockImplementation(async (_, batch) =>
+    const secondBatch = deferred<Map<number, RegionListing[]>>();
+    mockedFetchRegionListings.mockImplementation(async (_, batch) =>
       batch.includes(1) ? listings([[1, 100, "Zodiark"]]) : secondBatch.promise,
     );
     const itemIds = Array.from({ length: 101 }, (_, i) => i + 1);
@@ -117,7 +118,7 @@ describe("useExpertDeliveryPrices", () => {
   });
 
   it("should say the prices couldn't be fetched for only the batch whose fetch failed", async () => {
-    mockedFetchCheapestListings.mockImplementation(async (_, batch) => {
+    mockedFetchRegionListings.mockImplementation(async (_, batch) => {
       if (batch.includes(1)) throw new Error("Universalis is down");
       return listings([[101, 5, "Odin"]]);
     });
@@ -136,6 +137,6 @@ describe("useExpertDeliveryPrices", () => {
     const { result } = renderPrices([]);
 
     expect(result.current).toEqual({});
-    expect(mockedFetchCheapestListings).not.toHaveBeenCalled();
+    expect(mockedFetchRegionListings).not.toHaveBeenCalled();
   });
 });

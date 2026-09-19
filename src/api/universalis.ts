@@ -15,7 +15,7 @@ const limiter = new CrossTabRequestLimiter("universalis", {
 const client = new RequestLimitedApiClient(limiter, "interactive");
 
 // Used only for bulk requests covering many items (see fetchSaleVelocityBatch and
-// fetchCheapestListings). Background priority
+// fetchRegionListings). Background priority
 // lets it use the whole budget while nothing else needs it, without starving pages someone is
 // looking at.
 const bulkScanClient = new RequestLimitedApiClient(limiter, "background");
@@ -168,18 +168,20 @@ export const fetchSaleVelocityBatch = async (
   }));
 };
 
-/** The cheapest listing of an item, and which world it's on. */
-export interface CheapestListing {
+/** A listing of an item somewhere in a region, and which world it's on. */
+export interface RegionListing {
   pricePerUnit: number;
   worldName: string;
 }
 
 /**
- * The most item IDs to request in a single fetchCheapestListings call.
- * Universalis' own limit; with only one listing per item and no history, a
- * full batch across a region comes back in well under a second.
+ * The most item IDs to request in a single fetchRegionListings call.
+ * Universalis' own limit; with only a listing's price and world and no
+ * history, a full batch of every listing across a region comes back in well
+ * under a second — verified against Europe, where it came to ~12,000 listings
+ * and ~550KB.
  */
-export const CHEAPEST_LISTINGS_BATCH_SIZE = 100;
+export const REGION_LISTINGS_BATCH_SIZE = 100;
 
 /** Regions whose name Universalis spells differently; any other region's name is the same there. */
 const UNIVERSALIS_REGION_NAMES: Record<string, string> = {
@@ -187,20 +189,20 @@ const UNIVERSALIS_REGION_NAMES: Record<string, string> = {
 };
 
 /**
- * Fetches the cheapest current listing of each item anywhere in a region. An
- * item with no listings there is absent from the result. Uses the bulk scan's
- * background priority, since it's one of many requests made to price a whole
- * list of items.
+ * Fetches every current listing of each item anywhere in a region, cheapest
+ * first. An item with no listings there is absent from the result. Uses the
+ * bulk scan's background priority, since it's one of many requests made to
+ * price a whole list of items.
  */
-export const fetchCheapestListings = async (
+export const fetchRegionListings = async (
   region: string,
   itemIds: number[],
   options: { signal?: AbortSignal } = {},
-): Promise<Map<number, CheapestListing>> => {
+): Promise<Map<number, RegionListing[]>> => {
   if (itemIds.length === 0) return new Map();
-  if (itemIds.length > CHEAPEST_LISTINGS_BATCH_SIZE) {
+  if (itemIds.length > REGION_LISTINGS_BATCH_SIZE) {
     throw new Error(
-      `Cannot request more than ${CHEAPEST_LISTINGS_BATCH_SIZE} items in a single cheapest-listings request`,
+      `Cannot request more than ${REGION_LISTINGS_BATCH_SIZE} items in a single region-listings request`,
     );
   }
 
@@ -210,7 +212,8 @@ export const fetchCheapestListings = async (
     .map((field) => `${isSingleItem ? "" : "items."}listings.${field}`)
     .join(",");
   const universalisRegion = UNIVERSALIS_REGION_NAMES[region] ?? region;
-  const url = `${BASE_URL}/${encodeURIComponent(universalisRegion)}/${itemIds.join(",")}?listings=1&entries=0&fields=${listingFields}`;
+  // Leaving out the number of listings asks for all of them, which Universalis gives cheapest first.
+  const url = `${BASE_URL}/${encodeURIComponent(universalisRegion)}/${itemIds.join(",")}?entries=0&fields=${listingFields}`;
 
   const response = await bulkScanClient.fetch(url, {
     signal: options.signal,
@@ -219,11 +222,11 @@ export const fetchCheapestListings = async (
   if (isSingleItem && response.status === 404) return new Map();
   if (!response.ok) {
     throw new Error(
-      `Universalis cheapest-listings request failed (${response.status}) for ${itemIds.length} items in ${region}`,
+      `Universalis region-listings request failed (${response.status}) for ${itemIds.length} items in ${region}`,
     );
   }
 
-  type ItemListings = { listings: CheapestListing[] };
+  type ItemListings = { listings: RegionListing[] };
   const data = (await response.json()) as
     ItemListings | { items: Record<string, ItemListings> };
   const itemListings: [number, ItemListings][] =
@@ -234,11 +237,11 @@ export const fetchCheapestListings = async (
         ])
       : [[itemIds[0], data]];
 
-  const cheapest = new Map<number, CheapestListing>();
-  itemListings.forEach(([itemId, { listings }]) => {
-    if (listings.length > 0) cheapest.set(itemId, listings[0]);
-  });
-  return cheapest;
+  return new Map(
+    itemListings
+      .filter(([, { listings }]) => listings.length > 0)
+      .map(([itemId, { listings }]) => [itemId, listings]),
+  );
 };
 
 /** The universalis.app web page showing this item's listings/history for a given world or data center. */

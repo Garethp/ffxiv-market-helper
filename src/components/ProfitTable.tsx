@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useCopyText } from "../hooks/useCopyText";
 import type { DisplayRow } from "../types";
 import { Hint } from "./Hint";
 import { profitColumnHints } from "./pricingHints";
@@ -32,21 +33,7 @@ export const ProfitTable = ({
   /** Explained in the sell price column's hint. */
   gapThresholdMultiplier: number;
 }) => {
-  const [copiedItemId, setCopiedItemId] = useState<number | null>(null);
-
-  const copyItemName = async (itemId: number, name: string) => {
-    try {
-      await navigator.clipboard.writeText(name);
-      setCopiedItemId(itemId);
-      setTimeout(
-        () =>
-          setCopiedItemId((current) => (current === itemId ? null : current)),
-        1500,
-      );
-    } catch {
-      // Clipboard access can be denied (permissions, non-secure context) — nothing to recover, just don't show "copied".
-    }
-  };
+  const { copiedKey, copyText } = useCopyText();
 
   return (
     <table className="item-table">
@@ -74,19 +61,21 @@ export const ProfitTable = ({
         </tr>
       </thead>
       <tbody>
-        {rows.map((displayRow) => (
-          <ProfitTableRow
-            // An item can be priced as both NQ and HQ, but only once as each.
-            key={`${displayRow.row.item.itemId}-${displayRow.row.item.hq ? "hq" : "nq"}`}
-            displayRow={displayRow}
-            staleWarningThresholdMs={staleWarningThresholdMs}
-            sellWorld={sellWorld}
-            isCopied={copiedItemId === displayRow.row.item.itemId}
-            onCopyName={() =>
-              copyItemName(displayRow.row.item.itemId, displayRow.row.item.name)
-            }
-          />
-        ))}
+        {rows.map((displayRow) => {
+          const { item } = displayRow.row;
+          // An item can be priced as both NQ and HQ, but only once as each.
+          const key = `${item.itemId}-${item.hq ? "hq" : "nq"}`;
+          return (
+            <ProfitTableRow
+              key={key}
+              displayRow={displayRow}
+              staleWarningThresholdMs={staleWarningThresholdMs}
+              sellWorld={sellWorld}
+              isCopied={copiedKey === key}
+              onCopyName={() => copyText(key, item.name)}
+            />
+          );
+        })}
       </tbody>
     </table>
   );
