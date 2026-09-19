@@ -44,6 +44,9 @@ vi.mock("./containers/HighVolumeItemsContainer", () => ({
     <p>High volume items for {currentCharacter?.name}</p>
   ),
 }));
+vi.mock("./containers/ExpertDeliveryContainer", () => ({
+  ExpertDeliveryContainer: () => <p>Expert delivery items</p>,
+}));
 vi.mock("./containers/ItemProfitScanContainer", () => ({
   ItemProfitScanContainer: ({
     onTrackedItemsChanged,
@@ -208,7 +211,7 @@ describe("App", () => {
   });
 
   describe("the character roster", () => {
-    it.each(["/", "/high-volume-items", "/item/5"])(
+    it.each(["/", "/high-volume-items", "/expert-delivery", "/item/5"])(
       "should welcome someone with no characters on %s, and point them to adding one",
       async (path) => {
         mockedGetCharacters.mockResolvedValue([]);
@@ -217,7 +220,9 @@ describe("App", () => {
 
         await screen.findByRole("heading", { name: "Welcome!" });
         expect(
-          screen.queryByText(/Tracked items|High volume|Item profit/),
+          screen.queryByText(
+            /Tracked items|High volume|Expert delivery|Item profit/,
+          ),
         ).toBe(null);
         fireEvent.click(
           screen.getByRole("link", { name: "Add your first character" }),
@@ -338,6 +343,9 @@ describe("App", () => {
 
       fireEvent.click(navLink("High Volume Items"));
       await screen.findByText("High volume items for Alice");
+
+      fireEvent.click(navLink("Expert Delivery"));
+      await screen.findByText("Expert delivery items");
 
       fireEvent.click(navLink("Characters"));
       await screen.findByRole("button", { name: "Change the roster" });

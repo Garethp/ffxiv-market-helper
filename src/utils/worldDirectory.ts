@@ -17,6 +17,16 @@ export const findRegionNameForWorld = (
   return findRegion(world, regions)?.name;
 };
 
+/** Which data center a world belongs to, or undefined if it's not in the directory. */
+export const findDataCenterForWorld = (
+  world: string,
+  regions: RegionInfo[],
+): string | undefined => {
+  return regions
+    .flatMap((region) => region.dataCenters)
+    .find((dataCenter) => dataCenter.worlds.includes(world))?.name;
+};
+
 /** Every data center in a named region — the buy-side reach is identical for every character in it. */
 export const findDataCentersForRegion = (
   regionName: string,

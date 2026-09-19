@@ -3,6 +3,8 @@ import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimite
 import { chunk } from "../utils/chunk";
 
 const ITEM_SHEET_URL = "https://v2.xivapi.com/api/sheet/Item";
+const GC_SUPPLY_DUTY_REWARD_SHEET_URL =
+  "https://v2.xivapi.com/api/sheet/GCSupplyDutyReward";
 const SEARCH_URL = "https://v2.xivapi.com/api/search";
 
 // A conservative budget for being a polite citizen, shared by every open tab.
@@ -117,4 +119,104 @@ export const searchItems = async (
     name: fields.Name,
     stackSize: fields.StackSize,
   }));
+};
+
+/** The most rows XIVAPI gives in one page of a sheet listing or a search. */
+const MAX_PAGE_SIZE = 500;
+
+/**
+ * How many Company Seals an Expert Delivery hands in for, by the item level
+ * of the item delivered. NQ and HQ are worth the same.
+ */
+export const fetchExpertDeliverySealsByItemLevel = async (): Promise<
+  Map<number, number>
+> => {
+  const sealsByItemLevel = new Map<number, number>();
+  let lastRowId: number | undefined;
+  // Pages until an empty one, rather than stopping at a short page, in case XIVAPI's page size is smaller than asked for.
+  for (;;) {
+    const params = new URLSearchParams({
+      fields: "SealsExpertDelivery",
+      limit: String(MAX_PAGE_SIZE),
+    });
+    if (lastRowId !== undefined) params.set("after", String(lastRowId));
+
+    const response = await client.fetch(
+      `${GC_SUPPLY_DUTY_REWARD_SHEET_URL}?${params}`,
+    );
+    if (!response.ok) {
+      throw new Error(
+        `XIVAPI Expert Delivery seals request failed (${response.status})`,
+      );
+    }
+
+    const { rows } = (await response.json()) as {
+      rows: { row_id: number; fields: { SealsExpertDelivery: number } }[];
+    };
+    if (rows.length === 0) return sealsByItemLevel;
+    rows.forEach(({ row_id, fields }) =>
+      sealsByItemLevel.set(row_id, fields.SealsExpertDelivery),
+    );
+    lastRowId = rows[rows.length - 1].row_id;
+  }
+};
+
+/** An item that can be handed in for an Expert Delivery. */
+export interface ExpertDeliveryCandidate {
+  itemId: number;
+  name: string;
+  itemLevel: number;
+}
+
+/**
+ * Equipment that's green, blue or aetherial, can be sold to a vendor, and can
+ * be sold on the market board. Only items bought from the market board are of
+ * interest, so untradeable ones are left out even though they can be handed in.
+ */
+const EXPERT_DELIVERY_CANDIDATE_QUERY =
+  "+EquipSlotCategory>0 +(Rarity=2 Rarity=3 Rarity=7) -PriceLow=0 -ItemSearchCategory=0";
+
+/**
+ * Every item on the market board that can be handed in for an Expert
+ * Delivery. Items the Calamity Salvager sells can't be handed in either, but
+ * there's no data to tell them apart; they're nearly all untradeable anyway.
+ */
+export const fetchExpertDeliveryCandidates = async (): Promise<
+  ExpertDeliveryCandidate[]
+> => {
+  const fields = "Name,LevelItem@as(raw)";
+  const limit = String(MAX_PAGE_SIZE);
+  const candidates: ExpertDeliveryCandidate[] = [];
+  let params = new URLSearchParams({
+    sheets: "Item",
+    query: EXPERT_DELIVERY_CANDIDATE_QUERY,
+    fields,
+    limit,
+  });
+  for (;;) {
+    const response = await client.fetch(`${SEARCH_URL}?${params}`);
+    if (!response.ok) {
+      throw new Error(
+        `XIVAPI Expert Delivery item search failed (${response.status})`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      next?: string;
+      results: {
+        row_id: number;
+        fields: { Name: string; "LevelItem@as(raw)": number };
+      }[];
+    };
+    data.results.forEach(({ row_id, fields }) =>
+      candidates.push({
+        itemId: row_id,
+        name: fields.Name,
+        itemLevel: fields["LevelItem@as(raw)"],
+      }),
+    );
+    if (data.next === undefined) return candidates;
+    // A cursor carries on the same search, but not which fields to give.
+    params = new URLSearchParams({ cursor: data.next, fields, limit });
+  }
 };

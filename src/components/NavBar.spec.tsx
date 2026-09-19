@@ -82,6 +82,7 @@ describe("NavBar", () => {
     it.each([
       ["Tracked Items", "/high-volume-items", "/"],
       ["High Volume Items", "/", "/high-volume-items"],
+      ["Expert Delivery", "/", "/expert-delivery"],
       ["Characters", "/", "/characters"],
       ["Manage Items", "/", "/manage-items"],
     ])(
@@ -98,6 +99,7 @@ describe("NavBar", () => {
     it.each([
       ["/", "Tracked Items"],
       ["/high-volume-items", "High Volume Items"],
+      ["/expert-delivery", "Expert Delivery"],
       ["/characters", "Characters"],
       ["/manage-items", "Manage Items"],
     ])(

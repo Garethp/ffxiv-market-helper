@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 import { NavBar } from "./components/NavBar";
 import { NoCharactersMessage } from "./components/NoCharactersMessage";
 import { CharactersContainer } from "./containers/CharactersContainer";
+import { ExpertDeliveryContainer } from "./containers/ExpertDeliveryContainer";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
@@ -99,6 +100,15 @@ const App = () => {
               path="/high-volume-items"
               element={
                 <HighVolumeItemsContainer
+                  config={config}
+                  currentCharacter={currentCharacter}
+                />
+              }
+            />
+            <Route
+              path="/expert-delivery"
+              element={
+                <ExpertDeliveryContainer
                   config={config}
                   currentCharacter={currentCharacter}
                 />

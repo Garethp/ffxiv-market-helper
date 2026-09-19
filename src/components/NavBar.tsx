@@ -32,6 +32,9 @@ export const NavBar = ({
           <NavLink to="/high-volume-items" className="navbar-link">
             High Volume Items
           </NavLink>
+          <NavLink to="/expert-delivery" className="navbar-link">
+            Expert Delivery
+          </NavLink>
           <NavLink to="/characters" className="navbar-link">
             Characters
           </NavLink>
