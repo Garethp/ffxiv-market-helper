@@ -1,12 +1,5 @@
 // @vitest-environment jsdom
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // The item tooltip looks up what an item is; these tests are only about the table around it.
@@ -18,7 +11,6 @@ import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import type { ProfitRow } from "../types";
-import { descriptionOf } from "../testing/descriptionOf";
 import { ScannedItemsTable } from "./ScannedItemsTable";
 import { withQueryClient } from "../testing/withQueryClient";
 
@@ -48,16 +40,14 @@ const renderTable = (
   highlightProfitPerDay?: number,
 ) =>
   render(
-    <MemoryRouter>
-      <ScannedItemsTable
-        items={items}
-        profits={profits}
-        buyingRegions={buyingRegions}
-        highlightProfitPerDay={highlightProfitPerDay}
-        world={world}
-        gapThresholdMultiplier={1.1}
-      />
-    </MemoryRouter>,
+    <ScannedItemsTable
+      items={items}
+      profits={profits}
+      buyingRegions={buyingRegions}
+      highlightProfitPerDay={highlightProfitPerDay}
+      world={world}
+      gapThresholdMultiplier={1.1}
+    />,
     { wrapper: withQueryClient() },
   );
 
@@ -123,6 +113,10 @@ const bodyRows = (container: HTMLElement) =>
 
 const totalCell = (row: Element) => row.querySelectorAll(":scope > td")[3];
 
+/** The item's name, which describes the item's summary rather than linking anywhere. */
+const itemName = (row: Element) =>
+  row.querySelectorAll(":scope > td")[0].querySelector("[aria-describedby]");
+
 /** The first scanned item's profit tooltip, split into its buying region sections. */
 const tooltipSections = (container: HTMLElement) =>
   Array.from(
@@ -151,9 +145,7 @@ describe("ScannedItemsTable", () => {
       ]);
 
       expect(
-        bodyRows(container).map(
-          (row) => row.querySelector("td a")?.textContent,
-        ),
+        bodyRows(container).map((row) => itemName(row)?.textContent),
       ).toEqual(["Grade 8 Dark Matter", "Wind Cluster", "Caramel Popcorn"]);
     });
 
@@ -179,26 +171,6 @@ describe("ScannedItemsTable", () => {
   });
 
   describe("linking out", () => {
-    it("should link the item's name to its profit scan, opening in a new tab without exposing this page", () => {
-      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
-
-      const link = screen.getByText("Grade 8 Dark Matter").closest("a");
-      expect(link?.getAttribute("href")).toBe("/item/42");
-      expect(link?.getAttribute("target")).toBe("_blank");
-      expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
-    });
-
-    it("should explain what the item's own link opens, once its summary is opened", () => {
-      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
-      const link = screen.getByRole("link", { name: "Grade 8 Dark Matter" });
-
-      fireEvent.mouseEnter(link);
-
-      expect(descriptionOf(link)).toContain(
-        "Quick profit scan (opens in a new tab, so this scan keeps running)",
-      );
-    });
-
     it("should link to the item's Universalis market page for the selected world, opening in a new tab without exposing this page", () => {
       renderTable([scannedItem({ itemId: 42 })], "Raiden");
 

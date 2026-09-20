@@ -8,7 +8,6 @@ import { CharactersContainer } from "./containers/CharactersContainer";
 import { ExpertDeliveryContainer } from "./containers/ExpertDeliveryContainer";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
-import { ItemProfitScanContainer } from "./containers/ItemProfitScanContainer";
 import { ManageItemsContainer } from "./containers/ManageItemsContainer";
 import { useItemDataStatus } from "./hooks/useItemDataStatus";
 import { useReloadable } from "./hooks/useReloadable";
@@ -114,16 +113,6 @@ const App = () => {
                 <ExpertDeliveryContainer
                   config={config}
                   currentCharacter={currentCharacter}
-                />
-              }
-            />
-            <Route
-              path="/item/:itemId"
-              element={
-                <ItemProfitScanContainer
-                  config={config}
-                  currentCharacter={currentCharacter}
-                  onTrackedItemsChanged={reloadTrackedItems}
                 />
               }
             />

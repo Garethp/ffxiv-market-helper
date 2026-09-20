@@ -112,7 +112,7 @@ describe("NavBar", () => {
     );
 
     it("should mark no page as current on a page it doesn't link to", () => {
-      renderNavBar({ path: "/item/5" });
+      renderNavBar({ path: "/somewhere-else" });
 
       expect(pagesMarkedCurrent()).toEqual([]);
     });

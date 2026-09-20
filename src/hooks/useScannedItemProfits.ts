@@ -41,9 +41,9 @@ const untrackedItem = (
 });
 
 /**
- * Prices each of the given items the same way the item page does — across
- * every buying region, selling through the Current Character — once per set
- * of items, without refreshing afterward.
+ * Prices each of the given items the same way the tracked items page prices
+ * tracked items — across every buying region, selling through the Current
+ * Character — but once per set of items, without refreshing afterward.
  */
 export const useScannedItemProfits = (
   items: { itemId: number; name: string | null }[],

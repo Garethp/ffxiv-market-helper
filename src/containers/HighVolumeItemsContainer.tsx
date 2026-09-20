@@ -60,10 +60,10 @@ export const HighVolumeItemsContainer = ({
       <div className="page-intro">
         <p>
           Scans every item Universalis has ever seen traded and ranks them by
-          recent sale velocity on the selected character's home world. Click an
-          item's name for a quick profit scan (opens in a new tab, so the scan
-          here keeps going), or ↗ to view it on Universalis directly. Showing
-          the top {DISPLAY_LIMIT} by total units sold per day.
+          recent sale velocity on the selected character's home world. Hover
+          over an item's name to see what it is, or click ↗ to view it on
+          Universalis directly. Showing the top {DISPLAY_LIMIT} by total units
+          sold per day.
         </p>
         <p>
           Once the scan has completed, the top {PRICED_ITEM_LIMIT} will have

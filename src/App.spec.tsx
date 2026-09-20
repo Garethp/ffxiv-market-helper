@@ -50,20 +50,6 @@ vi.mock("./containers/HighVolumeItemsContainer", () => ({
 vi.mock("./containers/ExpertDeliveryContainer", () => ({
   ExpertDeliveryContainer: () => <p>Expert delivery items</p>,
 }));
-vi.mock("./containers/ItemProfitScanContainer", () => ({
-  ItemProfitScanContainer: ({
-    onTrackedItemsChanged,
-  }: {
-    onTrackedItemsChanged: () => void;
-  }) => (
-    <>
-      <p>Item profit scan</p>
-      <button type="button" onClick={onTrackedItemsChanged}>
-        Track the item
-      </button>
-    </>
-  ),
-}));
 vi.mock("./containers/ManageItemsContainer", () => ({
   ManageItemsContainer: ({
     onTrackedItemsChanged,
@@ -216,7 +202,7 @@ describe("App", () => {
   });
 
   describe("the character roster", () => {
-    it.each(["/", "/high-volume-items", "/expert-delivery", "/item/5"])(
+    it.each(["/", "/high-volume-items", "/expert-delivery"])(
       "should welcome someone with no characters on %s, and point them to adding one",
       async (path) => {
         mockedGetCharacters.mockResolvedValue([]);
@@ -225,9 +211,7 @@ describe("App", () => {
 
         await screen.findByRole("heading", { name: "Welcome!" });
         expect(
-          screen.queryByText(
-            /Tracked items|High volume|Expert delivery|Item profit/,
-          ),
+          screen.queryByText(/Tracked items|High volume|Expert delivery/),
         ).toBe(null);
         fireEvent.click(
           screen.getByRole("link", { name: "Add your first character" }),
@@ -319,19 +303,6 @@ describe("App", () => {
       await screen.findByText("Cordial");
     });
 
-    it("should read the tracked items again after an item is tracked from its own page", async () => {
-      renderApp("/item/6141");
-      const trackButton = await screen.findByRole("button", {
-        name: "Track the item",
-      });
-      mockedGetTrackedItems.mockResolvedValue([cordial]);
-
-      fireEvent.click(trackButton);
-      fireEvent.click(navLink("Tracked Items"));
-
-      await screen.findByText("Cordial");
-    });
-
     it("should let items be managed before any character has been added", async () => {
       mockedGetCharacters.mockResolvedValue([]);
 
@@ -385,17 +356,6 @@ describe("App", () => {
 
       expect(navLink("High Volume Items").getAttribute("aria-current")).toBe(
         "page",
-      );
-      expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
-      expect(navLink("Characters").hasAttribute("aria-current")).toBe(false);
-    });
-
-    it("should mark no page as current on a page it doesn't link to", async () => {
-      renderApp("/item/5");
-      await screen.findByText("Item profit scan");
-
-      expect(navLink("High Volume Items").hasAttribute("aria-current")).toBe(
-        false,
       );
       expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
       expect(navLink("Characters").hasAttribute("aria-current")).toBe(false);

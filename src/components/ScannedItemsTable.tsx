@@ -1,5 +1,4 @@
 import { memo, useId } from "react";
-import { Link } from "react-router-dom";
 import { buildMarketPageUrl } from "../api/universalis";
 import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
@@ -56,7 +55,7 @@ const TotalSaleVelocity = ({
                     key={buyingRegion.region}
                     buyingRegion={buyingRegion}
                     rows={[{ row, isRefreshing: false }]}
-                    // Priced once rather than kept refreshing, so a failed region is flagged straight away, as on the item page.
+                    // Priced once rather than kept refreshing, so a failed region is flagged straight away.
                     staleWarningThresholdMs={0}
                     sellWorld={world}
                     gapThresholdMultiplier={gapThresholdMultiplier}
@@ -129,19 +128,8 @@ export const ScannedItemsTable = memo(
               <td>
                 <ItemSummaryTooltip
                   itemId={item.itemId}
-                  note="Quick profit scan (opens in a new tab, so this scan keeps running)"
-                >
-                  {(tooltipId) => (
-                    <Link
-                      to={`/item/${item.itemId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-describedby={tooltipId}
-                    >
-                      {item.name ?? `#${item.itemId}`}
-                    </Link>
-                  )}
-                </ItemSummaryTooltip>{" "}
+                  name={item.name ?? `#${item.itemId}`}
+                />{" "}
                 {/* Named by its tooltip, since the link itself is only an icon. */}
                 <Tooltip text="View on Universalis">
                   {(tooltipId) => (

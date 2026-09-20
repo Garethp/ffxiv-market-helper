@@ -1,7 +1,7 @@
 import { focusManager, QueryClient } from "@tanstack/react-query";
 
 // TanStack Query pauses polling and retries while the page is hidden. A page left open in a
-// background tab (e.g. tracked items, while an item page is open in another) should keep
+// background tab (e.g. tracked items, while a scan runs in another) should keep
 // refreshing, so it's told the page is always focused.
 focusManager.setFocused(true);
 
