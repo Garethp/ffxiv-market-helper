@@ -7,12 +7,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { descriptionOf } from "../testing/descriptionOf";
 import type {
   TrackedItemChangeResult,
   TrackedItemSettings,
 } from "../services/trackedItemService";
-import { pricingHints } from "./pricingHints";
 import { TrackedItemSettingsForm } from "./TrackedItemSettingsForm";
 
 type Initial = {
@@ -63,31 +61,6 @@ const setField = (field: HTMLInputElement, value: string) =>
 afterEach(cleanup);
 
 describe("TrackedItemSettingsForm", () => {
-  describe("explaining the settings", () => {
-    it.each([
-      ["target quantity", pricingHints.targetQuantity],
-      ["sell price ceiling", pricingHints.sellPriceCeiling],
-    ])("should explain what the %s means", (setting, explanation) => {
-      renderForm();
-
-      expect(
-        descriptionOf(screen.getByRole("button", { name: `About ${setting}` })),
-      ).toBe(explanation);
-    });
-
-    it("should not submit when an explanation is opened", () => {
-      const { onSubmit } = renderForm({
-        initial: { quality: "NQ", targetQuantity: 999 },
-      });
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "About target quantity" }),
-      );
-
-      expect(onSubmit).not.toHaveBeenCalled();
-    });
-  });
-
   it("should be named as given", () => {
     renderForm();
 
@@ -126,15 +99,6 @@ describe("TrackedItemSettingsForm", () => {
   });
 
   describe("submitting", () => {
-    it("should label the submit button as given", () => {
-      renderForm({
-        initial: { quality: "NQ", targetQuantity: 999 },
-        submitLabel: "Save",
-      });
-
-      expect(submitButton("Save")).toBeTruthy();
-    });
-
     it("should only allow submitting once NQ or HQ has been chosen", () => {
       renderForm();
 

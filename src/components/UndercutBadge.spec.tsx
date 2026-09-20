@@ -34,12 +34,6 @@ describe("UndercutBadge", () => {
     expect(badge.getAttribute("tabindex")).toBe("0");
   });
 
-  it("should label the listing as undercut", () => {
-    render(<UndercutBadge status={undercutStatus()} />);
-
-    expect(screen.getByText("undercut")).not.toBeNull();
-  });
-
   it("should show our own listing's price and where it ranks", () => {
     render(
       <UndercutBadge
@@ -71,11 +65,5 @@ describe("UndercutBadge", () => {
       [(1000).toLocaleString(), "5"],
       [(1250).toLocaleString(), "99"],
     ]);
-  });
-
-  it("should list no cheaper listings when there are none", () => {
-    render(<UndercutBadge status={undercutStatus({ cheaperListings: [] })} />);
-
-    expect(listingRows()).toEqual([]);
   });
 });

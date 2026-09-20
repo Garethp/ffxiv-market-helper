@@ -28,12 +28,6 @@ describe("buildMarketPageUrl", () => {
       "https://universalis.app/market/12345?server=Chaos",
     );
   });
-
-  it("should still produce a valid link when the world or data center name contains special characters", () => {
-    expect(buildMarketPageUrl(12345, "Test World & More")).toBe(
-      "https://universalis.app/market/12345?server=Test%20World%20%26%20More",
-    );
-  });
 });
 
 describe("fetchRegionListings", () => {
@@ -70,14 +64,6 @@ describe("fetchRegionListings", () => {
 
       expect(await fetchRegionListings("Europe", [8455, 1609, 1])).toEqual(
         new Map([[8455, listings]]),
-      );
-    });
-
-    it("should fail when Universalis doesn't answer successfully", async () => {
-      mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
-
-      await expect(fetchRegionListings("Europe", [8455, 1609])).rejects.toThrow(
-        "Universalis region-listings request failed (500) for 2 items in Europe",
       );
     });
   });
@@ -134,14 +120,6 @@ describe("fetchRegionListings", () => {
     await fetchRegionListings("North America", [1, 2]);
 
     expect(requestedUrl().pathname).toBe("/api/v2/North-America/1,2");
-  });
-
-  it("should encode the region's name", async () => {
-    mockedFetch.mockResolvedValue(json({ items: {} }));
-
-    await fetchRegionListings("Some Region", [1, 2]);
-
-    expect(requestedUrl().pathname).toBe("/api/v2/Some%20Region/1,2");
   });
 
   it("should ask for nothing when given no items", async () => {

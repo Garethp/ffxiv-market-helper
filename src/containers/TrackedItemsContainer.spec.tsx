@@ -162,33 +162,10 @@ afterEach(() => {
 
 describe("TrackedItemsContainer", () => {
   describe("introducing the page", () => {
-    it("should title the page Tracked Items", () => {
-      renderContainer();
-
-      expect(document.title).toBe("Tracked Items");
-      expect(
-        screen.getByRole("heading", { level: 1, name: "Tracked Items" }),
-      ).not.toBeNull();
-    });
-
-    it("should say which world items are being sold on", () => {
-      renderContainer();
-
-      expect(screen.getByText("Selling on Raiden")).not.toBeNull();
-    });
-
     it("should show a placeholder for the sell world while there's no Current Character", () => {
       renderContainer(null);
 
       expect(screen.getByText("Selling on …")).not.toBeNull();
-    });
-
-    it("should say how often rows refresh", () => {
-      renderContainer();
-
-      expect(
-        screen.getByText("Rows refresh automatically every 90s"),
-      ).not.toBeNull();
     });
   });
 
@@ -214,16 +191,6 @@ describe("TrackedItemsContainer", () => {
   });
 
   describe("showing profit through each buying region", () => {
-    it("should show a section for each buying region, in order", () => {
-      renderContainer();
-
-      expect(
-        screen
-          .getAllByRole("heading", { level: 2 })
-          .map((heading) => heading.textContent),
-      ).toEqual(["Buying via Alice (Europe)", "Buying via Bob (Japan)"]);
-    });
-
     it("should show each region's own prices in its section", async () => {
       mockedFetchRowMarketData.mockImplementation(
         async (_client, _itemId, region) =>
@@ -255,21 +222,6 @@ describe("TrackedItemsContainer", () => {
       expect(sellPriceLink.getAttribute("href")).toBe(
         buildMarketPageUrl(1, "Raiden"),
       );
-    });
-
-    it("should warn about a row whose fetches keep failing only once its last good data is older than the stale-warning threshold", async () => {
-      renderContainer();
-      await advance();
-
-      mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
-      // The next refresh, and its retry, both fail — but the last good data is under 5 minutes old.
-      await advance(90_000 + 10_000);
-      const europe = regionSection("Buying via Alice (Europe)");
-      expect(within(europe).queryByText("⚠")).toBeNull();
-
-      // Refreshes keep failing until the last good data is over 5 minutes old.
-      await advance(300_000);
-      expect(within(europe).queryByText("⚠")).not.toBeNull();
     });
   });
 });

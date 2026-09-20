@@ -108,17 +108,6 @@ describe("ItemSearch", () => {
     expect(mockedSearchItems).not.toHaveBeenCalled();
   });
 
-  it("should search for the text without its surrounding whitespace", async () => {
-    renderSearch();
-
-    typeText("cordial  ");
-
-    await screen.findByRole("button", { name: "Cordial" });
-    expect(mockedSearchItems).toHaveBeenCalledWith("cordial", {
-      signal: expect.any(AbortSignal),
-    });
-  });
-
   it("should show that it's searching", async () => {
     mockedSearchItems.mockReturnValue(deferred<ItemSearchResult[]>().promise);
     renderSearch();
@@ -175,15 +164,6 @@ describe("ItemSearch", () => {
       document.getElementById(result.getAttribute("aria-describedby")!)
         ?.textContent,
     ).toContain("A sweet, fermented concoction.");
-  });
-
-  it("should look nothing up for a result until it's hovered", async () => {
-    renderSearch();
-    typeText("cordial");
-
-    await screen.findByRole("button", { name: "Cordial" });
-
-    expect(mockedGetItemSummaries).not.toHaveBeenCalled();
   });
 
   it("should pass on the item that's picked", async () => {

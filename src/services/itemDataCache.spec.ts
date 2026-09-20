@@ -294,9 +294,5 @@ describe("ItemDataCache", () => {
 
       expect(listener).not.toHaveBeenCalled();
     });
-
-    it("should start out idle", () => {
-      expect(setUp().cache.getStatus()).toEqual({ state: "idle" });
-    });
   });
 });

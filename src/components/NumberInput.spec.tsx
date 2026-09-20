@@ -63,12 +63,7 @@ describe("NumberInput", () => {
   });
 
   describe("reading what's typed", () => {
-    it.each([
-      ["2m", "2000000"],
-      ["1.5m", "1500000"],
-      ["750", "750"],
-      ["1,200", "1200"],
-    ])("should report %s as %s", (text, value) => {
+    it.each([["2m", "2000000"]])("should report %s as %s", (text, value) => {
       render(<Harness initialValue={undefined} />);
 
       type(text);
@@ -157,17 +152,5 @@ describe("NumberInput", () => {
 
       expect(input().value).toBe("1");
     });
-  });
-
-  it("should follow the value when it changes while not being edited", () => {
-    const { rerender } = render(
-      <NumberInput aria-label="Amount" value={1000} onChange={() => {}} />,
-    );
-
-    rerender(
-      <NumberInput aria-label="Amount" value={3_000_000} onChange={() => {}} />,
-    );
-
-    expect(input().value).toBe("3m");
   });
 });

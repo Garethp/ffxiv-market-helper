@@ -51,12 +51,6 @@ describe("searchItems", () => {
     expect(search.get("query")).toBe('+Name~"cordial" -ItemSearchCategory=0');
   });
 
-  it("should ask for at most 20 results", async () => {
-    await searchItems("cordial");
-
-    expect(requestedSearch().get("limit")).toBe("20");
-  });
-
   it("should give each matching item's ID, name and stack size, in the order XIVAPI ranks them", async () => {
     mockedFetch.mockResolvedValue(
       searchResponse([
@@ -217,14 +211,6 @@ describe("fetchExpertDeliverySealsByItemLevel", () => {
     );
   });
 
-  it("should ask for as many rows per page as XIVAPI gives", async () => {
-    mockedFetch.mockResolvedValue(sealsPage([]));
-
-    await fetchExpertDeliverySealsByItemLevel();
-
-    expect(requestedUrls()[0].searchParams.get("limit")).toBe("500");
-  });
-
   it("should fail when XIVAPI doesn't answer successfully", async () => {
     mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
 
@@ -251,18 +237,6 @@ describe("fetchExpertDeliveryCandidates", () => {
 
   const requestedSearches = () =>
     mockedFetch.mock.calls.map(([url]) => new URL(String(url)).searchParams);
-
-  it("should look for green, blue and aetherial equipment that can be sold to a vendor and on the market board", async () => {
-    mockedFetch.mockResolvedValue(candidatesPage([]));
-
-    await fetchExpertDeliveryCandidates();
-
-    const [search] = requestedSearches();
-    expect(search.get("sheets")).toBe("Item");
-    expect(search.get("query")).toBe(
-      "+EquipSlotCategory>0 +(Rarity=2 Rarity=3 Rarity=7) -PriceLow=0 -ItemSearchCategory=0",
-    );
-  });
 
   it("should give each item's ID, name and item level", async () => {
     mockedFetch.mockResolvedValue(

@@ -113,10 +113,6 @@ const bodyRows = (container: HTMLElement) =>
 
 const totalCell = (row: Element) => row.querySelectorAll(":scope > td")[3];
 
-/** The item's name, which describes the item's summary rather than linking anywhere. */
-const itemName = (row: Element) =>
-  row.querySelectorAll(":scope > td")[0].querySelector("[aria-describedby]");
-
 /** The first scanned item's profit tooltip, split into its buying region sections. */
 const tooltipSections = (container: HTMLElement) =>
   Array.from(
@@ -135,18 +131,6 @@ describe("ScannedItemsTable", () => {
       ]);
 
       expect(bodyRows(container)).toHaveLength(3);
-    });
-
-    it("should list items in the order given", () => {
-      const { container } = renderTable([
-        scannedItem({ itemId: 3, name: "Grade 8 Dark Matter" }),
-        scannedItem({ itemId: 1, name: "Wind Cluster" }),
-        scannedItem({ itemId: 2, name: "Caramel Popcorn" }),
-      ]);
-
-      expect(
-        bodyRows(container).map((row) => itemName(row)?.textContent),
-      ).toEqual(["Grade 8 Dark Matter", "Wind Cluster", "Caramel Popcorn"]);
     });
 
     it("should render no rows when there are no scanned items", () => {

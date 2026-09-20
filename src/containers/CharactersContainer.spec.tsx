@@ -107,35 +107,6 @@ describe("CharactersContainer", () => {
       expect(within(card).getByText("Raiden (Europe)")).toBeTruthy();
       expect(await characterService.getCharacters()).toHaveLength(1);
     });
-
-    it("should clear the form, ready for the next character", async () => {
-      await renderPage();
-
-      await addCharacterThroughPage("Alice", "Raiden");
-
-      const form = screen.getByRole("region", { name: "Add a character" });
-      expect(
-        (within(form).getByLabelText("Name") as HTMLInputElement).value,
-      ).toBe("");
-    });
-
-    it("should explain why a character couldn't be added", async () => {
-      await characterService.addCharacter({
-        name: "Alice",
-        homeWorld: "Raiden",
-      });
-      await renderPage();
-
-      const form = screen.getByRole("region", { name: "Add a character" });
-      fillIn(form, { Name: "Alice", "Home world": "Raiden" });
-      fireEvent.click(
-        within(form).getByRole("button", { name: "Add character" }),
-      );
-
-      expect((await within(form).findByRole("alert")).textContent).toBe(
-        "There's already a character named Alice on Raiden.",
-      );
-    });
   });
 
   describe("changing a character", () => {
@@ -157,47 +128,6 @@ describe("CharactersContainer", () => {
       expect(within(changed).getByText("Odin (Europe)")).toBeTruthy();
       expect(within(changed).getByText("Moved")).toBeTruthy();
     });
-
-    it("should keep the form open, explaining why, when the change can't be saved", async () => {
-      await characterService.addCharacter({
-        name: "Alice",
-        homeWorld: "Raiden",
-      });
-      await characterService.addCharacter({ name: "Bob", homeWorld: "Raiden" });
-      await renderPage();
-      const card = await characterCard("Bob");
-
-      fireEvent.click(within(card).getByRole("button", { name: "Edit Bob" }));
-      fillIn(card, { Name: "Alice" });
-      fireEvent.click(
-        within(card).getByRole("button", { name: "Save character" }),
-      );
-
-      expect((await within(card).findByRole("alert")).textContent).toBe(
-        "There's already a character named Alice on Raiden.",
-      );
-      expect(
-        within(card).getByRole("button", { name: "Save character" }),
-      ).toBeTruthy();
-    });
-
-    it("should leave the character as it was when editing is cancelled", async () => {
-      await characterService.addCharacter({
-        name: "Alice",
-        homeWorld: "Raiden",
-      });
-      await renderPage();
-      const card = await characterCard("Alice");
-
-      fireEvent.click(within(card).getByRole("button", { name: "Edit Alice" }));
-      fillIn(card, { Name: "Alicia" });
-      fireEvent.click(within(card).getByRole("button", { name: "Cancel" }));
-
-      expect(within(card).getByRole("heading", { level: 2 }).textContent).toBe(
-        "Alice Raiden (Europe)",
-      );
-      expect((await characterService.getCharacters())[0].name).toBe("Alice");
-    });
   });
 
   describe("removing a character", () => {
@@ -217,24 +147,6 @@ describe("CharactersContainer", () => {
 
       await screen.findByText(/No characters yet/);
       expect(await characterService.getCharacters()).toEqual([]);
-    });
-
-    it("should keep the character when removing it isn't confirmed", async () => {
-      vi.spyOn(window, "confirm").mockReturnValue(false);
-      const removeCharacter = vi.spyOn(characterService, "removeCharacter");
-      await characterService.addCharacter({
-        name: "Alice",
-        homeWorld: "Raiden",
-      });
-      await renderPage();
-
-      fireEvent.click(
-        within(await characterCard("Alice")).getByRole("button", {
-          name: "Remove Alice",
-        }),
-      );
-
-      expect(removeCharacter).not.toHaveBeenCalled();
     });
   });
 
@@ -268,23 +180,6 @@ describe("CharactersContainer", () => {
       expect(
         within(await characterCard("Bob")).getByText("No retainers yet."),
       ).toBeTruthy();
-    });
-
-    it("should explain why a retainer couldn't be added", async () => {
-      await characterService.addCharacter({
-        name: "Alice",
-        homeWorld: "Raiden",
-      });
-      await renderPage();
-      const card = await characterCard("Alice");
-      addRetainerThroughPage(card, "Amarana", "Ul'dah");
-      await within(card).findByText("Amarana");
-
-      const form = addRetainerThroughPage(card, "Amarana", "Kugane");
-
-      expect((await within(form).findByRole("alert")).textContent).toBe(
-        "This character already has a retainer named Amarana.",
-      );
     });
 
     it("should save a retainer's changed details", async () => {

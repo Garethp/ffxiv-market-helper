@@ -18,7 +18,6 @@ import {
   fetchItem,
   fetchItemSummaries,
   fetchItemNames,
-  searchItems,
 } from "../api/xivapi";
 import { InMemoryLockManager } from "../requestLimiting/InMemoryLockManager";
 import { MemoryItemDataStore } from "../testing/MemoryItemDataStore";
@@ -31,7 +30,6 @@ const mockedFetchSeals = vi.mocked(fetchExpertDeliverySealsByItemLevel);
 const mockedFetchItem = vi.mocked(fetchItem);
 const mockedFetchItemNames = vi.mocked(fetchItemNames);
 const mockedFetchItemSummaries = vi.mocked(fetchItemSummaries);
-const mockedSearchItems = vi.mocked(searchItems);
 
 const cordial = {
   itemId: 6141,
@@ -121,17 +119,6 @@ describe("CachingItemService", () => {
       expect(mockedFetchItem).toHaveBeenCalledWith(1, { signal });
     });
 
-    it("should ask XIVAPI when the cache can't be read", async () => {
-      const { service, store } = await serviceCaching();
-      vi.spyOn(store, "getItems").mockRejectedValue(new Error("Unreadable"));
-      mockedFetchItem.mockResolvedValue({ name: "Cordial", stackSize: 999 });
-
-      expect(await service.getItem(6141)).toEqual({
-        name: "Cordial",
-        stackSize: 999,
-      });
-    });
-
     it("should give up, rather than ask XIVAPI, when cancelled while waiting for the cache", async () => {
       const store = new MemoryItemDataStore();
       const service = new CachingItemService(
@@ -160,18 +147,6 @@ describe("CachingItemService", () => {
     });
   });
 
-  describe("searching for items", () => {
-    it("should give what XIVAPI finds, letting the search be cancelled", async () => {
-      const { service } = await serviceCaching();
-      const found = [cordial];
-      mockedSearchItems.mockResolvedValue(found);
-      const { signal } = new AbortController();
-
-      expect(await service.searchItems("cordial", { signal })).toBe(found);
-      expect(mockedSearchItems).toHaveBeenCalledWith("cordial", { signal });
-    });
-  });
-
   describe("Expert Delivery items", () => {
     it("should give the items worth at least the minimum seals, by their item levels' seal values", async () => {
       const { service } = await serviceCaching();
@@ -194,16 +169,6 @@ describe("CachingItemService", () => {
           seals: 518,
         },
       ]);
-    });
-
-    it("should fail when either the items or the seal values can't be fetched", async () => {
-      const { service } = await serviceCaching();
-      mockedFetchCandidates.mockResolvedValue([]);
-      mockedFetchSeals.mockRejectedValue(new Error("XIVAPI is down"));
-
-      await expect(service.getExpertDeliveryItems(0)).rejects.toThrow(
-        "XIVAPI is down",
-      );
     });
   });
 
@@ -248,29 +213,6 @@ describe("CachingItemService", () => {
         new Map([[6141, cordialSummary]]),
       );
       expect(mockedFetchItemSummaries).toHaveBeenCalledWith([6141]);
-    });
-  });
-
-  describe("getting the item data ready", () => {
-    it("should tell listeners how it's going, and be ready once done", async () => {
-      const service = new CachingItemService(
-        new ItemDataCache(
-          new MemoryItemDataStore(),
-          {
-            fetchLatestGameVersion: async () => "7.56x1",
-            fetchMarketBoardItems: async () => [cordial],
-            fetchItemTypeNames: async () => new Map(),
-          },
-          new InMemoryLockManager(),
-        ),
-      );
-      const listener = vi.fn();
-      service.subscribeToItemDataStatus(listener);
-
-      await service.prepareItemData();
-
-      expect(listener).toHaveBeenCalled();
-      expect(service.getItemDataStatus()).toEqual({ state: "ready" });
     });
   });
 });

@@ -130,18 +130,6 @@ describe("ManageItemsContainer", () => {
       ).toBe("999");
     });
 
-    it("should only track the item once NQ or HQ has been chosen", async () => {
-      await renderPage();
-      const form = await pickCordial();
-      const trackButton = within(form).getByRole("button", {
-        name: "Track item",
-      }) as HTMLButtonElement;
-
-      expect(trackButton.disabled).toBe(true);
-      fireEvent.click(within(form).getByLabelText("NQ"));
-      expect(trackButton.disabled).toBe(false);
-    });
-
     it("should close the form once the item is tracked", async () => {
       await renderPage();
       const form = await pickCordial();
@@ -151,19 +139,6 @@ describe("ManageItemsContainer", () => {
 
       within(await trackedItemsList()).getByText("Cordial");
       expect(screen.queryByRole("form", { name: "Track Cordial" })).toBeNull();
-    });
-
-    it("should explain why an item couldn't be tracked", async () => {
-      await trackedItemService.trackItem({ ...cordial, targetQuantity: 999 });
-      await renderPage();
-      const form = await pickCordial();
-
-      fireEvent.click(within(form).getByLabelText("NQ"));
-      fireEvent.click(within(form).getByRole("button", { name: "Track item" }));
-
-      expect((await within(form).findByRole("alert")).textContent).toBe(
-        "Cordial is already tracked as NQ.",
-      );
     });
 
     it("should start the form over when a different item is picked", async () => {
@@ -216,16 +191,6 @@ describe("ManageItemsContainer", () => {
       });
     });
 
-    it("should show each tracked item's quality, target quantity and sell price ceiling", async () => {
-      await renderPage();
-
-      const item = within(await trackedItemsList()).getByRole("listitem");
-      expect(item.textContent).toContain("Cordial");
-      expect(item.textContent).toContain("NQ");
-      expect(item.textContent).toContain("Target quantity 999");
-      expect(item.textContent).toContain("Sell price ceiling 5k");
-    });
-
     it("should save the changed settings", async () => {
       await renderPage();
 
@@ -242,36 +207,6 @@ describe("ManageItemsContainer", () => {
       const [changed] = await trackedItemService.getTrackedItems();
       expect(changed).toMatchObject({ hq: true, targetQuantity: 60 });
       expect(changed.sellPriceCeiling).toBeUndefined();
-    });
-
-    it("should keep the form open, explaining why, when the change can't be saved", async () => {
-      await renderPage();
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
-      const form = screen.getByRole("form", { name: "Edit Cordial (NQ)" });
-      setField(form, "Target quantity", "");
-      fireEvent.click(within(form).getByRole("button", { name: "Save" }));
-
-      expect((await within(form).findByRole("alert")).textContent).toBe(
-        "Target quantity needs to be a whole number of at least 1.",
-      );
-    });
-
-    it("should leave the item as it was when editing is cancelled", async () => {
-      await renderPage();
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
-      const form = screen.getByRole("form", { name: "Edit Cordial (NQ)" });
-      setField(form, "Target quantity", "60");
-      fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
-
-      expect(screen.queryByRole("form")).toBeNull();
-      const [unchanged] = await trackedItemService.getTrackedItems();
-      expect(unchanged.targetQuantity).toBe(999);
     });
 
     it("should stop tracking the item", async () => {

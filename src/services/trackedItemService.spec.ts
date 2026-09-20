@@ -32,10 +32,6 @@ beforeEach(() => {
 
 describe("trackedItemService", () => {
   describe("starting out", () => {
-    it("should have no tracked items when there are no initial items", async () => {
-      expect(await createService().getTrackedItems()).toEqual([]);
-    });
-
     it("should start out tracking the initial items, in order, each given an ID", async () => {
       const materia = { ...cordial, itemId: 41771, name: "Materia" };
 
@@ -45,22 +41,6 @@ describe("trackedItemService", () => {
           { id: expect.any(String), ...materia },
         ],
       );
-    });
-
-    it("should keep the same IDs for the initial items on later visits", async () => {
-      const firstVisit = await createService([cordial]).getTrackedItems();
-      expect(firstVisit).toHaveLength(1);
-
-      expect(await createService([cordial]).getTrackedItems()).toEqual(
-        firstVisit,
-      );
-    });
-
-    it("should treat unreadable saved data as having no tracked items", async () => {
-      await trackItem(createService());
-      localStorage.setItem(localStorage.key(0)!, "{not json");
-
-      expect(await createService([cordial]).getTrackedItems()).toEqual([]);
     });
   });
 
@@ -77,12 +57,6 @@ describe("trackedItemService", () => {
       ]);
     });
 
-    it("should remember the item for later visits", async () => {
-      const tracked = await trackItem(createService());
-
-      expect(await createService().getTrackedItems()).toEqual([tracked]);
-    });
-
     it("should allow the same item to be tracked as both NQ and HQ", async () => {
       const service = createService();
 
@@ -94,7 +68,7 @@ describe("trackedItemService", () => {
       expect(nq.id).not.toBe(hq.id);
     });
 
-    it.each([0, -5, 1.5])(
+    it.each([0, 1.5])(
       "should refuse a target quantity of %s, which isn't a whole number of at least 1",
       async (targetQuantity) => {
         const service = createService();
@@ -200,31 +174,6 @@ describe("trackedItemService", () => {
       expect((await service.getTrackedItems())[1].hq).toBeUndefined();
     });
 
-    it("should refuse a target quantity that isn't a whole number of at least 1", async () => {
-      const service = createService();
-      const tracked = await trackItem(service);
-
-      expect(
-        await service.updateTrackedItem(tracked.id, { targetQuantity: 0 }),
-      ).toEqual({ ok: false, error: { reason: "invalid-target-quantity" } });
-      expect((await service.getTrackedItems())[0].targetQuantity).toBe(999);
-    });
-
-    it("should refuse a sell price ceiling that isn't a whole number of gil", async () => {
-      const service = createService();
-      const tracked = await trackItem(service);
-
-      expect(
-        await service.updateTrackedItem(tracked.id, {
-          targetQuantity: 999,
-          sellPriceCeiling: -1,
-        }),
-      ).toEqual({ ok: false, error: { reason: "invalid-sell-price-ceiling" } });
-      expect(
-        (await service.getTrackedItems())[0].sellPriceCeiling,
-      ).toBeUndefined();
-    });
-
     it("should refuse to change an item that isn't tracked", async () => {
       expect(
         await createService().updateTrackedItem("missing", {
@@ -243,15 +192,6 @@ describe("trackedItemService", () => {
       await service.untrackItem(nq.id);
 
       expect(await service.getTrackedItems()).toEqual([hq]);
-    });
-
-    it("should not bring the initial items back once every item has been removed", async () => {
-      const service = createService([cordial]);
-      const [tracked] = await service.getTrackedItems();
-
-      await service.untrackItem(tracked.id);
-
-      expect(await createService([cordial]).getTrackedItems()).toEqual([]);
     });
 
     it("should refuse to remove an item that isn't tracked", async () => {

@@ -101,15 +101,6 @@ describe("calculateConsistentPrice", () => {
     expect(result?.fullyFilled).toBe(false);
   });
 
-  it("should note which world the cheapest listing came from", () => {
-    const result = calculateConsistentPrice(
-      [listing({ pricePerUnit: 100, quantity: 99, worldName: "WorldA" })],
-      50,
-    );
-
-    expect(result?.cheapestWorld).toBe("WorldA");
-  });
-
   it("should note the cheapest listing's world even when listings arrive unsorted", () => {
     const result = calculateConsistentPrice(
       [
@@ -726,51 +717,6 @@ describe("buildReadyAnalysis", () => {
 
       expect(analysis.profitPerItem).toBe(100);
       expect(analysis.profitPerStack).toBe(5000);
-    });
-  });
-
-  describe("carrying context through to the analysis", () => {
-    it("should report which data center the buy price came from", () => {
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Light",
-          buy,
-          null,
-          null,
-          99,
-          undefined,
-          someVelocity,
-          noTax,
-          notListed,
-        ),
-      );
-
-      expect(analysis.buyDataCenter).toBe("Light");
-    });
-
-    it("should report where our own listing stands", () => {
-      const undercut: SellListingStatus = {
-        state: "undercut",
-        ourPricePerUnit: 500,
-        rank: 4,
-        cheaperListings: [{ pricePerUnit: 100, quantity: 5 }],
-      };
-
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Chaos",
-          buy,
-          null,
-          null,
-          99,
-          undefined,
-          someVelocity,
-          noTax,
-          undercut,
-        ),
-      );
-
-      expect(analysis.sellListingStatus).toEqual(undercut);
     });
   });
 

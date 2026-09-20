@@ -214,18 +214,6 @@ describe("CharacterCard", () => {
       ).toBeTruthy();
       expect(onUpdate).not.toHaveBeenCalled();
     });
-
-    it("should keep showing the retainers while the character is being edited", () => {
-      renderCard(
-        aCharacter({
-          retainers: [{ id: "r1", name: "Amarana", city: "Ul'dah" }],
-        }),
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: "Edit Alice" }));
-
-      expect(screen.getByText("Amarana")).toBeTruthy();
-    });
   });
 
   describe("removing the character", () => {

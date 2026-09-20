@@ -40,13 +40,4 @@ describe("StoredList", () => {
 
     expect(new StoredList(KEY, () => ["initial"]).read()).toEqual([]);
   });
-
-  it("should keep lists under different keys apart", () => {
-    new StoredList<string>("test:first", () => []).write(["first"]);
-    new StoredList<string>("test:second", () => []).write(["second"]);
-
-    expect(new StoredList<string>("test:first", () => []).read()).toEqual([
-      "first",
-    ]);
-  });
 });

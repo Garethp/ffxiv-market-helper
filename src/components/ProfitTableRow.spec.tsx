@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, within } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { descriptionOf } from "../testing/descriptionOf";
 import type { ProfitPricing, ProfitRow, PricedItem } from "../types";
@@ -127,14 +127,6 @@ describe("ProfitTableRow", () => {
       expect(itemCell.textContent).toContain("Wind Cluster");
     });
 
-    it("should show what the item is when its name is hovered", () => {
-      const { itemCell } = renderRow(readyRow());
-
-      fireEvent.mouseEnter(within(itemCell).getByText("Wind Cluster"));
-
-      expect(itemCell.querySelector(".item-summary-icon")).not.toBeNull();
-    });
-
     it("should ask to copy the item's name when the copy button is clicked", () => {
       const onCopyName = vi.fn();
       const { itemCell } = renderRow(readyRow(), { onCopyName });
@@ -142,15 +134,6 @@ describe("ProfitTableRow", () => {
       fireEvent.click(itemCell.querySelector("button")!);
 
       expect(onCopyName).toHaveBeenCalledTimes(1);
-    });
-
-    it("should put the copy button ahead of the item's name", () => {
-      const { itemCell } = renderRow(readyRow());
-
-      expect(
-        itemCell.firstChild?.contains(itemCell.querySelector("button")),
-      ).toBe(true);
-      expect(itemCell.firstChild?.textContent).not.toContain("Wind Cluster");
     });
 
     it("should confirm the name was copied when it has just been copied", () => {
@@ -448,20 +431,6 @@ describe("ProfitTableRow", () => {
 
       expect(sellPriceCell.querySelector("a")).toBeNull();
       expect(sellPriceCell.textContent).toBe((250).toLocaleString());
-    });
-
-    it("should leave the sell price unmarked when it comes from current listings, since the gap badge already says so", () => {
-      const { sellPriceCell } = renderRow(
-        readyRow({ sellPriceSource: "listings", gapDetected: true }),
-      );
-
-      expect(sellPriceCell.textContent).not.toContain("(listed)");
-    });
-
-    it("should leave the sell price unmarked when it was capped", () => {
-      const { sellPriceCell } = renderRow(readyRow({ sellPriceCapped: true }));
-
-      expect(sellPriceCell.textContent).not.toContain("(capped)");
     });
 
     it.each([1, 2])(

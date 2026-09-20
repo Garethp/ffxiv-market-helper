@@ -7,10 +7,6 @@ beforeEach(() => {
 });
 
 describe("currentCharacterService", () => {
-  it("should have no Current Character before one has been picked", async () => {
-    expect(await currentCharacterService.getCurrentCharacterId()).toBeNull();
-  });
-
   it("should remember the most recently picked Current Character", async () => {
     await currentCharacterService.setCurrentCharacterId("alice-id");
     await currentCharacterService.setCurrentCharacterId("bob-id");

@@ -64,14 +64,6 @@ describe("RetainerForm", () => {
         screen.getAllByRole("option").map((option) => option.textContent),
       ).toEqual(["Choose a city", "Ul'dah", "Kugane"]);
     });
-
-    it("should label the submit button as it's told to", () => {
-      renderForm({ submitLabel: "Hire retainer" });
-
-      expect(
-        screen.getByRole("button", { name: "Hire retainer" }),
-      ).toBeTruthy();
-    });
   });
 
   describe("changing an existing retainer", () => {

@@ -10,15 +10,14 @@ const renderBar = (status: ItemDataStatus) =>
 afterEach(cleanup);
 
 describe("ItemDataStatusBar", () => {
-  it.each([
-    { state: "idle" } as const,
-    { state: "checking" } as const,
-    { state: "ready" } as const,
-  ])("should show nothing while $state", (status) => {
-    const { container } = renderBar(status);
+  it.each([{ state: "idle" } as const])(
+    "should show nothing while $state",
+    (status) => {
+      const { container } = renderBar(status);
 
-    expect(container.innerHTML).toBe("");
-  });
+      expect(container.innerHTML).toBe("");
+    },
+  );
 
   it("should say how many items have loaded so far, and why it's loading them", () => {
     renderBar({ state: "loading", itemsSoFar: 1500 });

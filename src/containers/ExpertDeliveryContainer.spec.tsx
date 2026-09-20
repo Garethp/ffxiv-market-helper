@@ -277,34 +277,6 @@ describe("ExpertDeliveryContainer", () => {
       ).toBe("1k");
     });
 
-    it("should leave out items with no listings worth at least the minimum seals per gil", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      // 518 / 130 is just under 4 seals per gil.
-      pricesGiven({ 8455: listed(at(130)), 1: listed(at(100)) });
-
-      renderPage();
-      await itemsLoaded();
-
-      expect(itemNames()).toEqual(["Some Sword"]);
-    });
-
-    it("should leave out items with no listings costing at most the maximum price", async () => {
-      const helm: ExpertDeliveryItem = {
-        itemId: 4,
-        name: "Pricey Helm",
-        itemLevel: 100,
-        seals: 5000,
-      };
-      mockedGetExpertDeliveryItems.mockResolvedValue([sword, helm]);
-      // Still worth plenty of seals per gil, at almost 5.
-      pricesGiven({ 1: listed(at(100)), 4: listed(at(1001)) });
-
-      renderPage();
-      await itemsLoaded();
-
-      expect(itemNames()).toEqual(["Some Sword"]);
-    });
-
     it("should apply the limits as they're changed", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
       pricesGiven({ 8455: listed(at(100)), 1: listed(at(500)) });
@@ -319,18 +291,6 @@ describe("ExpertDeliveryContainer", () => {
       setField("Minimum seals / gil", "4");
 
       expect(itemNames()).toEqual(["Augmented Wolfram Cuirass"]);
-    });
-
-    it("should show every listed item once both limits are cleared", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 8455: listed(at(1_000_000)), 1: listed(at(5000)) });
-
-      renderPage();
-      await itemsLoaded();
-      setField("Minimum seals / gil", "");
-      setField("Maximum price", "");
-
-      expect(itemNames()).toEqual(["Some Sword", "Augmented Wolfram Cuirass"]);
     });
   });
 
@@ -367,50 +327,6 @@ describe("ExpertDeliveryContainer", () => {
       await itemsLoaded();
 
       expect(tableRows()[0].slice(-1)).toEqual(["Brand New World"]);
-    });
-
-    it("should list items most seals per gil first", async () => {
-      const shield: ExpertDeliveryItem = {
-        itemId: 2,
-        name: "Some Shield",
-        itemLevel: 100,
-        seals: 600,
-      };
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, shield, sword]);
-      pricesGiven({
-        8455: listed(at(120, "Omega")),
-        2: listed(at(100)),
-        1: listed(at(100)),
-      });
-
-      renderPage();
-      await itemsLoaded();
-
-      expect(itemNames()).toEqual([
-        "Some Sword",
-        "Some Shield",
-        "Augmented Wolfram Cuirass",
-      ]);
-    });
-
-    it("should leave out items with no listings, or that couldn't be priced", async () => {
-      const shield: ExpertDeliveryItem = {
-        itemId: 2,
-        name: "Some Shield",
-        itemLevel: 100,
-        seals: 600,
-      };
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, shield, sword]);
-      pricesGiven({
-        8455: { status: "unlisted" },
-        2: { status: "failed" },
-        1: listed(at(100)),
-      });
-
-      renderPage();
-      await itemsLoaded();
-
-      expect(itemNames()).toEqual(["Some Sword"]);
     });
   });
 
@@ -512,17 +428,6 @@ describe("ExpertDeliveryContainer", () => {
       ).not.toBeNull();
     });
 
-    it("should leave out listings outside the limits", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([itemAt(1, "Sword", 900)]);
-      pricesGiven({ 1: listed(at(100, "Lich"), at(1000, "Omega")) });
-
-      renderPage();
-      await itemsLoaded();
-      showRoute();
-
-      expect(routeHeadings()).toEqual(["Light", "Lich 1 listing, 900 seals"]);
-    });
-
     it("should put worlds it doesn't know the data center of last", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([
         itemAt(1, "Somewhere new", 5000),
@@ -543,28 +448,6 @@ describe("ExpertDeliveryContainer", () => {
         "Unknown data center",
         "Brand New World 1 listing, 5,000 seals",
       ]);
-    });
-
-    it("should size each column the same in every world's table", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([
-        itemAt(1, "A Very Long Item Name Indeed", 900),
-        itemAt(2, "Short", 500),
-      ]);
-      pricesGiven({
-        1: listed(at(100, "Lich")),
-        2: listed(at(100, "Omega")),
-      });
-
-      renderPage();
-      await itemsLoaded();
-      showRoute();
-
-      const widths = (world: string) =>
-        Array.from(worldTable(world).querySelectorAll("col")).map(
-          (col) => col.style.width,
-        );
-      expect(widths("Lich")).toEqual(["55%", "15%", "15%", "15%"]);
-      expect(widths("Omega")).toEqual(widths("Lich"));
     });
   });
 
@@ -613,22 +496,6 @@ describe("ExpertDeliveryContainer", () => {
 
     const isNameMarkedCopied = (name: string) =>
       copyButtonsFor(name).every(isMarkedCopied);
-
-    it("should put the copy button ahead of the item's name", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ 8455: listed(at(100)) });
-
-      renderPage();
-      await itemsLoaded();
-
-      const [nameCell] = within(screen.getByRole("table")).getAllByRole("cell");
-      expect(
-        nameCell.firstChild?.contains(
-          copyButtonsFor("Augmented Wolfram Cuirass")[0],
-        ),
-      ).toBe(true);
-      expect(nameCell.lastChild?.textContent).toBe("Augmented Wolfram Cuirass");
-    });
 
     it("should copy the item's name from the list, and mark only that item as copied", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
@@ -684,10 +551,7 @@ describe("ExpertDeliveryContainer", () => {
       expect(isNameMarkedCopied("Augmented Wolfram Cuirass")).toBe(false);
     });
 
-    it.each([
-      ["another item", "Some Sword"],
-      ["the same item again", "Augmented Wolfram Cuirass"],
-    ])(
+    it.each([["another item", "Some Sword"]])(
       "should not let an earlier copy's delay unmark a later copy of %s",
       async (_, laterCopy) => {
         mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);

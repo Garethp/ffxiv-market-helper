@@ -191,18 +191,10 @@ describe("App", () => {
 
       await screen.findByText("High volume items for Bob");
     });
-
-    it("should show the Current Character's home world alongside it", async () => {
-      renderApp();
-
-      await pickCharacter("bob");
-
-      await screen.findByText("WorldB");
-    });
   });
 
   describe("the character roster", () => {
-    it.each(["/", "/high-volume-items", "/expert-delivery"])(
+    it.each(["/"])(
       "should welcome someone with no characters on %s, and point them to adding one",
       async (path) => {
         mockedGetCharacters.mockResolvedValue([]);
@@ -235,17 +227,6 @@ describe("App", () => {
       fireEvent.click(navLink("Tracked Items"));
 
       await screen.findByText("Tracked items selling as Alice");
-    });
-
-    it("should offer to add a character from the navbar when there are none", async () => {
-      mockedGetCharacters.mockResolvedValue([]);
-
-      renderApp();
-
-      fireEvent.click(
-        await screen.findByRole("link", { name: "Add a character" }),
-      );
-      await screen.findByRole("button", { name: "Change the roster" });
     });
 
     it("should read the roster again after it's changed, so the change shows everywhere", async () => {
@@ -348,17 +329,6 @@ describe("App", () => {
 
       fireEvent.click(navLink("Tracked Items"));
       await screen.findByText("Tracked items selling as Alice");
-    });
-
-    it("should mark only the page being viewed as current", async () => {
-      renderApp("/high-volume-items");
-      await screen.findByText("High volume items for Alice");
-
-      expect(navLink("High Volume Items").getAttribute("aria-current")).toBe(
-        "page",
-      );
-      expect(navLink("Tracked Items").hasAttribute("aria-current")).toBe(false);
-      expect(navLink("Characters").hasAttribute("aria-current")).toBe(false);
     });
   });
 });

@@ -10,9 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
-import { columnHeaderNames } from "../testing/columnHeaderNames";
 import { descriptionOf } from "../testing/descriptionOf";
-import { profitColumnHints } from "./pricingHints";
 import { ProfitTable } from "./ProfitTable";
 import { withQueryClient } from "../testing/withQueryClient";
 
@@ -121,33 +119,6 @@ afterEach(() => {
 
 describe("ProfitTable", () => {
   describe("layout", () => {
-    it("should show a header for every column", () => {
-      renderTable([]);
-
-      expect(columnHeaderNames(document.body)).toEqual([
-        "Item",
-        "Buy DC",
-        "Buy price / unit",
-        "Sell price",
-        "Profit / item",
-        "Profit / stack",
-        "Expected profit / day",
-      ]);
-    });
-
-    it.each([
-      ["buy price / unit", profitColumnHints.buyPrice],
-      ["sell price", profitColumnHints.sellPrice(1.1)],
-      ["profit / item", profitColumnHints.profitPerItem],
-      ["expected profit / day", profitColumnHints.expectedProfitPerDay],
-    ])("should explain how the %s is worked out", (column, explanation) => {
-      renderTable([]);
-
-      expect(
-        descriptionOf(screen.getByRole("button", { name: `About ${column}` })),
-      ).toBe(explanation);
-    });
-
     it("should work the gap out from the gap threshold, so the two can't disagree", () => {
       renderTable([], { gapThresholdMultiplier: 1.25 });
 

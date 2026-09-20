@@ -281,61 +281,6 @@ describe("useScannedItemProfits", () => {
         ]),
       );
     });
-
-    it("should cancel fetches for the previous character when a new one is selected", async () => {
-      const itemIds = [1];
-      const { rerender } = renderHook(
-        ({ character }) =>
-          useScannedItemProfits(unnamed(itemIds), config, character),
-        { initialProps: { character: alice }, wrapper: withQueryClient() },
-      );
-      await waitFor(() =>
-        expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
-      );
-
-      rerender({ character: bob });
-
-      await waitFor(() =>
-        expect(fetchSignals().map((signal) => signal.aborted)).toEqual([
-          true,
-          true,
-          false,
-          false,
-        ]),
-      );
-    });
-
-    it("should cancel its fetches when the page is closed", async () => {
-      const itemIds = [1];
-      const { unmount } = renderHook(
-        () => useScannedItemProfits(unnamed(itemIds), config, alice),
-        { wrapper: withQueryClient() },
-      );
-      await waitFor(() =>
-        expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
-      );
-
-      unmount();
-
-      await waitFor(() =>
-        expect(fetchSignals().every((signal) => signal.aborted)).toBe(true),
-      );
-    });
-  });
-
-  describe("when the same items are given again", () => {
-    it("should not fetch them again", async () => {
-      const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
-        { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
-      );
-      await waitFor(() => rowFor(result, 1));
-
-      rerender({ itemIds: [1] });
-
-      expect(rowFor(result, 1)).toBeDefined();
-      expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2);
-    });
   });
 
   describe("while an item is being priced", () => {

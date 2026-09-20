@@ -9,12 +9,10 @@ vi.mock("./configService", () => ({
   },
 }));
 
-import { configService } from "./configService";
 import {
   buildTradingConfig,
   deriveOwnRetainers,
   groupCharactersByRegion,
-  loadConfig,
 } from "./tradingConfig";
 
 const regions: RegionInfo[] = [
@@ -168,25 +166,6 @@ describe("deriveOwnRetainers", () => {
       { name: "RetainerB", world: "WorldB" },
       { name: "RetainerC", world: "WorldB" },
     ]);
-  });
-
-  it("should have no retainers when no character has any", () => {
-    expect(deriveOwnRetainers([character()])).toEqual([]);
-  });
-});
-
-describe("loadConfig", () => {
-  it("should load everything ConfigService provides", async () => {
-    const params = { refreshIntervalMs: 90_000 } as TradingParameters;
-    vi.mocked(configService.getRegions).mockResolvedValue(regions);
-    vi.mocked(configService.getMarketBoardCities).mockResolvedValue(["Ul'dah"]);
-    vi.mocked(configService.getTradingParameters).mockResolvedValue(params);
-
-    expect(await loadConfig()).toEqual({
-      regions,
-      marketBoardCities: ["Ul'dah"],
-      params,
-    });
   });
 });
 

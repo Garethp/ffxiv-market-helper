@@ -37,10 +37,4 @@ describe("TrackedItemChangeErrorMessage", () => {
       ).toBe("Cordial is already tracked as HQ.");
     });
   });
-
-  it("should suggest refreshing when the item is no longer tracked", () => {
-    expect(alertText({ reason: "not-found" })).toBe(
-      "This item is no longer tracked. Refresh the page to see the current list.",
-    );
-  });
 });

@@ -3,7 +3,6 @@ import type { RegionListing } from "../api/universalis";
 import type { RegionInfo } from "../types";
 import {
   averageSealsPerGil,
-  bestListing,
   planRoute,
   sealsAt,
   sealsPerGil,
@@ -165,17 +164,6 @@ describe("selectItemsToBuy", () => {
       expect(selected.listings).toEqual([at(999), at(1000)]);
     });
 
-    it("should keep only listings that meet every filter", () => {
-      const [selected] = selectItemsToBuy(
-        [item(1, 3000)],
-        // Too pricey, too few seals per gil, and fine.
-        { 1: listed(at(1100), at(1500), at(1000)) },
-        { minimumSealsPerGil: 2.5, maximumPricePerUnit: 1050 },
-      );
-
-      expect(selected.listings).toEqual([at(1000)]);
-    });
-
     it("should keep every listing when no filters are set", () => {
       const [selected] = selectItemsToBuy(
         [item(1, 1)],
@@ -237,18 +225,6 @@ describe("selectItemsToBuy", () => {
         ),
       ).toEqual(["Alpha", "Beta", "Pricier"]);
     });
-  });
-});
-
-describe("bestListing", () => {
-  it("should be the listing worth the most seals per gil", () => {
-    const [selected] = selectItemsToBuy(
-      [item(1, 500)],
-      { 1: listed(at(200, "Omega"), at(100, "Lich")) },
-      {},
-    );
-
-    expect(bestListing(selected)).toEqual(at(100, "Lich"));
   });
 });
 

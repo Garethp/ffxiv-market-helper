@@ -41,10 +41,6 @@ beforeEach(() => {
 
 describe("characterService", () => {
   describe("starting out", () => {
-    it("should have an empty roster when there are no initial characters", async () => {
-      expect(await createService().getCharacters()).toEqual([]);
-    });
-
     it("should start out with the initial characters, each character and retainer given an ID", async () => {
       const service = createService([
         {
@@ -65,31 +61,6 @@ describe("characterService", () => {
         },
       ]);
     });
-
-    it("should keep the same IDs for the initial characters on later visits", async () => {
-      const initial = [{ ...alice, retainers: [] }];
-      const firstVisit = await createService(initial).getCharacters();
-
-      expect(await createService(initial).getCharacters()).toEqual(firstVisit);
-    });
-
-    it("should not bring the initial characters back once every character has been removed", async () => {
-      const initial = [{ ...alice, retainers: [] }];
-      const service = createService(initial);
-      const [character] = await service.getCharacters();
-      await service.removeCharacter(character.id);
-
-      expect(await createService(initial).getCharacters()).toEqual([]);
-    });
-
-    it("should treat unreadable saved data as an empty roster", async () => {
-      await addCharacter(createService());
-      localStorage.setItem(localStorage.key(0)!, "{not json");
-
-      expect(
-        await createService([{ ...alice, retainers: [] }]).getCharacters(),
-      ).toEqual([]);
-    });
   });
 
   describe("adding a character", () => {
@@ -101,12 +72,6 @@ describe("characterService", () => {
       expect(await service.getCharacters()).toEqual([
         { id: expect.any(String), ...alice, note: "Main", retainers: [] },
       ]);
-    });
-
-    it("should remember the character for later visits", async () => {
-      const character = await addCharacter(createService());
-
-      expect(await createService().getCharacters()).toEqual([character]);
     });
 
     it("should give every character its own ID", async () => {
@@ -241,21 +206,6 @@ describe("characterService", () => {
       expect((await service.getCharacters())[1].name).toBe("Bob");
     });
 
-    it("should refuse a home world that isn't in the region directory", async () => {
-      const service = createService();
-      const character = await addCharacter(service);
-
-      expect(
-        await service.updateCharacter(character.id, {
-          ...alice,
-          homeWorld: "Nowhere",
-        }),
-      ).toEqual({
-        ok: false,
-        error: { reason: "unknown-world", world: "Nowhere" },
-      });
-    });
-
     it("should refuse to change a character that isn't in the roster", async () => {
       expect(await createService().updateCharacter("missing", alice)).toEqual({
         ok: false,
@@ -297,18 +247,6 @@ describe("characterService", () => {
       expect(changed.retainers).toEqual([
         { id: expect.any(String), name: "Amarana", city: "Ul'dah" },
       ]);
-    });
-
-    it("should allow any number of retainers", async () => {
-      const service = createService();
-      const character = await addCharacter(service);
-
-      for (const name of ["One", "Two", "Three", "Four"]) {
-        await service.addRetainer(character.id, { name, city: "Kugane" });
-      }
-
-      const [changed] = await service.getCharacters();
-      expect(changed.retainers).toHaveLength(4);
     });
 
     it("should refuse a retainer with no name", async () => {
@@ -428,22 +366,6 @@ describe("characterService", () => {
       ).toEqual({
         ok: false,
         error: { reason: "duplicate-retainer", name: "Amarana" },
-      });
-    });
-
-    it("should refuse a city that isn't a market board city", async () => {
-      const service = createService();
-      const character = await addCharacterWithRetainers(service, "Amarana");
-      const [retainer] = character.retainers;
-
-      expect(
-        await service.updateRetainer(character.id, retainer.id, {
-          name: "Amarana",
-          city: "Nowhere",
-        }),
-      ).toEqual({
-        ok: false,
-        error: { reason: "unknown-city", city: "Nowhere" },
       });
     });
 

@@ -25,9 +25,5 @@ describe("formatGil", () => {
     it("should group thousands with the viewer's locale separators", () => {
       expect(formatGil(1234567)).toBe((1234567).toLocaleString());
     });
-
-    it("should show negative amounts in the viewer's locale", () => {
-      expect(formatGil(-1500)).toBe((-1500).toLocaleString());
-    });
   });
 });

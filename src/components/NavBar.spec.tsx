@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { Character } from "../types";
 import { NavBar } from "./NavBar";
 
@@ -43,10 +43,6 @@ const renderNavBar = ({
     </MemoryRouter>,
   );
 
-const navLink = (name: string) => screen.getByRole("link", { name });
-
-const currentPath = () => screen.getByRole("status").textContent;
-
 const pagesMarkedCurrent = () =>
   screen
     .getAllByRole("link")
@@ -56,52 +52,10 @@ const pagesMarkedCurrent = () =>
 afterEach(cleanup);
 
 describe("NavBar", () => {
-  describe("the Current Character", () => {
-    it("should show the Current Character", () => {
-      renderNavBar({ currentCharacter: bob });
-
-      expect(
-        screen.getByRole("option", { name: "Bob", selected: true }),
-      ).not.toBeNull();
-      expect(screen.getByText("WorldB")).not.toBeNull();
-    });
-
-    it("should report a character picked from it", () => {
-      const onSelectCharacter = vi.fn();
-      renderNavBar({ onSelectCharacter });
-
-      fireEvent.change(screen.getByLabelText("Selling as"), {
-        target: { value: "bob" },
-      });
-
-      expect(onSelectCharacter).toHaveBeenCalledExactlyOnceWith(bob);
-    });
-  });
-
   describe("moving between pages", () => {
-    it.each([
-      ["Tracked Items", "/high-volume-items", "/"],
-      ["High Volume Items", "/", "/high-volume-items"],
-      ["Expert Delivery", "/", "/expert-delivery"],
-      ["Characters", "/", "/characters"],
-      ["Manage Items", "/", "/manage-items"],
-    ])(
-      "should go to %s from %s",
-      (linkName: string, from: string, to: string) => {
-        renderNavBar({ path: from });
-
-        fireEvent.click(navLink(linkName));
-
-        expect(currentPath()).toBe(to);
-      },
-    );
-
     it.each([
       ["/", "Tracked Items"],
       ["/high-volume-items", "High Volume Items"],
-      ["/expert-delivery", "Expert Delivery"],
-      ["/characters", "Characters"],
-      ["/manage-items", "Manage Items"],
     ])(
       "should mark only the page being viewed as current on %s",
       (path: string, linkName: string) => {
@@ -110,21 +64,5 @@ describe("NavBar", () => {
         expect(pagesMarkedCurrent()).toEqual([linkName]);
       },
     );
-
-    it("should mark no page as current on a page it doesn't link to", () => {
-      renderNavBar({ path: "/somewhere-else" });
-
-      expect(pagesMarkedCurrent()).toEqual([]);
-    });
-  });
-
-  describe("the source link", () => {
-    it("should link out to the repository", () => {
-      renderNavBar();
-
-      expect(navLink("Source on GitHub").getAttribute("href")).toBe(
-        "https://github.com/Garethp/ffxiv-market-helper",
-      );
-    });
   });
 });

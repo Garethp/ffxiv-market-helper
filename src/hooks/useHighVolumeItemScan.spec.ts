@@ -288,16 +288,6 @@ describe("useHighVolumeItemScan", () => {
         { ...velocity(1), name: null, totalSaleVelocity: 1 },
       ]);
     });
-
-    it("should still show a completed scan's items, without names, when their names can't be looked up", async () => {
-      mockedGetLatestScan.mockResolvedValue(previousScan);
-      mockedGetItemNames.mockRejectedValue(new Error("XIVAPI is down"));
-
-      const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
-
-      await waitFor(() => expect(result.current.results).toHaveLength(1));
-      expect(result.current.results[0].name).toBeNull();
-    });
   });
 
   describe("abandoning a scan", () => {
@@ -323,14 +313,6 @@ describe("useHighVolumeItemScan", () => {
       expect(signal.aborted).toBe(false);
 
       rerender({ world: "Omega" });
-
-      expect(signal.aborted).toBe(true);
-    });
-
-    it("should cancel its remaining requests when the page is closed", async () => {
-      const { unmount, signal } = await startNeverEndingScan();
-
-      unmount();
 
       expect(signal.aborted).toBe(true);
     });

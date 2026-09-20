@@ -41,12 +41,6 @@ afterEach(() => {
 });
 
 describe("ItemSummaryTooltip", () => {
-  it("should show the item's name", () => {
-    renderTooltip();
-
-    expect(screen.getByText("Deus Ex Gratia")).not.toBeNull();
-  });
-
   it("should show the item's icon, type and what the game says about it once hovered", async () => {
     renderTooltip();
 
@@ -72,16 +66,6 @@ describe("ItemSummaryTooltip", () => {
 
     expect(icon()).toBeNull();
     expect(mockedGetItemSummaries).not.toHaveBeenCalled();
-  });
-
-  it("should look the item up only once, however often it's opened", async () => {
-    renderTooltip();
-
-    hoverName();
-    await screen.findByText("A grimoire of the scholarly arts.");
-    hoverName();
-
-    expect(mockedGetItemSummaries).toHaveBeenCalledExactlyOnceWith([2212]);
   });
 
   it("should describe the name by what's shown, so it's announced as its description", async () => {

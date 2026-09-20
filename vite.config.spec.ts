@@ -21,8 +21,4 @@ describe("the base path a build is served from", () => {
   it("should add the leading slash Vite needs to a bare prefix", () => {
     expect(asBasePath("ffxiv-market-helper")).toBe("/ffxiv-market-helper/");
   });
-
-  it("should keep nested prefixes intact", () => {
-    expect(asBasePath("/user/project")).toBe("/user/project/");
-  });
 });

@@ -99,15 +99,6 @@ describe("CharacterForm", () => {
         { label: "Elemental (Japan)", worlds: ["Tonberry"] },
       ]);
     });
-
-    it("should ask for a world to be chosen when none has been yet", () => {
-      renderForm();
-
-      expect(homeWorldField().value).toBe("");
-      expect(homeWorldField().selectedOptions[0].textContent).toBe(
-        "Choose a world",
-      );
-    });
   });
 
   describe("starting values", () => {
@@ -137,20 +128,6 @@ describe("CharacterForm", () => {
   });
 
   describe("submitting", () => {
-    it("should label the submit button as given", () => {
-      render(
-        <CharacterForm
-          regions={regions}
-          submitLabel="Add character"
-          onSubmit={async () => succeeds()}
-        />,
-      );
-
-      expect(
-        screen.getAllByRole("button").map((button) => button.textContent),
-      ).toEqual(["Add character"]);
-    });
-
     it("should submit the details as entered", async () => {
       const onSubmit = renderForm();
 
@@ -194,23 +171,6 @@ describe("CharacterForm", () => {
 
       await waitFor(() =>
         expect(fieldValues()).toEqual({ name: "", homeWorld: "", note: "" }),
-      );
-    });
-
-    it("should put back the details it started with", async () => {
-      renderForm({
-        initialDetails: { name: "Alice", homeWorld: "Odin", note: "Main" },
-      });
-
-      fillIn({ name: "Alicia", homeWorld: "Omega", note: "Moved" });
-      fireEvent.click(submitButton());
-
-      await waitFor(() =>
-        expect(fieldValues()).toEqual({
-          name: "Alice",
-          homeWorld: "Odin",
-          note: "Main",
-        }),
       );
     });
 

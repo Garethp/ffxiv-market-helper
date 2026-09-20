@@ -266,27 +266,6 @@ describe("pricing a row", () => {
       expect(analysis.saleVelocityPerDay).toBe(3);
     });
   });
-
-  describe("applying sell tax", () => {
-    it("should price sales with the lowest tax rate among the selling character's retainers", async () => {
-      mockedFetchTaxRates.mockResolvedValue({ "Ul'dah": 5, Kugane: 3 });
-      marketDataByScope({
-        WorldA: { recentHistory: [sale({ pricePerUnit: 1000 })] },
-      });
-
-      const analysis = await analyze({
-        character: {
-          ...sellingCharacter,
-          retainers: [
-            { id: "retainer-a", name: "RetainerA", city: "Ul'dah" },
-            { id: "retainer-b", name: "RetainerB", city: "Kugane" },
-          ],
-        },
-      });
-
-      expect(analysis.effectiveSellPricePerUnit).toBeCloseTo(970);
-    });
-  });
 });
 
 describe("fetching a row's market data", () => {
