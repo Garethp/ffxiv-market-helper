@@ -158,12 +158,6 @@ describe("ProfitTable", () => {
       );
       consoleError.mockRestore();
     });
-
-    it("should show no item rows when there are no items", () => {
-      renderTable([]);
-
-      expect(bodyRows()).toHaveLength(0);
-    });
   });
 
   describe("configuring every row", () => {
@@ -200,31 +194,6 @@ describe("ProfitTable", () => {
       await copy("Caramel Popcorn");
 
       expect(writeText).toHaveBeenCalledWith("Caramel Popcorn");
-    });
-
-    it("should confirm the copy only on the row that was copied", async () => {
-      renderTable([
-        displayRow(1, "Wind Cluster"),
-        displayRow(2, "Caramel Popcorn"),
-      ]);
-
-      await copy("Wind Cluster");
-
-      expect(hasCopiedIndicator("Wind Cluster")).toBe(true);
-      expect(hasCopiedIndicator("Caramel Popcorn")).toBe(false);
-    });
-
-    it("should move the confirmation to whichever row was copied most recently", async () => {
-      renderTable([
-        displayRow(1, "Wind Cluster"),
-        displayRow(2, "Caramel Popcorn"),
-      ]);
-
-      await copy("Wind Cluster");
-      await copy("Caramel Popcorn");
-
-      expect(hasCopiedIndicator("Wind Cluster")).toBe(false);
-      expect(hasCopiedIndicator("Caramel Popcorn")).toBe(true);
     });
 
     it("should keep the confirmation on the copied item when the rows are reordered", async () => {

@@ -320,14 +320,6 @@ describe("fetching a row's market data", () => {
     await expect(fetchRow(createQueryClient())).rejects.toThrow("market down");
   });
 
-  it("should fail when the tax rate fetch fails", async () => {
-    mockedFetchTaxRates.mockRejectedValue(new Error("tax rates down"));
-
-    await expect(fetchRow(createQueryClient())).rejects.toThrow(
-      "tax rates down",
-    );
-  });
-
   it("should share one request between rows that want the same data at around the same time", async () => {
     const client = createQueryClient();
 

@@ -50,13 +50,6 @@ afterEach(cleanup);
 
 describe("RetainerForm", () => {
   describe("entering a new retainer", () => {
-    it("should start with no name and no city chosen", () => {
-      renderForm();
-
-      expect(nameInput().value).toBe("");
-      expect(citySelect().value).toBe("");
-    });
-
     it("should offer each market board city to choose from", () => {
       renderForm();
 

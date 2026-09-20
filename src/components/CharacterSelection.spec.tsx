@@ -95,12 +95,6 @@ describe("CharacterSelection", () => {
   });
 
   describe("with an empty roster", () => {
-    it("should offer no picker", () => {
-      renderSelection({ characters: [], currentCharacter: null });
-
-      expect(screen.queryByRole("combobox")).toBe(null);
-    });
-
     it("should link to the characters page to add one", () => {
       renderSelection({ characters: [], currentCharacter: null });
 

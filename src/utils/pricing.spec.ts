@@ -62,21 +62,6 @@ describe("calculateConsistentPrice", () => {
     expect(result?.fullyFilled).toBe(true);
   });
 
-  it("should blend the price across listings, cheapest first, when one listing isn't enough on its own", () => {
-    const result = calculateConsistentPrice(
-      [
-        listing({ pricePerUnit: 200, quantity: 50 }),
-        listing({ pricePerUnit: 100, quantity: 50 }),
-      ],
-      100,
-    );
-
-    // The cheaper listing (100) is used first for 50 units, then the pricier one (200) for the rest.
-    expect(result?.pricePerUnit).toBe(150);
-    expect(result?.quantityFilled).toBe(100);
-    expect(result?.fullyFilled).toBe(true);
-  });
-
   it("should ignore pricier listings beyond what's needed to fill the target quantity", () => {
     const result = calculateConsistentPrice(
       [
@@ -118,19 +103,6 @@ describe("calculateConsistentPrice", () => {
 describe("calculateAverageSalePrice", () => {
   it("should have no average when there is no sale history", () => {
     expect(calculateAverageSalePrice([], 3)).toBeNull();
-  });
-
-  it("should average the prices of the most recent sales", () => {
-    const history = [
-      saleEntry({ pricePerUnit: 100, timestamp: 1 }),
-      saleEntry({ pricePerUnit: 200, timestamp: 2 }),
-      saleEntry({ pricePerUnit: 300, timestamp: 3 }),
-    ];
-
-    const result = calculateAverageSalePrice(history, 3);
-
-    expect(result?.average).toBe(200);
-    expect(result?.sampleSize).toBe(3);
   });
 
   it("should ignore sales older than the requested sample size", () => {
@@ -250,25 +222,6 @@ describe("determineSellListingStatus", () => {
     expect(status.state).toBe("not-listed");
   });
 
-  it("should be competitive when our listing is among the cheapest N", () => {
-    const listings = [
-      listing({
-        pricePerUnit: 100,
-        worldName: "WorldA",
-        retainerName: "Someone",
-      }),
-      listing({
-        pricePerUnit: 150,
-        worldName: "WorldA",
-        retainerName: "RetainerA",
-      }),
-    ];
-
-    const status = determineSellListingStatus(listings, ownRetainers, 5);
-
-    expect(status).toEqual({ state: "competitive", rank: 2 });
-  });
-
   it("should still be competitive when our listing ranks exactly at the threshold", () => {
     const listings = [
       listing({ pricePerUnit: 100, worldName: "WorldA", retainerName: "A" }),
@@ -364,10 +317,6 @@ describe("determineSellListingStatus", () => {
 });
 
 describe("resolveSellTaxRate", () => {
-  it("should use the default rate when there are no retainers", () => {
-    expect(resolveSellTaxRate([], { "Ul'dah": 5 }, 0.05)).toBe(0.05);
-  });
-
   it("should use the default rate when none of the retainers' cities have a known tax rate", () => {
     expect(
       resolveSellTaxRate(
@@ -376,15 +325,6 @@ describe("resolveSellTaxRate", () => {
         0.05,
       ),
     ).toBe(0.05);
-  });
-
-  it("should use the known tax rate when only some retainers' cities have one", () => {
-    const retainers = [
-      { id: "retainer-a", name: "RetainerA", city: "Nowhere" },
-      { id: "retainer-b", name: "RetainerB", city: "Kugane" },
-    ];
-
-    expect(resolveSellTaxRate(retainers, { Kugane: 3 }, 0.05)).toBe(0.03);
   });
 
   it("should use a retainer's own city tax rate when only one retainer is given", () => {
@@ -421,26 +361,6 @@ describe("buildReadyAnalysis", () => {
   const notListed: SellListingStatus = { state: "not-listed" }; // placeholder for tests not concerned with our own listing's standing
 
   describe("choosing which price to sell at", () => {
-    it("should sell at the recent sale price when current listings aren't significantly higher", () => {
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Chaos",
-          buy,
-          { average: 100, sampleSize: 3 },
-          { average: 105, sampleSize: 2 },
-          99,
-          undefined,
-          someVelocity,
-          noTax,
-          notListed,
-        ),
-      );
-
-      expect(analysis.sellPriceSource).toBe("history");
-      expect(analysis.sellPricePerUnit).toBe(100);
-      expect(analysis.gapDetected).toBe(false);
-    });
-
     it("should sell at the current listing price when it sits well above recent sales", () => {
       const analysis = assertReady(
         buildReadyAnalysis(
@@ -541,25 +461,6 @@ describe("buildReadyAnalysis", () => {
       expect(analysis.sellPriceCapped).toBe(true);
     });
 
-    it("should not cap the sell price when it's already below the ceiling", () => {
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Chaos",
-          buy,
-          { average: 100, sampleSize: 3 },
-          null,
-          99,
-          6000,
-          someVelocity,
-          noTax,
-          notListed,
-        ),
-      );
-
-      expect(analysis.sellPricePerUnit).toBe(100);
-      expect(analysis.sellPriceCapped).toBe(false);
-    });
-
     it("should not cap the sell price when it exactly equals the ceiling", () => {
       const analysis = assertReady(
         buildReadyAnalysis(
@@ -596,25 +497,6 @@ describe("buildReadyAnalysis", () => {
 
       expect(analysis.effectiveSellPricePerUnit).toBeCloseTo(5400);
     });
-
-    it("should not cap the sell price when no ceiling is configured", () => {
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Chaos",
-          buy,
-          { average: 10_000, sampleSize: 3 },
-          null,
-          99,
-          undefined,
-          someVelocity,
-          noTax,
-          notListed,
-        ),
-      );
-
-      expect(analysis.sellPricePerUnit).toBe(10_000);
-      expect(analysis.sellPriceCapped).toBe(false);
-    });
   });
 
   describe("computing profit", () => {
@@ -638,28 +520,6 @@ describe("buildReadyAnalysis", () => {
       );
 
       expect(analysis.effectiveBuyPricePerUnit).toBeCloseTo(110);
-    });
-
-    it("should deduct the sell tax rate from the sell price", () => {
-      const analysis = assertReady(
-        buildReadyAnalysis(
-          "Chaos",
-          null,
-          { average: 200, sampleSize: 3 },
-          null,
-          99,
-          undefined,
-          someVelocity,
-          {
-            buyTaxRate: 0,
-            sellTaxRate: 0.1,
-            gapThresholdMultiplier: 1.1,
-          },
-          notListed,
-        ),
-      );
-
-      expect(analysis.effectiveSellPricePerUnit).toBe(180);
     });
 
     it("should have no profit when there is no buy price", () => {

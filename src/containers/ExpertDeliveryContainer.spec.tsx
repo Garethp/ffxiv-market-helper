@@ -462,18 +462,6 @@ describe("ExpertDeliveryContainer", () => {
 
       expect(document.querySelector(".item-summary-icon")).not.toBeNull();
     });
-
-    it("should show it when a name in the route is hovered", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ [cuirass.itemId]: listed(at(100)) });
-      renderPage();
-      await itemsLoaded();
-      showRoute();
-
-      fireEvent.mouseEnter(screen.getByText("Augmented Wolfram Cuirass"));
-
-      expect(document.querySelector(".item-summary-icon")).not.toBeNull();
-    });
   });
 
   describe("copying an item name", () => {

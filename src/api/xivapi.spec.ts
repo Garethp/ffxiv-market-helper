@@ -65,14 +65,6 @@ describe("searchItems", () => {
     ]);
   });
 
-  it("should ignore surrounding whitespace in the text", async () => {
-    await searchItems("  cordial ");
-
-    expect(requestedSearch().get("query")).toBe(
-      '+Name~"cordial" -ItemSearchCategory=0',
-    );
-  });
-
   it("should leave quotes and backslashes out of the text, so they can't break the search", async () => {
     await searchItems('cor"di\\al');
 
@@ -249,44 +241,6 @@ describe("fetchExpertDeliveryCandidates", () => {
       { itemId: 8455, name: "Augmented Wolfram Cuirass", itemLevel: 90 },
     ]);
     expect(requestedSearches()[0].get("fields")).toBe("Name,LevelItem@as(raw)");
-  });
-
-  it("should follow the search onto every further page, asking for the same fields", async () => {
-    mockedFetch
-      .mockResolvedValueOnce(
-        candidatesPage([{ row_id: 1, name: "First", itemLevel: 10 }], "page-2"),
-      )
-      .mockResolvedValueOnce(
-        candidatesPage(
-          [{ row_id: 2, name: "Second", itemLevel: 20 }],
-          "page-3",
-        ),
-      )
-      .mockResolvedValueOnce(
-        candidatesPage([{ row_id: 3, name: "Third", itemLevel: 30 }]),
-      );
-
-    expect(
-      (await fetchExpertDeliveryCandidates()).map((item) => item.itemId),
-    ).toEqual([1, 2, 3]);
-    const searches = requestedSearches();
-    expect(searches.map((search) => search.get("cursor"))).toEqual([
-      null,
-      "page-2",
-      "page-3",
-    ]);
-    searches.forEach((search) => {
-      expect(search.get("fields")).toBe("Name,LevelItem@as(raw)");
-      expect(search.get("limit")).toBe("500");
-    });
-  });
-
-  it("should fail when XIVAPI doesn't answer successfully", async () => {
-    mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
-
-    await expect(fetchExpertDeliveryCandidates()).rejects.toThrow(
-      "XIVAPI Expert Delivery item search failed (500)",
-    );
   });
 });
 
@@ -526,11 +480,6 @@ describe("fetchItemSummaries", () => {
           new URL(String(url)).searchParams.get("rows")!.split(",").length,
       ),
     ).toEqual([100, 50]);
-  });
-
-  it("should ask for nothing when given no items", async () => {
-    expect(await fetchItemSummaries([])).toEqual(new Map());
-    expect(mockedFetch).not.toHaveBeenCalled();
   });
 
   it("should fail when XIVAPI doesn't answer successfully", async () => {

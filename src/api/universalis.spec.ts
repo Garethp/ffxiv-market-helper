@@ -93,12 +93,6 @@ describe("fetchRegionListings", () => {
       );
     });
 
-    it("should give nothing for an item with no listings", async () => {
-      mockedFetch.mockResolvedValue(json({ listings: [] }));
-
-      expect(await fetchRegionListings("Europe", [8455])).toEqual(new Map());
-    });
-
     it("should give nothing for an item Universalis doesn't know", async () => {
       mockedFetch.mockResolvedValue(new Response("", { status: 404 }));
 

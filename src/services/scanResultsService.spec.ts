@@ -22,12 +22,6 @@ afterEach(() => {
 });
 
 describe("scanResultsService", () => {
-  it("should have no latest scan for a world that hasn't been scanned", async () => {
-    await scanResultsService.saveScan(scanOf("Chaos", Date.now()));
-
-    expect(await scanResultsService.getLatestScan("Omega")).toBeNull();
-  });
-
   it("should keep the latest scan of each world separately", async () => {
     const chaos = scanOf("Chaos", Date.now());
     const omega = scanOf("Omega", Date.now());

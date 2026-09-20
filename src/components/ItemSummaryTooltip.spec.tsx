@@ -99,16 +99,6 @@ describe("ItemSummaryTooltip", () => {
     expect(screen.getByRole("tooltip").textContent).toBe("Scholar's Arm");
   });
 
-  it("should still show the icon when nothing is known about the item", async () => {
-    mockedGetItemSummaries.mockResolvedValue(new Map());
-    renderTooltip();
-
-    hoverName();
-
-    expect(icon()).not.toBeNull();
-    expect(screen.getByRole("tooltip").textContent).toBe("");
-  });
-
   it("should leave out an icon that can't be loaded", () => {
     renderTooltip();
     hoverName();

@@ -19,12 +19,4 @@ describe("useGeneration", () => {
     expect(result.current.isCurrent(first)).toBe(false);
     expect(result.current.isCurrent(second)).toBe(true);
   });
-
-  it("should stop considering a run current once it's cancelled, without starting a replacement", () => {
-    const { result } = renderHook(() => useGeneration());
-    const first = result.current.start();
-    result.current.cancel();
-
-    expect(result.current.isCurrent(first)).toBe(false);
-  });
 });

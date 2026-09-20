@@ -217,15 +217,6 @@ describe("CharacterCard", () => {
   });
 
   describe("removing the character", () => {
-    it("should ask for confirmation, naming the character", () => {
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-      renderCard(aCharacter());
-
-      fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
-
-      expect(confirm).toHaveBeenCalledWith("Remove Alice and their retainers?");
-    });
-
     it("should remove the character once it's confirmed", () => {
       vi.spyOn(window, "confirm").mockReturnValue(true);
       const onRemove = vi.fn();

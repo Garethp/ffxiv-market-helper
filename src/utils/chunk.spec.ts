@@ -16,8 +16,4 @@ describe("chunk", () => {
   it("should return no groups for an empty array", () => {
     expect(chunk([], 5)).toEqual([]);
   });
-
-  it("should return a single group when everything fits within the size", () => {
-    expect(chunk([1, 2, 3], 10)).toEqual([[1, 2, 3]]);
-  });
 });

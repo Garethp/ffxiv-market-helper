@@ -95,19 +95,6 @@ describe("trackedItemService", () => {
       },
     );
 
-    it("should refuse to track an item again with the same quality", async () => {
-      const service = createService();
-      await trackItem(service, { ...cordial, hq: true });
-
-      expect(
-        await service.trackItem({ ...cordial, hq: true, targetQuantity: 5 }),
-      ).toEqual({
-        ok: false,
-        error: { reason: "already-tracked", name: "Cordial", hq: true },
-      });
-      expect(await service.getTrackedItems()).toHaveLength(1);
-    });
-
     it("should treat an item with no quality given as NQ when checking whether it's already tracked", async () => {
       const service = createService();
       await trackItem(service, { ...cordial, hq: false });

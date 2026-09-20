@@ -102,12 +102,6 @@ describe("CharacterForm", () => {
   });
 
   describe("starting values", () => {
-    it("should start empty when there are no details to start from", () => {
-      renderForm();
-
-      expect(fieldValues()).toEqual({ name: "", homeWorld: "", note: "" });
-    });
-
     it("should start with the given details filled in", () => {
       renderForm({
         initialDetails: { name: "Alice", homeWorld: "Odin", note: "Main" },

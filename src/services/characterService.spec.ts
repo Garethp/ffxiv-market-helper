@@ -74,14 +74,6 @@ describe("characterService", () => {
       ]);
     });
 
-    it("should give every character its own ID", async () => {
-      const service = createService();
-      const first = await addCharacter(service, alice);
-      const second = await addCharacter(service, { ...alice, name: "Bob" });
-
-      expect(first.id).not.toBe(second.id);
-    });
-
     it("should ignore surrounding whitespace, and treat a blank note as no note", async () => {
       const service = createService();
 

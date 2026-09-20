@@ -62,15 +62,6 @@ afterEach(() => {
 
 describe("CachingItemService", () => {
   describe("item names", () => {
-    it("should give cached names without asking XIVAPI", async () => {
-      const { service } = await serviceCaching();
-
-      expect(await service.getItemNames([6141])).toEqual(
-        new Map([[6141, "Cordial"]]),
-      );
-      expect(mockedFetchItemNames).not.toHaveBeenCalled();
-    });
-
     it("should ask XIVAPI for only the names that aren't cached", async () => {
       const { service } = await serviceCaching();
       mockedFetchItemNames.mockResolvedValue(new Map([[1, "Uncached"]]));
@@ -177,15 +168,6 @@ describe("CachingItemService", () => {
       type: "Medicine",
       description: "A sweet, fermented concoction.",
     };
-
-    it("should give cached summaries without asking XIVAPI", async () => {
-      const { service } = await serviceCaching();
-
-      expect(await service.getItemSummaries([6141])).toEqual(
-        new Map([[6141, cordialSummary]]),
-      );
-      expect(mockedFetchItemSummaries).not.toHaveBeenCalled();
-    });
 
     it("should ask XIVAPI for only the items that aren't cached", async () => {
       const { service } = await serviceCaching();

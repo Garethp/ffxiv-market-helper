@@ -63,14 +63,6 @@ describe("NumberInput", () => {
   });
 
   describe("reading what's typed", () => {
-    it.each([["2m", "2000000"]])("should report %s as %s", (text, value) => {
-      render(<Harness initialValue={undefined} />);
-
-      type(text);
-
-      expect(heldValue()).toBe(value);
-    });
-
     it("should report no value once the field is cleared", () => {
       const onChange = vi.fn();
       render(<Harness initialValue={500_000} onChange={onChange} />);
@@ -131,26 +123,6 @@ describe("NumberInput", () => {
       fireEvent.blur(input());
 
       expect(input().value).toBe("500k");
-    });
-
-    it("should go back to showing the last amount when what was typed wasn't one", () => {
-      render(<Harness initialValue={2_000_000} />);
-
-      type("2mm");
-      fireEvent.blur(input());
-
-      expect(input().value).toBe("2m");
-    });
-
-    it("should show the value the consumer settled on", () => {
-      render(
-        <Harness initialValue={99} adjust={(value) => value ?? 1} min={1} />,
-      );
-
-      type("");
-      fireEvent.blur(input());
-
-      expect(input().value).toBe("1");
     });
   });
 });

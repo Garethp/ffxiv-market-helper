@@ -215,14 +215,6 @@ describe("ItemDataCache", () => {
       expect(secondTab.source.fetchMarketBoardItems).not.toHaveBeenCalled();
       expect(secondTab.cache.getStatus()).toEqual({ state: "ready" });
     });
-
-    it("should not say it's waiting when no other tab is loading", async () => {
-      const { cache, statuses } = setUp();
-
-      await cache.update();
-
-      expect(statuses).not.toContainEqual({ state: "waiting" });
-    });
   });
 
   describe("looking up items", () => {

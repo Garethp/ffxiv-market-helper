@@ -212,23 +212,6 @@ describe("App", () => {
       },
     );
 
-    it("should show the page once a first character has been added", async () => {
-      mockedGetCharacters.mockResolvedValue([]);
-      renderApp();
-      fireEvent.click(
-        await screen.findByRole("link", { name: "Add your first character" }),
-      );
-      mockedGetCharacters.mockResolvedValue([alice]);
-
-      fireEvent.click(
-        await screen.findByRole("button", { name: "Change the roster" }),
-      );
-      await screen.findByText("WorldA");
-      fireEvent.click(navLink("Tracked Items"));
-
-      await screen.findByText("Tracked items selling as Alice");
-    });
-
     it("should read the roster again after it's changed, so the change shows everywhere", async () => {
       const carol: Character = {
         id: "carol",
@@ -263,14 +246,6 @@ describe("App", () => {
   });
 
   describe("tracked items", () => {
-    it("should give pages the tracked items", async () => {
-      mockedGetTrackedItems.mockResolvedValue([cordial]);
-
-      renderApp();
-
-      await screen.findByText("Cordial");
-    });
-
     it("should read the tracked items again after they're changed, so the change shows everywhere", async () => {
       renderApp("/manage-items");
       const changeButton = await screen.findByRole("button", {

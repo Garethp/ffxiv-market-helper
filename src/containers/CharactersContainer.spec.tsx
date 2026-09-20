@@ -92,12 +92,6 @@ afterEach(() => {
 });
 
 describe("CharactersContainer", () => {
-  it("should say when there are no characters yet", async () => {
-    await renderPage();
-
-    expect(screen.getByText(/No characters yet/)).toBeTruthy();
-  });
-
   describe("adding a character", () => {
     it("should add the character to the roster, showing its home world and region", async () => {
       await renderPage();

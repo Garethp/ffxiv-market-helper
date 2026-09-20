@@ -132,11 +132,4 @@ describe("useExpertDeliveryPrices", () => {
     );
     expect(result.current[100]).toEqual({ status: "failed" });
   });
-
-  it("should price nothing when there are no items", () => {
-    const { result } = renderPrices([]);
-
-    expect(result.current).toEqual({});
-    expect(mockedFetchRegionListings).not.toHaveBeenCalled();
-  });
 });

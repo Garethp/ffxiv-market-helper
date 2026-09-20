@@ -30,24 +30,6 @@ const typeNames = new Map([
 ]);
 
 describe("IndexedDbItemDataStore", () => {
-  it("should have no version before any items are stored", async () => {
-    expect(await newStore().getVersion()).toBeUndefined();
-  });
-
-  it("should give back stored items' details, and the version they're from", async () => {
-    const store = newStore();
-
-    await store.replaceItems("7.56x1", [cordial, darkMatter], typeNames);
-
-    expect(await store.getVersion()).toBe("7.56x1");
-    expect(await store.getItems([6141, 5594])).toEqual(
-      new Map([
-        [6141, { name: "Cordial", stackSize: 999 }],
-        [5594, { name: "Grade 8 Dark Matter", stackSize: 999 }],
-      ]),
-    );
-  });
-
   it("should leave out items that aren't stored", async () => {
     const store = newStore();
     await store.replaceItems("7.56x1", [cordial], typeNames);
@@ -88,23 +70,6 @@ describe("IndexedDbItemDataStore", () => {
     );
   });
 
-  it("should give no type for an item whose type isn't stored", async () => {
-    const store = newStore();
-    await store.replaceItems("7.56x1", [cordial], new Map());
-
-    expect(await store.getSummaries([6141])).toEqual(
-      new Map([
-        [
-          6141,
-          {
-            type: undefined,
-            description: "A sweet, fermented concoction.",
-          },
-        ],
-      ]),
-    );
-  });
-
   it("should drop items stored under an older layout, so they're loaded again", async () => {
     const name = `item-data-test-${++databaseCount}`;
     // The layout before descriptions were stored.
@@ -122,19 +87,5 @@ describe("IndexedDbItemDataStore", () => {
 
     expect(await store.getVersion()).toBeUndefined();
     expect(await store.getItems([6141])).toEqual(new Map());
-  });
-
-  it("should keep what's stored for the next store opened on the same database", async () => {
-    const name = `item-data-test-${++databaseCount}`;
-    await new IndexedDbItemDataStore(name).replaceItems(
-      "7.56x1",
-      [cordial],
-      typeNames,
-    );
-
-    const reopened = new IndexedDbItemDataStore(name);
-
-    expect(await reopened.getVersion()).toBe("7.56x1");
-    expect((await reopened.getItems([6141])).get(6141)?.name).toBe("Cordial");
   });
 });

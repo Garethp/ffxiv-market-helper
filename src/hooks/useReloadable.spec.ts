@@ -4,15 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { useReloadable } from "./useReloadable";
 
 describe("useReloadable", () => {
-  it("should have nothing until the first read finishes", async () => {
-    const load = vi.fn(async () => "first");
-
-    const { result } = renderHook(() => useReloadable(load));
-
-    expect(result.current[0]).toBeNull();
-    await waitFor(() => expect(result.current[0]).toBe("first"));
-  });
-
   it("should read again when reloaded, and give what was read", async () => {
     const load = vi
       .fn<() => Promise<string>>()

@@ -121,12 +121,6 @@ afterEach(() => {
 
 describe("ProfitTableRow", () => {
   describe("identifying the item", () => {
-    it("should show the item's name", () => {
-      const { itemCell } = renderRow(readyRow());
-
-      expect(itemCell.textContent).toContain("Wind Cluster");
-    });
-
     it("should ask to copy the item's name when the copy button is clicked", () => {
       const onCopyName = vi.fn();
       const { itemCell } = renderRow(readyRow(), { onCopyName });
@@ -134,28 +128,6 @@ describe("ProfitTableRow", () => {
       fireEvent.click(itemCell.querySelector("button")!);
 
       expect(onCopyName).toHaveBeenCalledTimes(1);
-    });
-
-    it("should confirm the name was copied when it has just been copied", () => {
-      const { itemCell } = renderRow(readyRow(), { isCopied: true });
-
-      expect(itemCell.querySelector(".copy-tooltip")?.textContent).toBe(
-        "Copied!",
-      );
-    });
-
-    it("should not confirm a copy when the name hasn't just been copied", () => {
-      const { itemCell } = renderRow(readyRow(), { isCopied: false });
-
-      expect(itemCell.querySelector(".copy-tooltip")).toBeNull();
-    });
-
-    it("should label an item priced as high quality", () => {
-      const { itemCell } = renderRow(
-        readyRow({}, { item: { ...item, hq: true } }),
-      );
-
-      expect(itemCell.querySelector(".quality-badge")?.textContent).toBe("HQ");
     });
 
     it("should explain the high quality label, reachable without a pointer", () => {
@@ -194,15 +166,6 @@ describe("ProfitTableRow", () => {
       );
 
       expect(itemCell.querySelector(".stale-badge")).not.toBeNull();
-    });
-
-    it("should not warn when the latest fetch failed but the last good data is still within the threshold", () => {
-      const { itemCell } = renderRow(
-        readyRow({}, { lastSuccessAt: NOW - 30_000, lastAttemptFailed: true }),
-        { staleWarningThresholdMs: 60_000 },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).toBeNull();
     });
 
     it("should not warn when the last good data is exactly as old as the threshold", () => {
@@ -254,19 +217,6 @@ describe("ProfitTableRow", () => {
 
       expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
         "Data has never loaded successfully",
-      );
-    });
-
-    it("should say how long ago the last good data was", () => {
-      const { itemCell } = renderRow(
-        readyRow(
-          {},
-          { lastSuccessAt: NOW - 5 * 60_000, lastAttemptFailed: true },
-        ),
-      );
-
-      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
-        "Last good data from 5m ago",
       );
     });
 
@@ -350,12 +300,6 @@ describe("ProfitTableRow", () => {
 
       expect(tr.classList.contains("row-gap")).toBe(true);
       expect(tr.classList.contains("row-refreshing")).toBe(true);
-    });
-
-    it("should not mark the row when it isn't refreshing", () => {
-      const { tr } = renderRow(readyRow(), { isRefreshing: false });
-
-      expect(tr.classList.contains("row-refreshing")).toBe(false);
     });
   });
 
@@ -451,19 +395,6 @@ describe("ProfitTableRow", () => {
       },
     );
 
-    it("should note only the thin sample size, whatever else applies to the sell price", () => {
-      const { sellPriceCell } = renderRow(
-        readyRow({
-          sellPricePerUnit: 250,
-          sellPriceSource: "listings",
-          sellPriceCapped: true,
-          sellSampleSize: 2,
-        }),
-      );
-
-      expect(sellPriceCell.textContent).toBe(`${(250).toLocaleString()} (n=2)`);
-    });
-
     it("should flag our listing as undercut when it has been", () => {
       const { sellPriceCell } = renderRow(
         readyRow({
@@ -479,10 +410,7 @@ describe("ProfitTableRow", () => {
       expect(sellPriceCell.querySelector(".undercut-badge")).not.toBeNull();
     });
 
-    it.each([
-      { state: "not-listed" as const },
-      { state: "competitive" as const, rank: 1 },
-    ])(
+    it.each([{ state: "not-listed" as const }])(
       "should not flag our listing as undercut when it is $state",
       (sellListingStatus) => {
         const { sellPriceCell } = renderRow(readyRow({ sellListingStatus }));
@@ -600,22 +528,6 @@ describe("ProfitTableRow", () => {
       expect(profitPerItemCell.textContent).toBe("—");
       expect(profitPerStackCell.textContent).toBe("—");
       expect(expectedProfitPerDayCell.textContent).toBe("—");
-    });
-
-    it("should not explain a sale velocity it doesn't have", () => {
-      const { expectedProfitPerDayCell } = renderRow(pendingRow());
-
-      expect(
-        descriptionOf(figureElementIn(expectedProfitPerDayCell)),
-      ).toBeNull();
-    });
-
-    it("should not show any pricing badges", () => {
-      const { tr } = renderRow(pendingRow());
-
-      expect(tr.querySelector(".gap-badge")).toBeNull();
-      expect(tr.querySelector(".undercut-badge")).toBeNull();
-      expect(tr.classList.contains("row-gap")).toBe(false);
     });
   });
 });

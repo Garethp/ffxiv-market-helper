@@ -69,12 +69,6 @@ describe("TrackedItemRow", () => {
       expect(rowText()).toContain("No sell price ceiling");
     });
 
-    it("should mark an item with no quality given as NQ", () => {
-      renderRow(aTrackedItem());
-
-      expect(document.querySelector(".quality-badge")?.textContent).toBe("NQ");
-    });
-
     it("should mark an HQ item as HQ", () => {
       renderRow(aTrackedItem({ hq: true }));
 

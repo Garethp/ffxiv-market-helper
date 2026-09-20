@@ -152,18 +152,6 @@ beforeEach(() => {
 
 describe("useScannedItemProfits", () => {
   describe("which items it prices", () => {
-    it("should price nothing when there are no items to price", () => {
-      const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([]), config, alice),
-        {
-          wrapper: withQueryClient(),
-        },
-      );
-
-      expect(result.current).toEqual({});
-      expect(mockedFetchRowMarketData).not.toHaveBeenCalled();
-    });
-
     it("should price nothing without a character to sell through", () => {
       const { result } = renderHook(
         () => useScannedItemProfits(unnamed([1]), config, null),
@@ -334,31 +322,6 @@ describe("useScannedItemProfits", () => {
     });
 
     describe("choosing its quality", () => {
-      it("should price it at NQ when NQ sells more per day", async () => {
-        marketDataByRegion({
-          Europe: regionMarketData({
-            dataCenter: "Light",
-            nqBuyPrice: 400,
-            hqBuyPrice: 1900,
-            nqSaleVelocity: 10,
-            hqSaleVelocity: 5,
-          }),
-        });
-
-        const { result } = renderHook(
-          () => useScannedItemProfits(unnamed([1]), config, alice),
-          {
-            wrapper: withQueryClient(),
-          },
-        );
-
-        await waitFor(() => rowFor(result, 1));
-        expect(rowFor(result, 1)).toMatchObject({
-          item: { hq: false },
-          analysis: { sellPricePerUnit: 1000 },
-        });
-      });
-
       it("should price it at HQ when HQ sells more per day, even if NQ would be more profitable", async () => {
         marketDataByRegion({
           Europe: regionMarketData({

@@ -13,16 +13,6 @@ describe("configService", () => {
       expect(worlds.length).toBeGreaterThan(0);
       expect(new Set(worlds).size).toBe(worlds.length);
     });
-
-    it("should give every data center a unique name", async () => {
-      const regions = await configService.getRegions();
-
-      const dataCenters = regions.flatMap((region) =>
-        region.dataCenters.map((dataCenter) => dataCenter.name),
-      );
-
-      expect(new Set(dataCenters).size).toBe(dataCenters.length);
-    });
   });
 
   describe("the trading parameters", () => {

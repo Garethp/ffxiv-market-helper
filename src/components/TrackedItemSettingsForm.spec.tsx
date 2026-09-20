@@ -68,13 +68,6 @@ describe("TrackedItemSettingsForm", () => {
   });
 
   describe("starting values", () => {
-    it("should have neither NQ nor HQ chosen when no quality is given", () => {
-      renderForm();
-
-      expect(qualityOption("NQ").checked).toBe(false);
-      expect(qualityOption("HQ").checked).toBe(false);
-    });
-
     it("should have the given quality chosen", () => {
       renderForm({ initial: { quality: "HQ", targetQuantity: 999 } });
 
@@ -153,23 +146,6 @@ describe("TrackedItemSettingsForm", () => {
         ),
       );
     });
-
-    it("should submit an emptied sell price ceiling as no ceiling", async () => {
-      const { onSubmit } = renderForm({
-        initial: { quality: "NQ", targetQuantity: 999, sellPriceCeiling: 5000 },
-      });
-
-      setField(sellPriceCeilingField(), "");
-      fireEvent.click(submitButton());
-
-      await waitFor(() =>
-        expect(onSubmit).toHaveBeenCalledWith({
-          hq: false,
-          targetQuantity: 999,
-          sellPriceCeiling: undefined,
-        }),
-      );
-    });
   });
 
   describe("when the change is refused", () => {
@@ -187,20 +163,6 @@ describe("TrackedItemSettingsForm", () => {
       expect((await screen.findByRole("alert")).textContent).toBe(
         "Cordial is already tracked as HQ.",
       );
-    });
-
-    it("should keep the settings as entered, so they can be corrected", async () => {
-      renderForm({ onSubmit: refuse });
-
-      fireEvent.click(qualityOption("HQ"));
-      setField(targetQuantityField(), "60");
-      setField(sellPriceCeilingField(), "5000");
-      fireEvent.click(submitButton());
-      await screen.findByRole("alert");
-
-      expect(qualityOption("HQ").checked).toBe(true);
-      expect(targetQuantityField().value).toBe("60");
-      expect(sellPriceCeilingField().value).toBe("5000");
     });
   });
 

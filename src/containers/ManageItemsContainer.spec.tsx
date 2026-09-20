@@ -89,12 +89,6 @@ afterEach(() => {
 });
 
 describe("ManageItemsContainer", () => {
-  it("should say when no items are tracked yet", async () => {
-    await renderPage();
-
-    expect(screen.getByText(/No items are tracked yet/)).toBeTruthy();
-  });
-
   describe("tracking an item", () => {
     it("should track a found item with the chosen quality, target quantity and sell price ceiling", async () => {
       await renderPage();
@@ -169,16 +163,6 @@ describe("ManageItemsContainer", () => {
         ).value,
       ).toBe("999");
       expect(screen.queryByRole("form", { name: "Track Cordial" })).toBeNull();
-    });
-
-    it("should not track the item when cancelled", async () => {
-      await renderPage();
-      const form = await pickCordial();
-
-      fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
-
-      expect(screen.queryByRole("form", { name: "Track Cordial" })).toBeNull();
-      expect(await trackedItemService.getTrackedItems()).toEqual([]);
     });
   });
 

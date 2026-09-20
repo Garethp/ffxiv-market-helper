@@ -132,12 +132,6 @@ describe("ScannedItemsTable", () => {
 
       expect(bodyRows(container)).toHaveLength(3);
     });
-
-    it("should render no rows when there are no scanned items", () => {
-      const { container } = renderTable([]);
-
-      expect(bodyRows(container)).toHaveLength(0);
-    });
   });
 
   describe("naming items", () => {

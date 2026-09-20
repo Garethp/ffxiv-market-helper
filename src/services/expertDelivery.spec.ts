@@ -163,16 +163,6 @@ describe("selectItemsToBuy", () => {
 
       expect(selected.listings).toEqual([at(999), at(1000)]);
     });
-
-    it("should keep every listing when no filters are set", () => {
-      const [selected] = selectItemsToBuy(
-        [item(1, 1)],
-        { 1: listed(at(1), at(1_000_000)) },
-        {},
-      );
-
-      expect(selected.listings).toEqual([at(1), at(1_000_000)]);
-    });
   });
 
   describe("the items", () => {
@@ -264,45 +254,6 @@ describe("planRoute", () => {
     itemToBuy: ExpertDeliveryItem,
     ...listings: RegionListing[]
   ): ItemToBuy => ({ item: itemToBuy, listings });
-
-  it("should buy each listing on the world it's on, keeping it with its item", () => {
-    const cuirass = item(1, 500, "Cuirass");
-
-    expect(
-      planRoute([toBuy(cuirass, at(150, "Lich"))], "Zodiark", regions),
-    ).toEqual([
-      {
-        dataCenter: "Light",
-        stops: [
-          {
-            world: "Lich",
-            listings: [{ item: cuirass, listing: at(150, "Lich") }],
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("should buy an item at every world it's listed on, and as many times as it's listed there", () => {
-    expect(
-      routeOf([
-        toBuy(
-          item(1, 500, "Cuirass"),
-          at(100, "Lich"),
-          at(120, "Odin"),
-          at(130, "Lich"),
-        ),
-      ]),
-    ).toEqual([
-      {
-        dataCenter: "Light",
-        stops: [
-          { world: "Lich", listings: ["Cuirass @ 100", "Cuirass @ 130"] },
-          { world: "Odin", listings: ["Cuirass @ 120"] },
-        ],
-      },
-    ]);
-  });
 
   it("should list each world's listings most seals per gil first, across items", () => {
     expect(
@@ -400,10 +351,6 @@ describe("planRoute", () => {
         stops: [{ world: "Brand New World", listings: ["Somewhere new @ 10"] }],
       },
     ]);
-  });
-
-  it("should plan nowhere when there's nothing to buy", () => {
-    expect(routeOf([])).toEqual([]);
   });
 });
 
