@@ -7,6 +7,27 @@ export interface ItemDetails {
 /** An item found by searching for its name. */
 export type ItemSearchResult = ItemDetails & { itemId: number };
 
+/** Everything kept about each item on the market board, so it can be looked up without asking XIVAPI. */
+export type MarketBoardItem = ItemSearchResult & {
+  /** What the game says the item is. Empty for an item with nothing to say about it. */
+  description: string;
+  /**
+   * The game's ID for the kind of thing the item is, which is what
+   * Universalis shows an item as — a Scholar's Arm, a Minion, a Crystal.
+   * Names for these are kept apart from the items, since thousands of items
+   * share the same handful of them.
+   */
+  typeId: number;
+};
+
+/** What an item is, for showing alongside its name. */
+export interface ItemSummary {
+  /** E.g. "Scholar's Arm". Undefined when the item's type isn't known. */
+  type: string | undefined;
+  /** What the game says the item is. Empty for an item with nothing to say about it. */
+  description: string;
+}
+
 /** An item on the market board that can be handed in for an Expert Delivery. */
 export interface ExpertDeliveryCandidate {
   itemId: number;

@@ -850,3 +850,43 @@ header h1 {
 .item-table.fixed-columns td {
   overflow-wrap: anywhere;
 }
+
+/* An item's icon beside what the game says it is, inside a tooltip. */
+.item-summary {
+  display: flex;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.item-summary-icon {
+  /* Half the icons' own 128px, so they stay sharp. */
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+/* Wider than a tooltip of plain text, so the icon doesn't squeeze the description. */
+.tooltip:has(.item-summary) {
+  max-width: 22rem;
+}
+
+.item-summary-type,
+.item-summary-description,
+.item-summary-note {
+  display: block;
+}
+
+.item-summary-type {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* The game's own line breaks are part of what it says. */
+.item-summary-description {
+  white-space: pre-line;
+}
+
+.item-summary-note {
+  margin-top: 0.35rem;
+  color: #9aa0aa;
+}

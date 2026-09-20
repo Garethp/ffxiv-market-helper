@@ -2,6 +2,7 @@ import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
 import { formatGil } from "../utils/format";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
+import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { Tooltip } from "./Tooltip";
 import { UndercutBadge } from "./UndercutBadge";
 
@@ -56,7 +57,7 @@ export const ProfitTableRow = ({
     <tr className={rowClasses}>
       <td>
         <ItemNameWithCopy
-          name={item.name}
+          name={<ItemSummaryTooltip itemId={item.itemId} name={item.name} />}
           isCopied={isCopied}
           onCopy={onCopyName}
         />

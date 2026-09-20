@@ -13,6 +13,8 @@ import {
   fetchExpertDeliveryCandidates,
   fetchExpertDeliverySealsByItemLevel,
   fetchItem,
+  fetchItemSummaries,
+  fetchItemTypeNames,
   fetchLatestGameVersion,
   fetchMarketBoardItems,
   searchItems,
@@ -358,34 +360,63 @@ describe("fetchLatestGameVersion", () => {
 
 describe("fetchMarketBoardItems", () => {
   const itemsPage = (
-    results: { row_id: number; name: string; stackSize: number }[],
+    results: {
+      row_id: number;
+      name: string;
+      stackSize: number;
+      description?: string;
+      typeId?: number;
+    }[],
     next?: string,
   ) =>
     new Response(
       JSON.stringify({
         next,
-        results: results.map(({ row_id, name, stackSize }) => ({
-          row_id,
-          fields: { Name: name, StackSize: stackSize },
-        })),
+        results: results.map(
+          ({ row_id, name, stackSize, description, typeId }) => ({
+            row_id,
+            fields: {
+              Name: name,
+              StackSize: stackSize,
+              Description: description ?? "",
+              "ItemUICategory@as(raw)": typeId ?? 0,
+            },
+          }),
+        ),
       }),
     );
 
   const requestedSearches = () =>
     mockedFetch.mock.calls.map(([url]) => new URL(String(url)).searchParams);
 
-  it("should look for items that can be sold on the market board, giving each one's ID, name and stack size", async () => {
+  it("should look for items that can be sold on the market board, giving each one's ID, name, stack size, description and type", async () => {
     mockedFetch.mockResolvedValue(
-      itemsPage([{ row_id: 6141, name: "Cordial", stackSize: 999 }]),
+      itemsPage([
+        {
+          row_id: 6141,
+          name: "Cordial",
+          stackSize: 999,
+          description: "A sweet, fermented concoction.",
+          typeId: 44,
+        },
+      ]),
     );
 
     expect(await fetchMarketBoardItems("541c0c12e07da325")).toEqual([
-      { itemId: 6141, name: "Cordial", stackSize: 999 },
+      {
+        itemId: 6141,
+        name: "Cordial",
+        stackSize: 999,
+        description: "A sweet, fermented concoction.",
+        typeId: 44,
+      },
     ]);
     const [search] = requestedSearches();
     expect(search.get("sheets")).toBe("Item");
     expect(search.get("query")).toBe("-ItemSearchCategory=0");
-    expect(search.get("fields")).toBe("Name,StackSize");
+    expect(search.get("fields")).toBe(
+      "Name,StackSize,Description,ItemUICategory@as(raw)",
+    );
   });
 
   it("should follow the search onto every page, asking for the same version and fields on each", async () => {
@@ -407,7 +438,9 @@ describe("fetchMarketBoardItems", () => {
     ]);
     searches.forEach((search) => {
       expect(search.get("version")).toBe("541c0c12e07da325");
-      expect(search.get("fields")).toBe("Name,StackSize");
+      expect(search.get("fields")).toBe(
+        "Name,StackSize,Description,ItemUICategory@as(raw)",
+      );
       expect(search.get("limit")).toBe("500");
     });
   });
@@ -451,6 +484,158 @@ describe("fetchMarketBoardItems", () => {
 
     await expect(fetchMarketBoardItems("541c0c12e07da325")).rejects.toThrow(
       "XIVAPI market board item search failed (500)",
+    );
+  });
+});
+
+describe("fetchItemSummaries", () => {
+  const summaryRows = (
+    rows: { row_id: number; description: string; type?: string }[],
+  ) =>
+    new Response(
+      JSON.stringify({
+        rows: rows.map(({ row_id, description, type }) => ({
+          row_id,
+          fields: {
+            Description: description,
+            ItemUICategory: { fields: { Name: type ?? "" } },
+          },
+        })),
+      }),
+    );
+
+  it("should give what each item is, and what the game says about it", async () => {
+    mockedFetch.mockResolvedValue(
+      summaryRows([
+        {
+          row_id: 6141,
+          description: "A sweet, fermented concoction.",
+          type: "Medicine",
+        },
+      ]),
+    );
+
+    expect(await fetchItemSummaries([6141])).toEqual(
+      new Map([
+        [
+          6141,
+          { type: "Medicine", description: "A sweet, fermented concoction." },
+        ],
+      ]),
+    );
+    const url = new URL(String(mockedFetch.mock.calls[0][0]));
+    expect(url.pathname).toBe("/api/sheet/Item");
+    expect(url.searchParams.get("rows")).toBe("6141");
+    expect(url.searchParams.get("fields")).toBe(
+      "Description,ItemUICategory.Name",
+    );
+  });
+
+  it("should give no type for an item that has none", async () => {
+    mockedFetch.mockResolvedValue(
+      summaryRows([{ row_id: 6141, description: "" }]),
+    );
+
+    expect(await fetchItemSummaries([6141])).toEqual(
+      new Map([[6141, { type: undefined, description: "" }]]),
+    );
+  });
+
+  it("should ask in batches of 100, since XIVAPI gives no more than that at once", async () => {
+    mockedFetch.mockImplementation(async () => summaryRows([]));
+
+    await fetchItemSummaries(Array.from({ length: 150 }, (_, i) => i + 1));
+
+    expect(
+      mockedFetch.mock.calls.map(
+        ([url]) =>
+          new URL(String(url)).searchParams.get("rows")!.split(",").length,
+      ),
+    ).toEqual([100, 50]);
+  });
+
+  it("should ask for nothing when given no items", async () => {
+    expect(await fetchItemSummaries([])).toEqual(new Map());
+    expect(mockedFetch).not.toHaveBeenCalled();
+  });
+
+  it("should fail when XIVAPI doesn't answer successfully", async () => {
+    mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    await expect(fetchItemSummaries([6141])).rejects.toThrow(
+      "XIVAPI item-summary request failed (500)",
+    );
+  });
+});
+
+describe("fetchItemTypeNames", () => {
+  const typesPage = (rows: [typeId: number, name: string][]) =>
+    new Response(
+      JSON.stringify({
+        rows: rows.map(([row_id, Name]) => ({ row_id, fields: { Name } })),
+      }),
+    );
+
+  const requestedTypeUrls = () =>
+    mockedFetch.mock.calls.map(([url]) => new URL(String(url)));
+
+  it("should give the name of each kind of thing an item can be", async () => {
+    mockedFetch
+      .mockResolvedValueOnce(
+        typesPage([
+          [44, "Medicine"],
+          [98, "Scholar's Arm"],
+        ]),
+      )
+      .mockResolvedValueOnce(typesPage([]));
+
+    expect(await fetchItemTypeNames("541c0c12e07da325")).toEqual(
+      new Map([
+        [44, "Medicine"],
+        [98, "Scholar's Arm"],
+      ]),
+    );
+    const [url] = requestedTypeUrls();
+    expect(url.pathname).toBe("/api/sheet/ItemUICategory");
+    expect(url.searchParams.get("fields")).toBe("Name");
+    expect(url.searchParams.get("version")).toBe("541c0c12e07da325");
+  });
+
+  it("should leave out kinds with no name", async () => {
+    mockedFetch
+      .mockResolvedValueOnce(
+        typesPage([
+          [0, ""],
+          [44, "Medicine"],
+        ]),
+      )
+      .mockResolvedValueOnce(typesPage([]));
+
+    expect(await fetchItemTypeNames()).toEqual(new Map([[44, "Medicine"]]));
+  });
+
+  it("should carry on from the last of each page until a page comes back empty", async () => {
+    mockedFetch
+      .mockResolvedValueOnce(typesPage([[1, "One"]]))
+      .mockResolvedValueOnce(typesPage([[2, "Two"]]))
+      .mockResolvedValueOnce(typesPage([]));
+
+    expect(await fetchItemTypeNames()).toEqual(
+      new Map([
+        [1, "One"],
+        [2, "Two"],
+      ]),
+    );
+    expect(
+      requestedTypeUrls().map((url) => url.searchParams.get("after")),
+    ).toEqual([null, "1", "2"]);
+  });
+
+  it("should fail when XIVAPI doesn't answer successfully", async () => {
+    mockedFetch.mockResolvedValue(new Response("", { status: 500 }));
+
+    await expect(fetchItemTypeNames()).rejects.toThrow(
+      "XIVAPI item-type request failed (500)",
     );
   });
 });

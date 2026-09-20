@@ -5,6 +5,7 @@ import { buildMarketPageUrl } from "../api/universalis";
 import type { BuyingRegion } from "../services/tradingConfig";
 import type { DisplayRow } from "../types";
 import { BuyingRegionSection } from "./BuyingRegionSection";
+import { withQueryClient } from "../testing/withQueryClient";
 
 afterEach(cleanup);
 
@@ -46,6 +47,7 @@ const renderSection = (
       sellWorld={sellWorld}
       gapThresholdMultiplier={gapThresholdMultiplier}
     />,
+    { wrapper: withQueryClient() },
   );
 
 describe("BuyingRegionSection", () => {

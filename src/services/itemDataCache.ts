@@ -1,4 +1,4 @@
-import type { ItemDetails, ItemSearchResult } from "../types";
+import type { ItemDetails, ItemSummary, MarketBoardItem } from "../types";
 import {
   holdLock,
   tryHoldLock,
@@ -25,7 +25,9 @@ export interface ItemDataSource {
   fetchMarketBoardItems(
     version: string,
     onProgress: (itemsSoFar: number) => void,
-  ): Promise<ItemSearchResult[]>;
+  ): Promise<MarketBoardItem[]>;
+  /** The name of every kind of thing an item can be, as of the given game version. */
+  fetchItemTypeNames(version: string): Promise<Map<number, string>>;
 }
 
 /** Held exclusively while the stored items are checked or replaced, and shared while they're read, by every tab. */
@@ -65,16 +67,31 @@ export class ItemDataCache {
   }
 
   /** The stored details of whichever of the items are stored, once any load in progress has finished. */
-  async getItems(
+  getItems(
     itemIds: number[],
     options: { signal?: AbortSignal } = {},
   ): Promise<Map<number, ItemDetails>> {
+    return this.readStored((store) => store.getItems(itemIds), options);
+  }
+
+  /** What whichever of the items are stored are, once any load in progress has finished. */
+  getSummaries(
+    itemIds: number[],
+    options: { signal?: AbortSignal } = {},
+  ): Promise<Map<number, ItemSummary>> {
+    return this.readStored((store) => store.getSummaries(itemIds), options);
+  }
+
+  private async readStored<T>(
+    read: (store: ItemDataStore) => Promise<T>,
+    options: { signal?: AbortSignal },
+  ): Promise<T> {
     const release = await holdLock(this.locks(), LOCK_NAME, {
       mode: "shared",
       signal: options.signal,
     });
     try {
-      return await this.store.getItems(itemIds);
+      return await read(this.store);
     } finally {
       release();
     }
@@ -119,11 +136,13 @@ export class ItemDataCache {
     if (storedVersion === latestVersion) return;
 
     this.setStatus({ state: "loading", itemsSoFar: 0 });
-    const items = await this.source.fetchMarketBoardItems(
-      latestVersion,
-      (itemsSoFar) => this.setStatus({ state: "loading", itemsSoFar }),
-    );
-    await this.store.replaceItems(latestVersion, items);
+    const [items, typeNames] = await Promise.all([
+      this.source.fetchMarketBoardItems(latestVersion, (itemsSoFar) =>
+        this.setStatus({ state: "loading", itemsSoFar }),
+      ),
+      this.source.fetchItemTypeNames(latestVersion),
+    ]);
+    await this.store.replaceItems(latestVersion, items, typeNames);
   }
 
   private setStatus(status: ItemDataStatus): void {

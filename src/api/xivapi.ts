@@ -4,12 +4,16 @@ import type {
   ExpertDeliveryCandidate,
   ItemDetails,
   ItemSearchResult,
+  ItemSummary,
+  MarketBoardItem,
 } from "../types";
 import { chunk } from "../utils/chunk";
 
 const ITEM_SHEET_URL = "https://v2.xivapi.com/api/sheet/Item";
 const GC_SUPPLY_DUTY_REWARD_SHEET_URL =
   "https://v2.xivapi.com/api/sheet/GCSupplyDutyReward";
+const ITEM_UI_CATEGORY_SHEET_URL =
+  "https://v2.xivapi.com/api/sheet/ItemUICategory";
 const SEARCH_URL = "https://v2.xivapi.com/api/search";
 const VERSION_URL = "https://v2.xivapi.com/api/version";
 
@@ -59,6 +63,93 @@ const fetchItemNameBatch = async (
   return data.rows
     .filter((row) => row.fields.Name !== "")
     .map((row) => [row.row_id, row.fields.Name]);
+};
+
+/**
+ * Looks up what each item is: its type, and what the game says about it.
+ * Best-effort, like item names: an ID XIVAPI has nothing for is simply absent
+ * from the result.
+ */
+export const fetchItemSummaries = async (
+  itemIds: number[],
+): Promise<Map<number, ItemSummary>> => {
+  if (itemIds.length === 0) return new Map();
+
+  const batches = chunk(itemIds, MAX_ROWS_PER_REQUEST);
+  const batchResults = await Promise.all(
+    batches.map((batch) => fetchItemSummaryBatch(batch)),
+  );
+  return new Map(batchResults.flat());
+};
+
+const fetchItemSummaryBatch = async (
+  itemIds: number[],
+): Promise<[number, ItemSummary][]> => {
+  // Asking for the type's name costs little for the few items a page shows at once, unlike over
+  // every item on the market board (see fetchItemTypeNames).
+  const url = `${ITEM_SHEET_URL}?rows=${itemIds.join(",")}&fields=Description,ItemUICategory.Name`;
+  const response = await client.fetch(url);
+  if (!response.ok) {
+    throw new Error(`XIVAPI item-summary request failed (${response.status})`);
+  }
+
+  const data = (await response.json()) as {
+    rows: {
+      row_id: number;
+      fields: {
+        Description: string;
+        ItemUICategory?: { fields?: { Name?: string } };
+      };
+    }[];
+  };
+  return data.rows.map((row) => {
+    const type = row.fields.ItemUICategory?.fields?.Name;
+    return [
+      row.row_id,
+      {
+        type: type === undefined || type === "" ? undefined : type,
+        description: row.fields.Description,
+      },
+    ];
+  });
+};
+
+/**
+ * The name of every kind of thing an item can be, by the game's ID for it.
+ * Fetched apart from the items themselves: asking for each item's type name
+ * alongside it triples what a full load of the items weighs, since XIVAPI
+ * repeats the whole type for every item.
+ */
+export const fetchItemTypeNames = async (
+  version?: string,
+): Promise<Map<number, string>> => {
+  const typeNames = new Map<number, string>();
+  let lastRowId: number | undefined;
+  // Pages until an empty one, rather than stopping at a short page, in case XIVAPI's page size is smaller than asked for.
+  for (;;) {
+    const params = new URLSearchParams({
+      fields: "Name",
+      limit: String(MAX_PAGE_SIZE),
+    });
+    if (version !== undefined) params.set("version", version);
+    if (lastRowId !== undefined) params.set("after", String(lastRowId));
+
+    const response = await client.fetch(
+      `${ITEM_UI_CATEGORY_SHEET_URL}?${params}`,
+    );
+    if (!response.ok) {
+      throw new Error(`XIVAPI item-type request failed (${response.status})`);
+    }
+
+    const { rows } = (await response.json()) as {
+      rows: { row_id: number; fields: { Name: string } }[];
+    };
+    if (rows.length === 0) return typeNames;
+    rows
+      .filter(({ fields }) => fields.Name !== "")
+      .forEach(({ row_id, fields }) => typeNames.set(row_id, fields.Name));
+    lastRowId = rows[rows.length - 1].row_id;
+  }
 };
 
 /** Looks up an item by its ID, giving nothing for an ID that isn't a real, named item. */
@@ -216,10 +307,15 @@ export const fetchLatestGameVersion = async (): Promise<string> => {
 export const fetchMarketBoardItems = async (
   version: string,
   onProgress?: (itemsSoFar: number) => void,
-): Promise<ItemSearchResult[]> => {
-  const results = await searchEveryPage<{ Name: string; StackSize: number }>(
+): Promise<MarketBoardItem[]> => {
+  const results = await searchEveryPage<{
+    Name: string;
+    StackSize: number;
+    Description: string;
+    "ItemUICategory@as(raw)": number;
+  }>(
     "-ItemSearchCategory=0",
-    "Name,StackSize",
+    "Name,StackSize,Description,ItemUICategory@as(raw)",
     "market board item search",
     { version, onProgress },
   );
@@ -229,6 +325,8 @@ export const fetchMarketBoardItems = async (
       itemId: row_id,
       name: fields.Name,
       stackSize: fields.StackSize,
+      description: fields.Description,
+      typeId: fields["ItemUICategory@as(raw)"],
     }));
 };
 

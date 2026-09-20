@@ -86,7 +86,9 @@ const renderPage = (currentCharacter = alice) =>
 /** A cell's text as it reads, leaving out the copy button and its tooltip. */
 const cellText = (cell: HTMLElement) => {
   const copy = cell.cloneNode(true) as HTMLElement;
-  copy.querySelectorAll(".tooltip-anchor").forEach((anchor) => anchor.remove());
+  copy
+    .querySelectorAll('[role="tooltip"], button, a')
+    .forEach((element) => element.remove());
   return copy.textContent;
 };
 
@@ -563,6 +565,31 @@ describe("ExpertDeliveryContainer", () => {
         );
       expect(widths("Lich")).toEqual(["55%", "15%", "15%", "15%"]);
       expect(widths("Omega")).toEqual(widths("Lich"));
+    });
+  });
+
+  describe("what an item is", () => {
+    it("should show it when a name in the list is hovered", async () => {
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
+      pricesGiven({ [cuirass.itemId]: listed(at(100)) });
+      renderPage();
+      await itemsLoaded();
+
+      fireEvent.mouseEnter(screen.getByText("Augmented Wolfram Cuirass"));
+
+      expect(document.querySelector(".item-summary-icon")).not.toBeNull();
+    });
+
+    it("should show it when a name in the route is hovered", async () => {
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
+      pricesGiven({ [cuirass.itemId]: listed(at(100)) });
+      renderPage();
+      await itemsLoaded();
+      showRoute();
+
+      fireEvent.mouseEnter(screen.getByText("Augmented Wolfram Cuirass"));
+
+      expect(document.querySelector(".item-summary-icon")).not.toBeNull();
     });
   });
 

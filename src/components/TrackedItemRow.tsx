@@ -6,6 +6,7 @@ import type {
 import type { PricedItem, TrackedItem } from "../types";
 import { afterSuccess } from "../utils/afterSuccess";
 import { formatAmount } from "../utils/amount";
+import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { TrackedItemSettingsForm } from "./TrackedItemSettingsForm";
 
 const qualityOf = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
@@ -42,7 +43,8 @@ export const TrackedItemRow = ({
   return (
     <li className="entry-row">
       <span>
-        {item.name} <span className="quality-badge">{qualityOf(item)}</span>
+        <ItemSummaryTooltip itemId={item.itemId} name={item.name} />{" "}
+        <span className="quality-badge">{qualityOf(item)}</span>
       </span>
       <span className="muted">
         Target quantity {formatAmount(item.targetQuantity)}

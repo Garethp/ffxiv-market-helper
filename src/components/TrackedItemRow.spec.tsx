@@ -13,6 +13,7 @@ import type {
 } from "../services/trackedItemService";
 import type { TrackedItem } from "../types";
 import { TrackedItemRow } from "./TrackedItemRow";
+import { withQueryClient } from "../testing/withQueryClient";
 
 const saved = async (): Promise<TrackedItemChangeResult> => ({ ok: true });
 
@@ -43,6 +44,7 @@ const renderRow = (
         {...handlers}
       />
     </ul>,
+    { wrapper: withQueryClient() },
   );
 
 const rowText = () => screen.getByRole("listitem").textContent;
@@ -53,6 +55,16 @@ afterEach(cleanup);
 
 describe("TrackedItemRow", () => {
   describe("showing the item", () => {
+    it("should show what the item is when its name is hovered", () => {
+      renderRow(aTrackedItem());
+
+      fireEvent.mouseEnter(screen.getByText("Cordial"));
+
+      expect(
+        screen.getByRole("listitem").querySelector(".item-summary-icon"),
+      ).not.toBeNull();
+    });
+
     it("should show the item's name, target quantity and sell price ceiling", () => {
       renderRow(aTrackedItem({ targetQuantity: 60, sellPriceCeiling: 5000 }));
 

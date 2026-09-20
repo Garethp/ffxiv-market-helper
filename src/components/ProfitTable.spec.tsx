@@ -14,6 +14,7 @@ import { columnHeaderNames } from "../testing/columnHeaderNames";
 import { descriptionOf } from "../testing/descriptionOf";
 import { profitColumnHints } from "./pricingHints";
 import { ProfitTable } from "./ProfitTable";
+import { withQueryClient } from "../testing/withQueryClient";
 
 const displayRow = (itemId: number, name: string): DisplayRow => ({
   row: {
@@ -80,7 +81,7 @@ const renderTable = (
     sellWorld?: string;
     gapThresholdMultiplier?: number;
   },
-) => render(table(rows, options));
+) => render(table(rows, options), { wrapper: withQueryClient() });
 
 const bodyRows = () => screen.getAllByRole("row").slice(1);
 

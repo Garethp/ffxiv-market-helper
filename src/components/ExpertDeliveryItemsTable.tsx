@@ -9,6 +9,7 @@ import { formatGil } from "../utils/format";
 import { findDataCenterForWorld } from "../utils/worldDirectory";
 import { FixedWidthColumns } from "./FixedWidthColumns";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
+import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 
 const COLUMNS = [
   { name: "Item", width: "28%" },
@@ -51,7 +52,9 @@ export const ExpertDeliveryItemsTable = ({
           <tr key={key}>
             <td>
               <ItemNameWithCopy
-                name={item.name}
+                name={
+                  <ItemSummaryTooltip itemId={item.itemId} name={item.name} />
+                }
                 isCopied={copiedKey === key}
                 onCopy={() => onCopy(key, item.name)}
               />

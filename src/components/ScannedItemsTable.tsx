@@ -5,6 +5,7 @@ import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import { BuyingRegionSection } from "./BuyingRegionSection";
+import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { Tooltip } from "./Tooltip";
 
 const formatNumber = (value: number): string => {
@@ -126,7 +127,10 @@ export const ScannedItemsTable = memo(
               }
             >
               <td>
-                <Tooltip text="Quick profit scan (opens in a new tab, so this scan keeps running)">
+                <ItemSummaryTooltip
+                  itemId={item.itemId}
+                  note="Quick profit scan (opens in a new tab, so this scan keeps running)"
+                >
                   {(tooltipId) => (
                     <Link
                       to={`/item/${item.itemId}`}
@@ -137,7 +141,7 @@ export const ScannedItemsTable = memo(
                       {item.name ?? `#${item.itemId}`}
                     </Link>
                   )}
-                </Tooltip>{" "}
+                </ItemSummaryTooltip>{" "}
                 {/* Named by its tooltip, since the link itself is only an icon. */}
                 <Tooltip text="View on Universalis">
                   {(tooltipId) => (

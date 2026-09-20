@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Tooltip } from "./Tooltip";
 
 /** An item's name, led by a button that copies it, so the buttons line up down a column. */
@@ -6,7 +7,7 @@ export const ItemNameWithCopy = ({
   isCopied,
   onCopy,
 }: {
-  name: string;
+  name: ReactNode;
   isCopied: boolean;
   onCopy: () => void;
 }) => (

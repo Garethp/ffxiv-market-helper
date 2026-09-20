@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryLockManager } from "../requestLimiting/InMemoryLockManager";
 import { MemoryItemDataStore } from "../testing/MemoryItemDataStore";
-import type { ItemSearchResult } from "../types";
+import type { MarketBoardItem } from "../types";
 import {
   ItemDataCache,
   type ItemDataSource,
@@ -19,17 +19,28 @@ const deferred = <T>() => {
   return { promise, resolve, reject };
 };
 
-const cordial = { itemId: 6141, name: "Cordial", stackSize: 999 };
+const cordial = {
+  itemId: 6141,
+  name: "Cordial",
+  stackSize: 999,
+  description: "A sweet, fermented concoction.",
+  typeId: 44,
+};
+
+const typeNames = new Map([[44, "Medicine"]]);
 
 const sourceOf = (
   latestVersion: string,
-  items: ItemSearchResult[] = [cordial],
+  items: MarketBoardItem[] = [cordial],
 ) => ({
   fetchLatestGameVersion: vi.fn<ItemDataSource["fetchLatestGameVersion"]>(
     async () => latestVersion,
   ),
   fetchMarketBoardItems: vi.fn<ItemDataSource["fetchMarketBoardItems"]>(
     async () => items,
+  ),
+  fetchItemTypeNames: vi.fn<ItemDataSource["fetchItemTypeNames"]>(
+    async () => typeNames,
   ),
 });
 
@@ -64,7 +75,7 @@ describe("ItemDataCache", () => {
 
     it("should load nothing when the stored items are from the latest version", async () => {
       const store = new MemoryItemDataStore();
-      await store.replaceItems("7.56x1", [cordial]);
+      await store.replaceItems("7.56x1", [cordial], typeNames);
       const { cache, source } = setUp({ store });
 
       await cache.update();
@@ -75,7 +86,11 @@ describe("ItemDataCache", () => {
 
     it("should replace stored items from an older version", async () => {
       const store = new MemoryItemDataStore();
-      await store.replaceItems("7.55", [{ ...cordial, name: "Old name" }]);
+      await store.replaceItems(
+        "7.55",
+        [{ ...cordial, name: "Old name" }],
+        typeNames,
+      );
       const { cache } = setUp({ store });
 
       await cache.update();
@@ -117,7 +132,7 @@ describe("ItemDataCache", () => {
   describe("when loading goes wrong", () => {
     it("should keep using the stored items when the latest version can't be found out", async () => {
       const store = new MemoryItemDataStore();
-      await store.replaceItems("7.55", [cordial]);
+      await store.replaceItems("7.55", [cordial], typeNames);
       const source = sourceOf("7.56x1");
       source.fetchLatestGameVersion.mockRejectedValue(
         new Error("XIVAPI is down"),
@@ -148,7 +163,7 @@ describe("ItemDataCache", () => {
 
     it("should say why it failed, and leave the stored items alone, when the items can't be loaded", async () => {
       const store = new MemoryItemDataStore();
-      await store.replaceItems("7.55", [cordial]);
+      await store.replaceItems("7.55", [cordial], typeNames);
       const source = sourceOf("7.56x1");
       source.fetchMarketBoardItems.mockRejectedValue(
         new Error("XIVAPI market board item search failed (500)"),
@@ -179,7 +194,7 @@ describe("ItemDataCache", () => {
     it("should wait for another tab that's already loading, then load nothing itself", async () => {
       const store = new MemoryItemDataStore();
       const locks = new InMemoryLockManager();
-      const loading = deferred<ItemSearchResult[]>();
+      const loading = deferred<MarketBoardItem[]>();
       const firstSource = sourceOf("7.56x1");
       firstSource.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const firstTab = setUp({ store, locks, source: firstSource });
@@ -212,7 +227,7 @@ describe("ItemDataCache", () => {
 
   describe("looking up items", () => {
     it("should wait for a load in progress to finish, rather than reading what's there before it", async () => {
-      const loading = deferred<ItemSearchResult[]>();
+      const loading = deferred<MarketBoardItem[]>();
       const source = sourceOf("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const { cache } = setUp({ source });
@@ -231,7 +246,7 @@ describe("ItemDataCache", () => {
     it("should wait for a load in another tab to finish too", async () => {
       const store = new MemoryItemDataStore();
       const locks = new InMemoryLockManager();
-      const loading = deferred<ItemSearchResult[]>();
+      const loading = deferred<MarketBoardItem[]>();
       const source = sourceOf("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const loadingTab = setUp({ store, locks, source });
@@ -249,7 +264,7 @@ describe("ItemDataCache", () => {
     });
 
     it("should let a lookup that's waiting be cancelled", async () => {
-      const loading = deferred<ItemSearchResult[]>();
+      const loading = deferred<MarketBoardItem[]>();
       const source = sourceOf("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const { cache } = setUp({ source });

@@ -3,11 +3,13 @@ import {
   fetchExpertDeliverySealsByItemLevel,
   fetchItem,
   fetchItemNames,
+  fetchItemSummaries,
+  fetchItemTypeNames,
   fetchLatestGameVersion,
   fetchMarketBoardItems,
   searchItems,
 } from "../api/xivapi";
-import type { ItemDetails, ItemSearchResult } from "../types";
+import type { ItemDetails, ItemSearchResult, ItemSummary } from "../types";
 import {
   selectExpertDeliveryItems,
   type ExpertDeliveryItem,
@@ -24,6 +26,8 @@ import { IndexedDbItemDataStore } from "./itemDataStore";
 export interface ItemService {
   /** Names for the given items. An item with no known name is left out, rather than failing the whole lookup. */
   getItemNames(itemIds: number[]): Promise<Map<number, string>>;
+  /** What the given items are: their type, and what the game says about them. An item nothing is known about is left out, rather than failing the whole lookup. */
+  getItemSummaries(itemIds: number[]): Promise<Map<number, ItemSummary>>;
   /** An item's details, or nothing for an ID that isn't a real, named item. */
   getItem(
     itemId: number,
@@ -69,6 +73,17 @@ export class CachingItemService implements ItemService {
     return names;
   }
 
+  async getItemSummaries(itemIds: number[]): Promise<Map<number, ItemSummary>> {
+    const summaries = await this.cachedSummaries(itemIds);
+    const uncached = itemIds.filter((itemId) => !summaries.has(itemId));
+    if (uncached.length > 0) {
+      (await fetchItemSummaries(uncached)).forEach((summary, itemId) =>
+        summaries.set(itemId, summary),
+      );
+    }
+    return summaries;
+  }
+
   async getItem(
     itemId: number,
     options?: { signal?: AbortSignal },
@@ -110,6 +125,16 @@ export class CachingItemService implements ItemService {
     return this.cache.subscribe(listener);
   }
 
+  private async cachedSummaries(
+    itemIds: number[],
+  ): Promise<Map<number, ItemSummary>> {
+    try {
+      return await this.cache.getSummaries(itemIds);
+    } catch {
+      return new Map();
+    }
+  }
+
   private async cachedItems(
     itemIds: number[],
     options?: { signal?: AbortSignal },
@@ -127,5 +152,6 @@ export const itemService: ItemService = new CachingItemService(
   new ItemDataCache(new IndexedDbItemDataStore("ffxiv-trading-items"), {
     fetchLatestGameVersion,
     fetchMarketBoardItems,
+    fetchItemTypeNames,
   }),
 );

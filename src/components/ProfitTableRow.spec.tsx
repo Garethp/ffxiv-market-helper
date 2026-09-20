@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { descriptionOf } from "../testing/descriptionOf";
 import type { ProfitPricing, ProfitRow, PricedItem } from "../types";
 import { ProfitTableRow } from "./ProfitTableRow";
+import { withQueryClient } from "../testing/withQueryClient";
 
 const NOW = new Date("2026-01-01T12:00:00Z").getTime();
 
@@ -92,6 +93,7 @@ const renderRow = (
         />
       </tbody>
     </table>,
+    { wrapper: withQueryClient() },
   );
   const tr = container.querySelector("tbody > tr") as HTMLTableRowElement;
   const cells = Array.from(tr.children) as HTMLTableCellElement[];
@@ -123,6 +125,14 @@ describe("ProfitTableRow", () => {
       const { itemCell } = renderRow(readyRow());
 
       expect(itemCell.textContent).toContain("Wind Cluster");
+    });
+
+    it("should show what the item is when its name is hovered", () => {
+      const { itemCell } = renderRow(readyRow());
+
+      fireEvent.mouseEnter(within(itemCell).getByText("Wind Cluster"));
+
+      expect(itemCell.querySelector(".item-summary-icon")).not.toBeNull();
     });
 
     it("should ask to copy the item's name when the copy button is clicked", () => {

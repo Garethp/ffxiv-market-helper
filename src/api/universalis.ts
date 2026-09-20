@@ -3,6 +3,8 @@ import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimite
 
 const BASE_URL = "https://universalis.app/api/v2";
 const WEB_BASE_URL = "https://universalis.app";
+const ASSETS_BASE_URL =
+  "https://universalis-ffxiv.github.io/universalis-assets";
 
 // Universalis allows up to 25 req/s and 8 concurrent requests. This stays below that so there's
 // room left over for using the Universalis website at the same time. Every request to it, from
@@ -15,10 +17,9 @@ const limiter = new CrossTabRequestLimiter("universalis", {
 const client = new RequestLimitedApiClient(limiter, "interactive");
 
 // Used only for bulk requests covering many items (see fetchSaleVelocityBatch and
-// fetchRegionListings). Background priority
-// lets it use the whole budget while nothing else needs it, without starving pages someone is
-// looking at.
-const bulkScanClient = new RequestLimitedApiClient(limiter, "background");
+// fetchRegionListings). Background priority lets it use the whole budget while nothing else
+// needs it, without starving pages someone is looking at.
+const backgroundClient = new RequestLimitedApiClient(limiter, "background");
 
 export interface UniversalisListing {
   pricePerUnit: number;
@@ -151,7 +152,7 @@ export const fetchSaleVelocityBatch = async (
     statsWithinMs !== undefined ? `&statsWithin=${statsWithinMs}` : "";
   const url = `${BASE_URL}/${encodeURIComponent(worldOrDataCenter)}/${itemIds.join(",")}?listings=0&entries=${entries}${statsWithinParam}`;
 
-  const response = await bulkScanClient.fetch(url, { signal });
+  const response = await backgroundClient.fetch(url, { signal });
   if (!response.ok) {
     throw new Error(
       `Universalis bulk request failed (${response.status}) for ${itemIds.length} items on ${worldOrDataCenter}`,
@@ -188,6 +189,9 @@ const UNIVERSALIS_REGION_NAMES: Record<string, string> = {
   "North America": "North-America",
 };
 
+const universalisRegionName = (region: string): string =>
+  UNIVERSALIS_REGION_NAMES[region] ?? region;
+
 /**
  * Fetches every current listing of each item anywhere in a region, cheapest
  * first. An item with no listings there is absent from the result. Uses the
@@ -211,11 +215,10 @@ export const fetchRegionListings = async (
   const listingFields = ["pricePerUnit", "worldName"]
     .map((field) => `${isSingleItem ? "" : "items."}listings.${field}`)
     .join(",");
-  const universalisRegion = UNIVERSALIS_REGION_NAMES[region] ?? region;
   // Leaving out the number of listings asks for all of them, which Universalis gives cheapest first.
-  const url = `${BASE_URL}/${encodeURIComponent(universalisRegion)}/${itemIds.join(",")}?entries=0&fields=${listingFields}`;
+  const url = `${BASE_URL}/${encodeURIComponent(universalisRegionName(region))}/${itemIds.join(",")}?entries=0&fields=${listingFields}`;
 
-  const response = await bulkScanClient.fetch(url, {
+  const response = await backgroundClient.fetch(url, {
     signal: options.signal,
   });
   // An item Universalis doesn't know is left out of a response for several, but is a 404 on its own.
@@ -243,6 +246,13 @@ export const fetchRegionListings = async (
       .map(([itemId, { listings }]) => [itemId, listings]),
   );
 };
+
+/**
+ * The item's icon, from the asset set Universalis' own pages use. Only items
+ * that can be sold on the market board have one.
+ */
+export const buildItemIconUrl = (itemId: number): string =>
+  `${ASSETS_BASE_URL}/icon2x/${itemId}.png`;
 
 /** The universalis.app web page showing this item's listings/history for a given world or data center. */
 export const buildMarketPageUrl = (

@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ItemSearchResult } from "../types";
 
 vi.mock("../services/itemService", () => ({
-  itemService: { searchItems: vi.fn() },
+  itemService: { searchItems: vi.fn(), getItemSummaries: vi.fn() },
 }));
 
 import { itemService } from "../services/itemService";
@@ -19,6 +19,7 @@ import { withQueryClient } from "../testing/withQueryClient";
 import { ItemSearch } from "./ItemSearch";
 
 const mockedSearchItems = vi.mocked(itemService.searchItems);
+const mockedGetItemSummaries = vi.mocked(itemService.getItemSummaries);
 
 const cordial: ItemSearchResult = {
   itemId: 6141,
@@ -58,11 +59,19 @@ const waitLongerThanTypingPause = () =>
 
 beforeEach(() => {
   mockedSearchItems.mockResolvedValue([cordial, wateredCordial]);
+  mockedGetItemSummaries.mockResolvedValue(
+    new Map([
+      [
+        6141,
+        { type: "Medicine", description: "A sweet, fermented concoction." },
+      ],
+    ]),
+  );
 });
 
 afterEach(() => {
   cleanup();
-  mockedSearchItems.mockReset();
+  vi.resetAllMocks();
 });
 
 describe("ItemSearch", () => {
@@ -151,6 +160,30 @@ describe("ItemSearch", () => {
     await act(async () => earlier.resolve([cordial]));
 
     expect(screen.queryByRole("button", { name: "Cordial" })).toBeNull();
+  });
+
+  it("should show what an item is when its result is hovered", async () => {
+    renderSearch();
+    typeText("cordial");
+    const result = await screen.findByRole("button", { name: "Cordial" });
+
+    fireEvent.mouseEnter(result);
+
+    await screen.findByText("A sweet, fermented concoction.");
+    expect(screen.getByText("Medicine")).not.toBeNull();
+    expect(
+      document.getElementById(result.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toContain("A sweet, fermented concoction.");
+  });
+
+  it("should look nothing up for a result until it's hovered", async () => {
+    renderSearch();
+    typeText("cordial");
+
+    await screen.findByRole("button", { name: "Cordial" });
+
+    expect(mockedGetItemSummaries).not.toHaveBeenCalled();
   });
 
   it("should pass on the item that's picked", async () => {

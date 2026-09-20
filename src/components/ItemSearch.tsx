@@ -2,6 +2,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { itemService } from "../services/itemService";
 import type { ItemSearchResult } from "../types";
+import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 
 /** How long typing has to pause before searching, so there isn't a search for every character typed. */
 const TYPING_PAUSE_MS = 300;
@@ -44,9 +45,17 @@ const SearchOutcome = ({
     <ul className="item-search-results">
       {search.data.map((item) => (
         <li key={item.itemId}>
-          <button type="button" onClick={() => onPick(item)}>
-            {item.name}
-          </button>
+          <ItemSummaryTooltip itemId={item.itemId}>
+            {(tooltipId) => (
+              <button
+                type="button"
+                aria-describedby={tooltipId}
+                onClick={() => onPick(item)}
+              >
+                {item.name}
+              </button>
+            )}
+          </ItemSummaryTooltip>
         </li>
       ))}
     </ul>

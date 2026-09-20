@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// The item tooltip looks up what an item is; these tests are only about the table around it.
+vi.mock("../services/itemService", () => ({
+  itemService: { getItemSummaries: async () => new Map() },
+}));
 import { buildMarketPageUrl } from "../api/universalis";
 import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
@@ -9,6 +20,7 @@ import type { BuyingRegion } from "../services/tradingConfig";
 import type { ProfitRow } from "../types";
 import { descriptionOf } from "../testing/descriptionOf";
 import { ScannedItemsTable } from "./ScannedItemsTable";
+import { withQueryClient } from "../testing/withQueryClient";
 
 afterEach(cleanup);
 
@@ -46,6 +58,7 @@ const renderTable = (
         gapThresholdMultiplier={1.1}
       />
     </MemoryRouter>,
+    { wrapper: withQueryClient() },
   );
 
 const item = {
@@ -175,14 +188,13 @@ describe("ScannedItemsTable", () => {
       expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
     });
 
-    it("should explain what the item's own link opens", () => {
+    it("should explain what the item's own link opens, once its summary is opened", () => {
       renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
+      const link = screen.getByRole("link", { name: "Grade 8 Dark Matter" });
 
-      expect(
-        descriptionOf(
-          screen.getByRole("link", { name: "Grade 8 Dark Matter" }),
-        ),
-      ).toBe(
+      fireEvent.mouseEnter(link);
+
+      expect(descriptionOf(link)).toContain(
         "Quick profit scan (opens in a new tab, so this scan keeps running)",
       );
     });
