@@ -228,7 +228,8 @@ class HardcodedConfigService implements ConfigService {
     refreshIntervalMs: 90_000,
     retryDelayMs: 10_000,
     staleWarningThresholdMs: 5 * 60_000,
-    undercutListingThreshold: 5,
+    undercutListingThreshold: 3,
+    undercutListingsShown: 10,
   };
 
   async getRegions(): Promise<RegionInfo[]> {

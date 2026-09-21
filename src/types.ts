@@ -159,17 +159,22 @@ export interface TradingParameters {
   /** How stale a row's last successful data can get (while fetches keep failing) before we warn about it. */
   staleWarningThresholdMs: number;
   /**
-   * How many of the cheapest current listings count as "competitive". If our
-   * own retainer's listing for an item isn't among them, it's flagged as
-   * undercut.
+   * How many of the cheapest current listings (of the item's tracked
+   * quality) count as "competitive". If our own retainer's listing for an
+   * item isn't among them, it's flagged as undercut.
    */
   undercutListingThreshold: number;
+  /** How many of the cheapest current listings to show when our listing has been undercut. */
+  undercutListingsShown: number;
 }
 
-/** One of the cheapest listings we'd need to beat to be competitive again. */
+/** One of the cheapest current listings on the sell world, shown when we've been undercut. */
 export interface CompetingListing {
   pricePerUnit: number;
   quantity: number;
+  retainerName: string;
+  /** Whether this is one of our own retainers' listings. */
+  ours: boolean;
 }
 
 /**
@@ -183,8 +188,8 @@ export type SellListingStatus =
       state: "undercut";
       ourPricePerUnit: number;
       rank: number;
-      /** The cheapest other-seller listings, up to undercutListingThreshold. */
-      cheaperListings: CompetingListing[];
+      /** The cheapest current listings, ours included, up to undercutListingsShown. */
+      cheapestListings: CompetingListing[];
     };
 
 /** Result of costing out enough listings to fill a target quantity. */

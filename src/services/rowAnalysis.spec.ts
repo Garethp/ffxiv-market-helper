@@ -58,7 +58,8 @@ const params: TradingParameters = {
   refreshIntervalMs: 90_000,
   retryDelayMs: 10_000,
   staleWarningThresholdMs: 300_000,
-  undercutListingThreshold: 5,
+  undercutListingThreshold: 3,
+  undercutListingsShown: 10,
 };
 
 const emptyMarketData = {
@@ -248,6 +249,26 @@ describe("pricing a row", () => {
 
       expect(analysis.sellPricePerUnit).toBe(1000);
       expect(analysis.gapDetected).toBe(false);
+    });
+
+    it("should only rank our listing against listings of the tracked quality", async () => {
+      marketDataByScope({
+        WorldA: {
+          listings: [
+            ...[10, 20, 30, 40, 50, 60].map((pricePerUnit) =>
+              listing({ pricePerUnit, hq: false }),
+            ),
+            listing({ pricePerUnit: 500, hq: true, retainerName: "RetainerA" }),
+          ],
+        },
+      });
+
+      const analysis = await analyze({ item: hqItem });
+
+      expect(analysis.sellListingStatus).toEqual({
+        state: "competitive",
+        rank: 1,
+      });
     });
 
     it("should use HQ sale velocity for an HQ item", async () => {

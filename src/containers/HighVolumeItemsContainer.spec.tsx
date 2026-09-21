@@ -161,7 +161,8 @@ describe("HighVolumeItemsContainer", () => {
         defaultSellTaxRate: 0,
         gapThresholdMultiplier: 1.1,
         saleSampleSize: 3,
-        undercutListingThreshold: 5,
+        undercutListingThreshold: 3,
+        undercutListingsShown: 10,
       },
       buyingRegions: [
         { region: "Europe", characters: [{ id: "alice", name: "Alice" }] },

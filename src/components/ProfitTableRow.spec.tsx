@@ -402,7 +402,14 @@ describe("ProfitTableRow", () => {
             state: "undercut",
             ourPricePerUnit: 300,
             rank: 6,
-            cheaperListings: [{ pricePerUnit: 240, quantity: 10 }],
+            cheapestListings: [
+              {
+                pricePerUnit: 240,
+                quantity: 10,
+                retainerName: "Someone",
+                ours: false,
+              },
+            ],
           },
         }),
       );

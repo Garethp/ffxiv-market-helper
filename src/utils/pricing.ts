@@ -125,13 +125,15 @@ export const calculateAverageListingPrice = (
  * Ranks our own retainer's listing (the cheapest one, if we have more than
  * one) against every current listing on the sell world. Not being among the
  * cheapest `undercutListingThreshold` listings means someone else has taken
- * over the top of the list — the returned cheaperListings are what we'd need
- * to beat.
+ * over the top of the list — the returned cheapestListings (the first
+ * `undercutListingsShown`, ours included, so it's clear where we sit) are
+ * what we'd need to beat.
  */
 export const determineSellListingStatus = (
   listings: UniversalisListing[],
   ownRetainers: WorldRetainer[],
   undercutListingThreshold: number,
+  undercutListingsShown: number,
 ): SellListingStatus => {
   const sorted = [...listings].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
   const ownIndex = sorted.findIndex((listing) =>
@@ -142,19 +144,20 @@ export const determineSellListingStatus = (
   const rank = ownIndex + 1;
   if (rank <= undercutListingThreshold) return { state: "competitive", rank };
 
-  const cheaperListings = sorted
-    .filter((listing) => !isOwnRetainerListing(listing, ownRetainers))
-    .slice(0, undercutListingThreshold)
+  const cheapestListings = sorted
+    .slice(0, undercutListingsShown)
     .map((listing) => ({
       pricePerUnit: listing.pricePerUnit,
       quantity: listing.quantity,
+      retainerName: listing.retainerName,
+      ours: isOwnRetainerListing(listing, ownRetainers),
     }));
 
   return {
     state: "undercut",
     ourPricePerUnit: sorted[ownIndex].pricePerUnit,
     rank,
-    cheaperListings,
+    cheapestListings,
   };
 };
 

@@ -217,6 +217,7 @@ describe("determineSellListingStatus", () => {
       [listing({ pricePerUnit: 100, worldName: "WorldA" })],
       ownRetainers,
       5,
+      10,
     );
 
     expect(status.state).toBe("not-listed");
@@ -233,33 +234,59 @@ describe("determineSellListingStatus", () => {
       }),
     ];
 
-    const status = determineSellListingStatus(listings, ownRetainers, 3);
+    const status = determineSellListingStatus(listings, ownRetainers, 3, 10);
 
     expect(status).toEqual({ state: "competitive", rank: 3 });
   });
 
-  it("should be undercut when our listing isn't among the cheapest N, reporting the ones to beat", () => {
+  it("should be undercut when our listing isn't among the cheapest N, listing the cheapest with who posted them", () => {
     const listings = [
-      listing({ pricePerUnit: 100, worldName: "WorldA", retainerName: "A" }),
       listing({ pricePerUnit: 110, worldName: "WorldA", retainerName: "B" }),
       listing({
         pricePerUnit: 500,
         worldName: "WorldA",
         retainerName: "RetainerA",
       }),
+      listing({ pricePerUnit: 100, worldName: "WorldA", retainerName: "A" }),
     ];
 
-    const status = determineSellListingStatus(listings, ownRetainers, 2);
+    const status = determineSellListingStatus(listings, ownRetainers, 2, 10);
 
     expect(status).toEqual({
       state: "undercut",
       ourPricePerUnit: 500,
       rank: 3,
-      cheaperListings: [
-        { pricePerUnit: 100, quantity: 99 },
-        { pricePerUnit: 110, quantity: 99 },
+      cheapestListings: [
+        { pricePerUnit: 100, quantity: 99, retainerName: "A", ours: false },
+        { pricePerUnit: 110, quantity: 99, retainerName: "B", ours: false },
+        {
+          pricePerUnit: 500,
+          quantity: 99,
+          retainerName: "RetainerA",
+          ours: true,
+        },
       ],
     });
+  });
+
+  it("should list only as many of the cheapest listings as are to be shown", () => {
+    const listings = [100, 110, 120, 130].map((pricePerUnit) =>
+      listing({ pricePerUnit, worldName: "WorldA", retainerName: "Other" }),
+    );
+    listings.push(
+      listing({
+        pricePerUnit: 500,
+        worldName: "WorldA",
+        retainerName: "RetainerA",
+      }),
+    );
+
+    const status = determineSellListingStatus(listings, ownRetainers, 1, 3);
+
+    expect(
+      status.state === "undercut" &&
+        status.cheapestListings.map((listing) => listing.pricePerUnit),
+    ).toEqual([100, 110, 120]);
   });
 
   it("should rank us by our cheapest listing when we have more than one", () => {
@@ -281,12 +308,12 @@ describe("determineSellListingStatus", () => {
       }),
     ];
 
-    const status = determineSellListingStatus(listings, ownRetainers, 5);
+    const status = determineSellListingStatus(listings, ownRetainers, 5, 10);
 
     expect(status).toEqual({ state: "competitive", rank: 2 });
   });
 
-  it("should exclude our own other listings from the listings reported as cheaper", () => {
+  it("should mark each of our own listings among the cheapest as ours", () => {
     const listings = [
       listing({
         pricePerUnit: 100,
@@ -305,14 +332,12 @@ describe("determineSellListingStatus", () => {
       }),
     ];
 
-    const status = determineSellListingStatus(listings, ownRetainers, 1);
+    const status = determineSellListingStatus(listings, ownRetainers, 1, 10);
 
-    expect(status).toEqual({
-      state: "undercut",
-      ourPricePerUnit: 200,
-      rank: 2,
-      cheaperListings: [{ pricePerUnit: 100, quantity: 99 }],
-    });
+    expect(
+      status.state === "undercut" &&
+        status.cheapestListings.map((listing) => listing.ours),
+    ).toEqual([false, true, true]);
   });
 });
 

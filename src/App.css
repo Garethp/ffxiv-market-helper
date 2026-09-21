@@ -701,6 +701,21 @@ header h1 {
   text-align: right;
 }
 
+/* Retainer names don't wrap, so the table sets the width rather than the usual tooltip cap. */
+.tooltip:has(> .undercut-listings) {
+  max-width: none;
+}
+
+.undercut-listings th:first-child,
+.undercut-listings td:first-child {
+  text-align: left;
+}
+
+.undercut-listings .own-listing {
+  font-weight: 700;
+  color: #ffb74d;
+}
+
 .profit-tooltip-anchor {
   position: relative;
   border-bottom: 1px dotted currentColor;

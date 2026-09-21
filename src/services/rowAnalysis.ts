@@ -195,6 +195,7 @@ export const analyzeRow = (
     sellQualityListings,
     ownRetainers,
     params.undercutListingThreshold,
+    params.undercutListingsShown,
   );
   const saleVelocityPerDay = item.hq
     ? marketData.sell.hqSaleVelocity

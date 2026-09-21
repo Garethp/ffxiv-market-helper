@@ -13,7 +13,9 @@ const undercutStatus = (
   state: "undercut",
   ourPricePerUnit: 5000,
   rank: 4,
-  cheaperListings: [{ pricePerUnit: 1000, quantity: 5 }],
+  cheapestListings: [
+    { pricePerUnit: 1000, quantity: 5, retainerName: "Someone", ours: false },
+  ],
   ...overrides,
 });
 
@@ -46,13 +48,23 @@ describe("UndercutBadge", () => {
     ).not.toBeNull();
   });
 
-  it("should list the price and quantity of each cheaper listing, in order", () => {
+  it("should list who posted each of the cheapest listings, at what price and quantity, in order", () => {
     render(
       <UndercutBadge
         status={undercutStatus({
-          cheaperListings: [
-            { pricePerUnit: 1000, quantity: 5 },
-            { pricePerUnit: 1250, quantity: 99 },
+          cheapestListings: [
+            {
+              pricePerUnit: 1000,
+              quantity: 5,
+              retainerName: "Alpha",
+              ours: false,
+            },
+            {
+              pricePerUnit: 1250,
+              quantity: 99,
+              retainerName: "Beta",
+              ours: false,
+            },
           ],
         })}
       />,
@@ -62,8 +74,35 @@ describe("UndercutBadge", () => {
       Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent),
     );
     expect(cells).toEqual([
-      [(1000).toLocaleString(), "5"],
-      [(1250).toLocaleString(), "99"],
+      ["Alpha", (1000).toLocaleString(), "5"],
+      ["Beta", (1250).toLocaleString(), "99"],
     ]);
+  });
+
+  it("should single out our own listings among them", () => {
+    render(
+      <UndercutBadge
+        status={undercutStatus({
+          cheapestListings: [
+            {
+              pricePerUnit: 1000,
+              quantity: 5,
+              retainerName: "Alpha",
+              ours: false,
+            },
+            {
+              pricePerUnit: 5000,
+              quantity: 5,
+              retainerName: "RetainerA",
+              ours: true,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(
+      listingRows().map((row) => row.classList.contains("own-listing")),
+    ).toEqual([false, true]);
   });
 });

@@ -53,7 +53,8 @@ const config: TradingConfig = {
     defaultSellTaxRate: 0,
     gapThresholdMultiplier: 1.1,
     saleSampleSize: 3,
-    undercutListingThreshold: 5,
+    undercutListingThreshold: 3,
+    undercutListingsShown: 10,
   } as TradingParameters,
   marketBoardCities: [],
   buyingRegions: [

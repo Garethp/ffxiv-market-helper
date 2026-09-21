@@ -15,16 +15,21 @@ export const UndercutBadge = ({
             Your listing: {formatGil(status.ourPricePerUnit)} (rank #
             {status.rank})
           </div>
-          <table>
+          <table className="undercut-listings">
             <thead>
               <tr>
+                <th>Retainer</th>
                 <th>Price</th>
                 <th>Qty</th>
               </tr>
             </thead>
             <tbody>
-              {status.cheaperListings.map((listing, index) => (
-                <tr key={index}>
+              {status.cheapestListings.map((listing, index) => (
+                <tr
+                  key={index}
+                  className={listing.ours ? "own-listing" : undefined}
+                >
+                  <td>{listing.retainerName}</td>
                   <td>{formatGil(listing.pricePerUnit)}</td>
                   <td>{listing.quantity}</td>
                 </tr>
