@@ -9,6 +9,7 @@ import type {
   RowAnalysis,
   SellListingStatus,
 } from "../types";
+import { marketBoardStackSize } from "./marketBoardStack";
 
 interface PriceSample {
   average: number;
@@ -245,7 +246,10 @@ export const buildReadyAnalysis = (
     effectiveBuyPricePerUnit,
     effectiveSellPricePerUnit,
     profitPerItem,
-    profitPerStack: profitPerItem !== null ? profitPerItem * stackSize : null,
+    profitPerStack:
+      profitPerItem !== null
+        ? profitPerItem * marketBoardStackSize(stackSize)
+        : null,
     expectedProfitPerDay:
       profitPerItem !== null ? profitPerItem * saleVelocityPerDay : null,
   };

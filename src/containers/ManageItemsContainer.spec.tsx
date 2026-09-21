@@ -113,7 +113,7 @@ describe("ManageItemsContainer", () => {
       ]);
     });
 
-    it("should start the target quantity at the item's stack size", async () => {
+    it("should start the target quantity at three market board stacks of the item", async () => {
       await renderPage();
 
       const form = await pickCordial();
@@ -121,7 +121,7 @@ describe("ManageItemsContainer", () => {
       expect(
         (within(form).getByLabelText("Target quantity") as HTMLInputElement)
           .value,
-      ).toBe("999");
+      ).toBe("297");
     });
 
     it("should close the form once the item is tracked", async () => {
@@ -161,7 +161,7 @@ describe("ManageItemsContainer", () => {
             "Target quantity",
           ) as HTMLInputElement
         ).value,
-      ).toBe("999");
+      ).toBe("297");
       expect(screen.queryByRole("form", { name: "Track Cordial" })).toBeNull();
     });
   });

@@ -578,6 +578,24 @@ describe("buildReadyAnalysis", () => {
       expect(analysis.profitPerItem).toBe(100);
       expect(analysis.profitPerStack).toBe(5000);
     });
+
+    it("should count profit per stack over a market board stack, not an inventory stack", () => {
+      const analysis = assertReady(
+        buildReadyAnalysis(
+          "Chaos",
+          buy,
+          { average: 200, sampleSize: 3 },
+          null,
+          999,
+          undefined,
+          someVelocity,
+          noTax,
+          notListed,
+        ),
+      );
+
+      expect(analysis.profitPerStack).toBe(9900);
+    });
   });
 
   describe("accounting for market throughput", () => {

@@ -9,6 +9,7 @@ import {
 } from "../services/trackedItemService";
 import type { TradingConfig } from "../services/tradingConfig";
 import { afterSuccess } from "../utils/afterSuccess";
+import { defaultTargetQuantity } from "../utils/marketBoardStack";
 
 /** Where the tracked items are set up: tracking new items, changing their settings, and no longer tracking them. */
 export const ManageItemsContainer = ({
@@ -40,7 +41,10 @@ export const ManageItemsContainer = ({
             // A different item starts its form over.
             key={picked.itemId}
             label={`Track ${picked.name}`}
-            initial={{ quality: null, targetQuantity: picked.stackSize }}
+            initial={{
+              quality: null,
+              targetQuantity: defaultTargetQuantity(picked.stackSize),
+            }}
             submitLabel="Track item"
             onSubmit={(settings) =>
               afterSuccess(

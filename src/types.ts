@@ -41,7 +41,7 @@ export interface PricedItem {
   name: string;
   /** Whether to price this item by its HQ listings/sales rather than NQ. */
   hq?: boolean;
-  /** Units per full stack of this item, used only for the "profit per stack" display metric. */
+  /** Units per full inventory stack of this item, used only for the "profit per stack" display metric (which counts a market board stack). */
   stackSize: number;
   /**
    * How many units to get a consistent buy price for. For most items this is
