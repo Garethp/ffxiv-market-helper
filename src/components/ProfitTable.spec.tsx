@@ -18,14 +18,11 @@ const displayRow = (itemId: number, name: string): DisplayRow => ({
   row: {
     item: { itemId, name, stackSize: 1, targetQuantity: 1 },
     analysis: { status: "pending" },
-    lastSuccessAt: null,
-    lastAttemptFailed: false,
-    lastErrorMessage: null,
   },
   isRefreshing: false,
 });
 
-const staleReadyDisplayRow = (itemId: number, name: string): DisplayRow => ({
+const readyDisplayRow = (itemId: number, name: string): DisplayRow => ({
   row: {
     item: { itemId, name, stackSize: 1, targetQuantity: 1 },
     analysis: {
@@ -33,7 +30,6 @@ const staleReadyDisplayRow = (itemId: number, name: string): DisplayRow => ({
       buyDataCenter: "Chaos",
       buy: null,
       sellPricePerUnit: 250,
-      sellSampleSize: 10,
       sellPriceSource: "history",
       sellPriceCapped: false,
       gapDetected: false,
@@ -45,9 +41,6 @@ const staleReadyDisplayRow = (itemId: number, name: string): DisplayRow => ({
       expectedProfitPerDay: null,
       sellListingStatus: { state: "not-listed" },
     },
-    lastSuccessAt: Date.now() - 10 * 60_000,
-    lastAttemptFailed: true,
-    lastErrorMessage: null,
   },
   isRefreshing: false,
 });
@@ -55,18 +48,15 @@ const staleReadyDisplayRow = (itemId: number, name: string): DisplayRow => ({
 const table = (
   rows: DisplayRow[],
   {
-    staleWarningThresholdMs = null,
     sellWorld = "WorldA",
     gapThresholdMultiplier = 1.1,
   }: {
-    staleWarningThresholdMs?: number | null;
     sellWorld?: string;
     gapThresholdMultiplier?: number;
   } = {},
 ) => (
   <ProfitTable
     rows={rows}
-    staleWarningThresholdMs={staleWarningThresholdMs}
     sellWorld={sellWorld}
     gapThresholdMultiplier={gapThresholdMultiplier}
   />
@@ -75,7 +65,6 @@ const table = (
 const renderTable = (
   rows: DisplayRow[],
   options?: {
-    staleWarningThresholdMs?: number | null;
     sellWorld?: string;
     gapThresholdMultiplier?: number;
   },
@@ -161,13 +150,13 @@ describe("ProfitTable", () => {
   });
 
   describe("configuring every row", () => {
-    it("should give every row the stale threshold and the sell world", () => {
+    it("should give every row the sell world", () => {
       renderTable(
         [
-          staleReadyDisplayRow(1, "Wind Cluster"),
-          staleReadyDisplayRow(2, "Caramel Popcorn"),
+          readyDisplayRow(1, "Wind Cluster"),
+          readyDisplayRow(2, "Caramel Popcorn"),
         ],
-        { staleWarningThresholdMs: 60_000, sellWorld: "Raiden" },
+        { sellWorld: "Raiden" },
       );
 
       [
@@ -179,7 +168,6 @@ describe("ProfitTable", () => {
         expect(sellPriceLink?.getAttribute("href")).toBe(
           buildMarketPageUrl(itemId, "Raiden"),
         );
-        expect(row.querySelector(".stale-badge")).not.toBeNull();
       });
     });
   });

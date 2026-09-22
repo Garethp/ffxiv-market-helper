@@ -3,6 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # A pull request is only deployed once it's labelled `deploy-pr`, and then again with each push to
+  # it while it keeps the label. Pages has one site, so this replaces what main deployed until main
+  # is next deployed.
+  pull_request:
+    types: [opened, labeled, synchronize, reopened]
   # So a deploy can be re-run from the Actions tab without pushing a commit.
   workflow_dispatch:
 
@@ -19,6 +24,11 @@ concurrency:
 
 jobs:
   build:
+    # Adding some other label to a pull request that already has `deploy-pr` doesn't deploy it again.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'deploy-pr') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'deploy-pr'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

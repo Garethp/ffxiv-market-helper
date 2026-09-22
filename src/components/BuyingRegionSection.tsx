@@ -1,20 +1,14 @@
+import type { ReactNode } from "react";
 import type { BuyingRegion } from "../services/tradingConfig";
-import type { DisplayRow } from "../types";
-import { ProfitTable } from "./ProfitTable";
 
-/** The profit of buying through one region: who buys there, any caveats about doing so, and the resulting rows. */
+/** The profit of buying through one region: who buys there, any caveats about doing so, and the table of rows given. */
 export const BuyingRegionSection = ({
   buyingRegion,
-  rows,
-  staleWarningThresholdMs,
-  sellWorld,
-  gapThresholdMultiplier,
+  children,
 }: {
   buyingRegion: BuyingRegion;
-  rows: DisplayRow[];
-  staleWarningThresholdMs: number | null;
-  sellWorld: string;
-  gapThresholdMultiplier: number;
+  /** The region's rows, laid out however the page wants them. */
+  children: ReactNode;
 }) => {
   return (
     <section className="character-section">
@@ -29,12 +23,7 @@ export const BuyingRegionSection = ({
           </p>
         ) : null,
       )}
-      <ProfitTable
-        rows={rows}
-        staleWarningThresholdMs={staleWarningThresholdMs}
-        sellWorld={sellWorld}
-        gapThresholdMultiplier={gapThresholdMultiplier}
-      />
+      {children}
     </section>
   );
 };

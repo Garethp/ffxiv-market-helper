@@ -75,9 +75,13 @@ body {
   font-size: 0.9rem;
 }
 
+/* Wraps onto more lines rather than running off a narrow screen. Fills the rest of the bar, so the
+   source link at its end can sit at the bar's far end. */
 .navbar-links {
   display: flex;
-  gap: 1.5rem;
+  flex: 1;
+  flex-wrap: wrap;
+  column-gap: 1.5rem;
 }
 
 .navbar-link {
@@ -126,12 +130,105 @@ body {
   transform: none;
 }
 
-/* Narrow enough that the links wrap under the switcher, so the divider between them has nothing to divide. */
-@media (max-width: 600px) {
+/* Only needed on a narrow screen, where the page links are tucked into a menu. */
+.navbar-menu-button,
+.navbar-backdrop {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* Kept at the top of the screen while the page scrolls, so the menu button (and with it, the way
+     to close the menu) is always to hand. Above the page, so the menu and its backdrop cover it. */
+  .navbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* The page links have moved into the menu, so the divider after the switcher has nothing to divide. */
   .character-switcher {
     padding-right: 0;
     margin-right: 0;
     border-right: none;
+  }
+
+  .navbar-menu-button {
+    display: flex;
+    align-items: center;
+    /* Above the open menu, so it can close it again. */
+    position: relative;
+    z-index: 12;
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #3a3e4a;
+    border-radius: 0.3rem;
+    background: #1c1f27;
+    color: #e8e8e8;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    align-self: center;
+  }
+
+  .navbar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Slid off the side of the screen until the menu is opened. Hidden as well as moved, so its links
+     can't be tabbed to or read out while it's closed. */
+  .navbar-links {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 11;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: min(16rem, 80vw);
+    padding: 4rem 1.5rem 1.5rem;
+    background: #181b22;
+    border-left: 1px solid #2a2d36;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease-in-out,
+      visibility 0.2s;
+  }
+
+  .navbar-links-open {
+    transform: none;
+    visibility: visible;
+  }
+
+  /* Down the menu, the current page is marked along its side rather than underneath. */
+  .navbar-link {
+    padding: 0.75rem 0 0.75rem 0.75rem;
+    border-bottom: none;
+    border-left: 2px solid transparent;
+  }
+
+  .navbar-link.active {
+    border-left-color: #8ab4f8;
+  }
+
+  /* Tucked into the menu's bottom corner, out of the way of the page links. */
+  .navbar-github {
+    align-self: flex-end;
+    margin: auto 0 0;
+    padding: 1rem 0 0;
+  }
+
+  /* In the menu's bottom corner, so its tooltip opens upwards, and inwards from the right. */
+  .navbar-github .tooltip {
+    top: auto;
+    bottom: calc(100% + 0.4rem);
+    left: auto;
+    right: 0;
   }
 }
 
@@ -677,13 +774,6 @@ header h1 {
   user-select: none;
 }
 
-.stale-badge {
-  margin-left: 0.5rem;
-  color: #f44336;
-  cursor: help;
-  user-select: none;
-}
-
 .undercut-badge {
   display: inline-block;
   margin-left: 0.5rem;
@@ -779,8 +869,8 @@ header h1 {
   font-size: 0.95rem;
 }
 
-/* Ahead of the name rather than after it, so the buttons line up down the column. */
-.copy-name-button {
+/* Spaced from whatever follows it, usually the item name it copies. */
+.copy-button {
   position: relative;
   z-index: 1;
   margin-right: 0.4rem;
@@ -794,7 +884,7 @@ header h1 {
   opacity: 0.7;
 }
 
-.copy-name-button:hover {
+.copy-button:hover {
   opacity: 1;
 }
 
@@ -915,4 +1005,152 @@ header h1 {
 .item-summary-note {
   margin-top: 0.35rem;
   color: #9aa0aa;
+}
+
+/* A phone's width, as the page's layout switches to at `narrowScreenMaxWidthPx`: media queries
+   can't read it from there, so the two have to be kept the same. */
+@media (max-width: 640px) {
+  .app {
+    padding: 1rem;
+  }
+
+  .navbar-inner {
+    padding: 0 1rem;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  /* Anything wider than the screen, even a hidden tooltip, widens the page past it, and a phone then
+     zooms the page out to fit, stretching everything fixed to the screen (like the navbar's menu)
+     along with it. So tooltips are no wider than the screen, less the margin they keep from its
+     edges, and anything else is cut off at its edge. */
+  .app {
+    overflow-x: clip;
+  }
+
+  /* Border-box, so the cap takes in the tooltip's padding as well as its text. */
+  .tooltip,
+  .tooltip:has(> .undercut-listings),
+  .tooltip:has(.item-summary) {
+    box-sizing: border-box;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .tooltip table {
+    white-space: normal;
+  }
+}
+
+/* A list of rows that each open up in place, bordered as one block so it reads like a table. The
+   border runs round the list rather than each row, so opening a row doesn't shift what's in it. */
+.expandable-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #2a2d36;
+  border-radius: 0.4rem;
+}
+
+.expandable-list-row {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #2a2d36;
+  cursor: pointer;
+}
+
+.expandable-list-row:last-child {
+  border-bottom: none;
+}
+
+/* The expand button leads the heading's line only, so the lines below start at the row's edge
+   rather than making room for it. */
+.expandable-list-row-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.expand-row-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #9aa0aa;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* The heading starts at the row's left edge, so its tooltips open inwards. */
+.expandable-list-row-heading .tooltip {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+/* Tracked items on a phone: each item's name, then its badges, then what it's worth a stack and a
+   day, opening up into a card of every figure. */
+.profit-row-badges {
+  margin-top: 0.2rem;
+}
+
+.profit-row-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0.25rem 0 0;
+}
+
+.profit-row-summary div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.profit-row-summary dt,
+.profit-row-details dt {
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
+
+.profit-row-summary dd {
+  margin: 0;
+}
+
+.profit-row-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.3rem 0 0;
+}
+
+.profit-row-details div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.profit-row-details dd {
+  margin: 0;
+  text-align: right;
+}
+
+.profit-row-details a {
+  color: #8ab4f8;
+}
+
+/* The badges and summary start at the row's left edge, the details end at its right, so their
+   tooltips open inwards. */
+.profit-row-badges .tooltip,
+.profit-row-summary .tooltip {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+.profit-row-details .tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
 }

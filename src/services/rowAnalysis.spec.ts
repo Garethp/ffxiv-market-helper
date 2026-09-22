@@ -57,7 +57,6 @@ const params: TradingParameters = {
   saleVelocityWindowMs: 86_400_000,
   refreshIntervalMs: 90_000,
   retryDelayMs: 10_000,
-  staleWarningThresholdMs: 300_000,
   undercutListingThreshold: 3,
   undercutListingsShown: 10,
 };

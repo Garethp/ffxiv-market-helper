@@ -186,8 +186,6 @@ describe("useTrackedItemsAnalysis", () => {
     expect(europeRow(result)).toMatchObject({
       row: {
         analysis: { status: "ready", profitPerItem: 600 },
-        lastSuccessAt: startTime,
-        lastAttemptFailed: false,
       },
       isRefreshing: false,
     });
@@ -228,41 +226,31 @@ describe("useTrackedItemsAnalysis", () => {
   });
 
   describe("when a fetch fails", () => {
-    it("should retry it once after the retry delay, only reporting the failure if that fails too", async () => {
+    it("should retry it once after the retry delay", async () => {
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
       const { result } = renderTrackedItems();
       await advance();
-      expect(europeRow(result).row.lastAttemptFailed).toBe(false);
+
+      await advance(9_999);
+      expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2);
+      await advance(1);
+      expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4);
 
       await advance(10_000);
-
       expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4);
-      expect(europeRow(result).row).toMatchObject({
-        analysis: { status: "pending" },
-        lastAttemptFailed: true,
-        lastErrorMessage: "Gateway timeout",
-      });
+      expect(europeRow(result).row.analysis).toEqual({ status: "pending" });
     });
 
-    it("should keep showing the row's last good prices, flagged as failed, until a later refresh succeeds", async () => {
+    it("should keep showing the row's last good prices when a later refresh fails", async () => {
       const { result } = renderTrackedItems();
       await advance();
 
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
       await advance(90_000 + 10_000);
-      expect(europeRow(result).row).toMatchObject({
-        analysis: { status: "ready", profitPerItem: 600 },
-        lastSuccessAt: startTime,
-        lastAttemptFailed: true,
-        lastErrorMessage: "Gateway timeout",
-      });
 
-      mockedFetchRowMarketData.mockResolvedValue(rowMarketData);
-      await advance(90_000);
-      expect(europeRow(result).row).toMatchObject({
-        lastSuccessAt: startTime + 190_000,
-        lastAttemptFailed: false,
-        lastErrorMessage: null,
+      expect(europeRow(result).row.analysis).toMatchObject({
+        status: "ready",
+        profitPerItem: 600,
       });
     });
   });

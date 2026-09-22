@@ -75,8 +75,6 @@ export type ScanStatus =
  * changes, abandoning any scan in progress. A new scan clears the completed
  * one from view straight away, but only replaces the saved scan once it
  * completes.
- *
- * @param worldOrDataCenter Empty when there's nothing to scan.
  */
 export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
   const [status, setStatus] = useState<ScanStatus>({ state: "idle" });
@@ -94,7 +92,6 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
     const generation = generationTracker.start();
     setResults([]);
     setStatus({ state: "idle" });
-    if (worldOrDataCenter === "") return;
 
     scanResultsService.getLatestScan(worldOrDataCenter).then(
       async (scan) => {

@@ -112,22 +112,16 @@ describe("calculateAverageSalePrice", () => {
       saleEntry({ pricePerUnit: 900, timestamp: 3 }),
     ];
 
-    const result = calculateAverageSalePrice(history, 1);
-
-    expect(result?.average).toBe(900);
-    expect(result?.sampleSize).toBe(1);
+    expect(calculateAverageSalePrice(history, 1)).toBe(900);
   });
 
-  it("should report the actual sample size when there are fewer sales than requested", () => {
+  it("should average every sale there is when there are fewer than requested", () => {
     const history = [
       saleEntry({ pricePerUnit: 100, timestamp: 1 }),
       saleEntry({ pricePerUnit: 300, timestamp: 2 }),
     ];
 
-    const result = calculateAverageSalePrice(history, 5);
-
-    expect(result?.average).toBe(200);
-    expect(result?.sampleSize).toBe(2);
+    expect(calculateAverageSalePrice(history, 5)).toBe(200);
   });
 });
 
@@ -143,22 +137,16 @@ describe("calculateAverageListingPrice", () => {
       listing({ pricePerUnit: 200 }),
     ];
 
-    const result = calculateAverageListingPrice(listings, 2);
-
-    expect(result?.average).toBe(150);
-    expect(result?.sampleSize).toBe(2);
+    expect(calculateAverageListingPrice(listings, 2)).toBe(150);
   });
 
-  it("should report the actual sample size when there are fewer listings than requested", () => {
+  it("should average every listing there is when there are fewer than requested", () => {
     const listings = [
       listing({ pricePerUnit: 100 }),
       listing({ pricePerUnit: 300 }),
     ];
 
-    const result = calculateAverageListingPrice(listings, 5);
-
-    expect(result?.average).toBe(200);
-    expect(result?.sampleSize).toBe(2);
+    expect(calculateAverageListingPrice(listings, 5)).toBe(200);
   });
 });
 
@@ -391,8 +379,8 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 100, sampleSize: 3 },
-          { average: 200, sampleSize: 2 },
+          100,
+          200,
           99,
           undefined,
           someVelocity,
@@ -411,8 +399,8 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 100, sampleSize: 3 },
-          { average: 150, sampleSize: 2 },
+          100,
+          150,
           99,
           undefined,
           someVelocity,
@@ -432,7 +420,7 @@ describe("buildReadyAnalysis", () => {
           "Chaos",
           buy,
           null,
-          { average: 150, sampleSize: 2 },
+          150,
           99,
           undefined,
           someVelocity,
@@ -472,8 +460,8 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 100, sampleSize: 3 },
-          { average: 10_000, sampleSize: 1 },
+          100,
+          10_000,
           99,
           6000,
           someVelocity,
@@ -491,7 +479,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 6000, sampleSize: 3 },
+          6000,
           null,
           99,
           6000,
@@ -510,7 +498,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 10_000, sampleSize: 3 },
+          10_000,
           null,
           99,
           6000,
@@ -530,7 +518,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           99,
           undefined,
@@ -552,7 +540,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           null,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           99,
           undefined,
@@ -590,7 +578,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           50,
           undefined,
@@ -609,7 +597,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           999,
           undefined,
@@ -629,7 +617,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           99,
           undefined,
@@ -649,7 +637,7 @@ describe("buildReadyAnalysis", () => {
         buildReadyAnalysis(
           "Chaos",
           buy,
-          { average: 200, sampleSize: 3 },
+          200,
           null,
           99,
           undefined,

@@ -1,11 +1,12 @@
 import { memo, useId } from "react";
-import { buildMarketPageUrl } from "../api/universalis";
 import type { ScannedItem } from "../hooks/useHighVolumeItemScan";
 import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import { BuyingRegionSection } from "./BuyingRegionSection";
+import { ProfitTable } from "./ProfitTable";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { Tooltip } from "./Tooltip";
+import { UniversalisLink } from "./UniversalisLink";
 
 const formatNumber = (value: number): string => {
   return Math.round(value).toLocaleString();
@@ -54,12 +55,13 @@ const TotalSaleVelocity = ({
                   <BuyingRegionSection
                     key={buyingRegion.region}
                     buyingRegion={buyingRegion}
-                    rows={[{ row, isRefreshing: false }]}
-                    // Priced once rather than kept refreshing, so a failed region is flagged straight away.
-                    staleWarningThresholdMs={0}
-                    sellWorld={world}
-                    gapThresholdMultiplier={gapThresholdMultiplier}
-                  />
+                  >
+                    <ProfitTable
+                      rows={[{ row, isRefreshing: false }]}
+                      sellWorld={world}
+                      gapThresholdMultiplier={gapThresholdMultiplier}
+                    />
+                  </BuyingRegionSection>
                 );
               })}
             </span>
@@ -133,15 +135,14 @@ export const ScannedItemsTable = memo(
                 {/* Named by its tooltip, since the link itself is only an icon. */}
                 <Tooltip text="View on Universalis">
                   {(tooltipId) => (
-                    <a
-                      href={buildMarketPageUrl(item.itemId, world)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <UniversalisLink
+                      itemId={item.itemId}
+                      worldOrDataCenter={world}
                       aria-labelledby={tooltipId}
                       className="external-link"
                     >
                       ↗
-                    </a>
+                    </UniversalisLink>
                   )}
                 </Tooltip>
               </td>

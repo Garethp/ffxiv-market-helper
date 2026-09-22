@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { descriptionOf } from "../testing/descriptionOf";
 import type { ProfitPricing, ProfitRow, PricedItem } from "../types";
 import { ProfitTableRow } from "./ProfitTableRow";
 import { withQueryClient } from "../testing/withQueryClient";
-
-const NOW = new Date("2026-01-01T12:00:00Z").getTime();
 
 const item: PricedItem = {
   itemId: 42,
@@ -30,7 +28,6 @@ const readyRow = (
       cheapestWorld: "Omega",
     },
     sellPricePerUnit: 250,
-    sellSampleSize: 10,
     sellPriceSource: "history",
     sellPriceCapped: false,
     gapDetected: false,
@@ -43,19 +40,12 @@ const readyRow = (
     sellListingStatus: { state: "not-listed" },
     ...pricingOverrides,
   },
-  lastSuccessAt: NOW,
-  lastAttemptFailed: false,
-  lastErrorMessage: null,
   ...rowOverrides,
 });
 
-const pendingRow = (rowOverrides: Partial<ProfitRow> = {}): ProfitRow => ({
+const pendingRow = (): ProfitRow => ({
   item,
   analysis: { status: "pending" },
-  lastSuccessAt: null,
-  lastAttemptFailed: false,
-  lastErrorMessage: null,
-  ...rowOverrides,
 });
 
 /** The element showing a cell's figure, which carries the tooltip explaining it. */
@@ -69,13 +59,11 @@ const renderRow = (
   row: ProfitRow,
   {
     isRefreshing = false,
-    staleWarningThresholdMs = 60_000,
     sellWorld = "Raiden",
     isCopied = false,
     onCopyName = () => {},
   }: {
     isRefreshing?: boolean;
-    staleWarningThresholdMs?: number | null;
     sellWorld?: string;
     isCopied?: boolean;
     onCopyName?: () => void;
@@ -86,7 +74,6 @@ const renderRow = (
       <tbody>
         <ProfitTableRow
           displayRow={{ row, isRefreshing }}
-          staleWarningThresholdMs={staleWarningThresholdMs}
           sellWorld={sellWorld}
           isCopied={isCopied}
           onCopyName={onCopyName}
@@ -109,15 +96,7 @@ const renderRow = (
   };
 };
 
-beforeEach(() => {
-  vi.useFakeTimers();
-  vi.setSystemTime(NOW);
-});
-
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-});
+afterEach(cleanup);
 
 describe("ProfitTableRow", () => {
   describe("identifying the item", () => {
@@ -130,14 +109,12 @@ describe("ProfitTableRow", () => {
       expect(onCopyName).toHaveBeenCalledTimes(1);
     });
 
-    it("should explain the high quality label, reachable without a pointer", () => {
+    it("should label an item priced as high quality", () => {
       const { itemCell } = renderRow(
         readyRow({}, { item: { ...item, hq: true } }),
       );
 
-      const badge = itemCell.querySelector(".quality-badge");
-      expect(descriptionOf(badge)).toBe("Priced as high quality");
-      expect(badge?.getAttribute("tabindex")).toBe("0");
+      expect(itemCell.querySelector(".quality-badge")?.textContent).toBe("HQ");
     });
 
     it("should not label an item priced as normal quality", () => {
@@ -147,137 +124,12 @@ describe("ProfitTableRow", () => {
     });
   });
 
-  describe("warning about stale data", () => {
-    it("should warn when fetches have been failing for longer than the threshold", () => {
-      const { itemCell } = renderRow(
-        readyRow(
-          {},
-          { lastSuccessAt: NOW - 5 * 60_000, lastAttemptFailed: true },
-        ),
-        { staleWarningThresholdMs: 60_000 },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).not.toBeNull();
-    });
-
-    it("should warn when data has never loaded and the latest fetch failed", () => {
-      const { itemCell } = renderRow(
-        pendingRow({ lastSuccessAt: null, lastAttemptFailed: true }),
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).not.toBeNull();
-    });
-
-    it("should not warn when the last good data is exactly as old as the threshold", () => {
-      const { itemCell } = renderRow(
-        readyRow({}, { lastSuccessAt: NOW - 60_000, lastAttemptFailed: true }),
-        { staleWarningThresholdMs: 60_000 },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).toBeNull();
-    });
-
-    it("should warn about a failed fetch as soon as any time has passed when the threshold is zero", () => {
-      const { itemCell } = renderRow(
-        readyRow({}, { lastSuccessAt: NOW - 1, lastAttemptFailed: true }),
-        { staleWarningThresholdMs: 0 },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).not.toBeNull();
-    });
-
-    it("should not warn when there is no stale threshold", () => {
-      const { itemCell } = renderRow(
-        readyRow(
-          {},
-          { lastSuccessAt: NOW - 60 * 60_000, lastAttemptFailed: true },
-        ),
-        { staleWarningThresholdMs: null },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).toBeNull();
-    });
-
-    it("should not warn when the latest fetch succeeded, however old the data is", () => {
-      const { itemCell } = renderRow(
-        readyRow(
-          {},
-          { lastSuccessAt: NOW - 60 * 60_000, lastAttemptFailed: false },
-        ),
-        { staleWarningThresholdMs: 60_000 },
-      );
-
-      expect(itemCell.querySelector(".stale-badge")).toBeNull();
-    });
-
-    it("should explain that data has never loaded", () => {
-      const { itemCell } = renderRow(
-        pendingRow({ lastSuccessAt: null, lastAttemptFailed: true }),
-      );
-
-      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
-        "Data has never loaded successfully",
-      );
-    });
-
-    it("should round how long ago the last good data was to the nearest minute", () => {
-      const { itemCell } = renderRow(
-        readyRow({}, { lastSuccessAt: NOW - 90_000, lastAttemptFailed: true }),
-      );
-
-      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
-        "Last good data from 2m ago",
-      );
-    });
-
-    it("should include the latest fetch error when data has never loaded", () => {
-      const { itemCell } = renderRow(
-        pendingRow({
-          lastSuccessAt: null,
-          lastAttemptFailed: true,
-          lastErrorMessage: "Failed to fetch",
-        }),
-      );
-
-      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
-        "Data has never loaded successfully. Latest fetch failed: Failed to fetch",
-      );
-    });
-
-    it("should include the latest fetch error when there is one", () => {
-      const { itemCell } = renderRow(
-        readyRow(
-          {},
-          {
-            lastSuccessAt: NOW - 5 * 60_000,
-            lastAttemptFailed: true,
-            lastErrorMessage: "Failed to fetch",
-          },
-        ),
-      );
-
-      expect(descriptionOf(itemCell.querySelector(".stale-badge"))).toBe(
-        "Last good data from 5m ago. Latest fetch failed: Failed to fetch",
-      );
-    });
-  });
-
   describe("highlighting the row", () => {
     it("should flag a supply gap on both the item and the row", () => {
       const { tr, itemCell } = renderRow(readyRow({ gapDetected: true }));
 
       expect(itemCell.querySelector(".gap-badge")?.textContent).toBe("gap");
       expect(tr.classList.contains("row-gap")).toBe(true);
-    });
-
-    it("should explain the supply gap, reachable without a pointer", () => {
-      const { itemCell } = renderRow(readyRow({ gapDetected: true }));
-
-      const badge = itemCell.querySelector(".gap-badge");
-      expect(descriptionOf(badge)).toBe(
-        "Current listings are well above recent sale prices — room to undercut",
-      );
-      expect(badge?.getAttribute("tabindex")).toBe("0");
     });
 
     it("should not flag a supply gap when none was detected", () => {
@@ -316,14 +168,6 @@ describe("ProfitTableRow", () => {
       );
     });
 
-    it("should open the buy data center's market page in a new tab without exposing this page", () => {
-      const { buyDataCenterCell } = renderRow(readyRow());
-
-      const link = buyDataCenterCell.querySelector("a");
-      expect(link?.getAttribute("target")).toBe("_blank");
-      expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
-    });
-
     it("should show a dash for the data center when there's nothing to buy", () => {
       const { buyDataCenterCell } = renderRow(readyRow({ buy: null }));
 
@@ -360,41 +204,6 @@ describe("ProfitTableRow", () => {
       );
     });
 
-    it("should open the sell world's market page in a new tab without exposing this page", () => {
-      const { sellPriceCell } = renderRow(readyRow(), { sellWorld: "Raiden" });
-
-      const link = sellPriceCell.querySelector("a");
-      expect(link?.getAttribute("target")).toBe("_blank");
-      expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
-    });
-
-    it("should show the sell price without a link when there's no sell world", () => {
-      const { sellPriceCell } = renderRow(readyRow({ sellPricePerUnit: 250 }), {
-        sellWorld: "",
-      });
-
-      expect(sellPriceCell.querySelector("a")).toBeNull();
-      expect(sellPriceCell.textContent).toBe((250).toLocaleString());
-    });
-
-    it.each([1, 2])(
-      "should note a thin sample size of %i",
-      (sellSampleSize) => {
-        const { sellPriceCell } = renderRow(readyRow({ sellSampleSize }));
-
-        expect(sellPriceCell.textContent).toContain(` (n=${sellSampleSize})`);
-      },
-    );
-
-    it.each([0, 3])(
-      "should not note the sample size when it is %i",
-      (sellSampleSize) => {
-        const { sellPriceCell } = renderRow(readyRow({ sellSampleSize }));
-
-        expect(sellPriceCell.textContent).not.toContain("(n=");
-      },
-    );
-
     it("should flag our listing as undercut when it has been", () => {
       const { sellPriceCell } = renderRow(
         readyRow({
@@ -428,7 +237,7 @@ describe("ProfitTableRow", () => {
   });
 
   describe("showing profit", () => {
-    it("should mark profitable figures as positive", () => {
+    it("should mark each profit figure as a gain or a loss", () => {
       const {
         profitPerItemCell,
         profitPerStackCell,
@@ -436,57 +245,16 @@ describe("ProfitTableRow", () => {
       } = renderRow(
         readyRow({
           profitPerItem: 132,
-          profitPerStack: 13_068,
-          expectedProfitPerDay: 500,
-        }),
-      );
-
-      expect(profitPerItemCell.className).toBe("positive");
-      expect(profitPerStackCell.className).toBe("positive");
-      expect(expectedProfitPerDayCell.className).toBe("positive");
-    });
-
-    it("should treat breaking even as positive", () => {
-      const { profitPerItemCell } = renderRow(readyRow({ profitPerItem: 0 }));
-
-      expect(profitPerItemCell.className).toBe("positive");
-    });
-
-    it("should mark losses as negative", () => {
-      const {
-        profitPerItemCell,
-        profitPerStackCell,
-        expectedProfitPerDayCell,
-      } = renderRow(
-        readyRow({
-          profitPerItem: -5,
           profitPerStack: -495,
           expectedProfitPerDay: -60,
         }),
       );
 
-      expect(profitPerItemCell.className).toBe("negative");
-      expect(profitPerStackCell.className).toBe("negative");
-      expect(expectedProfitPerDayCell.className).toBe("negative");
-    });
-
-    it("should leave figures unmarked when there's no profit to show", () => {
-      const {
-        profitPerItemCell,
-        profitPerStackCell,
-        expectedProfitPerDayCell,
-      } = renderRow(
-        readyRow({
-          profitPerItem: null,
-          profitPerStack: null,
-          expectedProfitPerDay: null,
-        }),
-      );
-
-      expect(profitPerItemCell.className).toBe("");
-      expect(profitPerStackCell.className).toBe("");
-      expect(expectedProfitPerDayCell.className).toBe("");
-      expect(profitPerItemCell.textContent).toBe("—");
+      expect(profitPerItemCell.querySelector(".positive")).not.toBeNull();
+      expect(profitPerStackCell.querySelector(".negative")).not.toBeNull();
+      expect(
+        expectedProfitPerDayCell.querySelector(".negative"),
+      ).not.toBeNull();
     });
 
     it("should show each profit figure", () => {

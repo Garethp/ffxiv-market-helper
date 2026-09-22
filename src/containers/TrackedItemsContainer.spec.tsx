@@ -60,7 +60,6 @@ const config: TradingConfig = {
     undercutListingsShown: 10,
     refreshIntervalMs: 90_000,
     retryDelayMs: 10_000,
-    staleWarningThresholdMs: 300_000,
   } as TradingParameters,
   marketBoardCities: [],
   buyingRegions: [
@@ -112,7 +111,7 @@ const rowMarketData = (
   ],
 });
 
-const renderContainer = (currentCharacter: Character | null = alice) =>
+const renderContainer = (currentCharacter: Character = alice) =>
   render(
     <TrackedItemsContainer
       config={config}
@@ -163,10 +162,10 @@ afterEach(() => {
 
 describe("TrackedItemsContainer", () => {
   describe("introducing the page", () => {
-    it("should show a placeholder for the sell world while there's no Current Character", () => {
-      renderContainer(null);
+    it("should say which world it's selling on: the Current Character's home world", () => {
+      renderContainer();
 
-      expect(screen.getByText("Selling on …")).not.toBeNull();
+      expect(screen.getByText("Selling on Raiden")).not.toBeNull();
     });
   });
 

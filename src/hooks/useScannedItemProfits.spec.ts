@@ -153,18 +153,6 @@ beforeEach(() => {
 
 describe("useScannedItemProfits", () => {
   describe("which items it prices", () => {
-    it("should price nothing without a character to sell through", () => {
-      const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, null),
-        {
-          wrapper: withQueryClient(),
-        },
-      );
-
-      expect(result.current).toEqual({});
-      expect(mockedFetchRowMarketData).not.toHaveBeenCalled();
-    });
-
     it("should fetch every item across every buying region, selling through the given character", async () => {
       const itemIds = [1, 2];
       renderHook(() => useScannedItemProfits(unnamed(itemIds), config, alice), {
@@ -409,7 +397,7 @@ describe("useScannedItemProfits", () => {
       expect(rowFor(result, 1).item.targetQuantity).toBe(99);
     });
 
-    it("should report a buying region's error when its fetch fails, while still pricing the others", async () => {
+    it("should still price the other buying regions when one's fetch fails", async () => {
       // Only Europe has market data — Japan's fetch fails.
       const { result } = renderHook(
         () => useScannedItemProfits(unnamed([1]), config, alice),
@@ -423,10 +411,8 @@ describe("useScannedItemProfits", () => {
         status: "ready",
         buyDataCenter: "Light",
       });
-      expect(rowFor(result, 1, "Japan")).toMatchObject({
-        analysis: { status: "pending" },
-        lastAttemptFailed: true,
-        lastErrorMessage: "No market data for Japan",
+      expect(rowFor(result, 1, "Japan").analysis).toEqual({
+        status: "pending",
       });
     });
 

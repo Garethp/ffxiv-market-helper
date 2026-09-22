@@ -1,5 +1,4 @@
 import { useQueries } from "@tanstack/react-query";
-import { pendingRow } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, DisplayRow } from "../types";
 import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
@@ -12,7 +11,7 @@ import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
  */
 export const useTrackedItemsAnalysis = (
   config: TradingConfig,
-  currentCharacter: Character | null,
+  currentCharacter: Character,
 ) => {
   const { buyingRegions, trackedItems, params } = config;
   const rowDefs = buyingRegions.flatMap(({ region }) =>
@@ -34,9 +33,7 @@ export const useTrackedItemsAnalysis = (
   rowDefs.forEach(({ region, item }, i) => {
     const query = queries[i];
     rowsByRegion[region].push({
-      row: currentCharacter
-        ? profitRow(query, item, currentCharacter, config)
-        : pendingRow(item),
+      row: profitRow(query, item, currentCharacter, config),
       isRefreshing: query.isFetching,
     });
   });
