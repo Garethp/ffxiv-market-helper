@@ -15,7 +15,9 @@ yarn-error.log*
 .yarn/cache
 
 .vscode/*
-.idea/
+.idea/*
+!.idea/icon.svg
+!.idea/icon_dark.svg
 
 # Personal character roster and tracked items — see personalConfig.example.ts
 personalConfig.ts
