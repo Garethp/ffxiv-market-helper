@@ -2,35 +2,15 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BuyingRegion } from "../services/tradingConfig";
-import type { DisplayRow } from "../types";
 import { BuyingRegionSection } from "./BuyingRegionSection";
-import { withQueryClient } from "../testing/withQueryClient";
 
 afterEach(cleanup);
 
-const renderSection = (
-  buyingRegion: BuyingRegion,
-  {
-    rows = [],
-    staleWarningThresholdMs = null,
-    sellWorld = "Raiden",
-    gapThresholdMultiplier = 1.1,
-  }: {
-    rows?: DisplayRow[];
-    staleWarningThresholdMs?: number | null;
-    gapThresholdMultiplier?: number;
-    sellWorld?: string;
-  } = {},
-) =>
+const renderSection = (buyingRegion: BuyingRegion) =>
   render(
-    <BuyingRegionSection
-      buyingRegion={buyingRegion}
-      rows={rows}
-      staleWarningThresholdMs={staleWarningThresholdMs}
-      sellWorld={sellWorld}
-      gapThresholdMultiplier={gapThresholdMultiplier}
-    />,
-    { wrapper: withQueryClient() },
+    <BuyingRegionSection buyingRegion={buyingRegion}>
+      <table />
+    </BuyingRegionSection>,
   );
 
 describe("BuyingRegionSection", () => {
