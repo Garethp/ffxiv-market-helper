@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { SellListingStatus } from "../types";
-import { descriptionOf } from "../testing/descriptionOf";
+import type { SellListingStatus } from "../../types";
+import { descriptionOf } from "../../testing/descriptionOf";
 import { UndercutBadge } from "./UndercutBadge";
 
 type UndercutStatus = Extract<SellListingStatus, { state: "undercut" }>;

@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "analyze": "vite build --mode analyze",
     "lint": "prettier --check .",
-    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "test": "yarn typecheck && vitest run",
     "preview": "vite preview",
     "test:watch": "vitest",
     "format": "prettier --write ."

@@ -73,7 +73,6 @@ const pricedRow = (
       cheapestWorld: "Omega",
     },
     sellPricePerUnit: 1000,
-    sellSampleSize: 10,
     sellPriceSource: "history",
     sellPriceCapped: false,
     gapDetected: false,
@@ -85,18 +84,10 @@ const pricedRow = (
     expectedProfitPerDay,
     sellListingStatus: { state: "not-listed" },
   },
-  lastSuccessAt: Date.now(),
-  lastAttemptFailed: false,
-  lastErrorMessage: null,
 });
 
-const failedRow: ProfitRow = {
-  item,
-  analysis: { status: "pending" },
-  lastSuccessAt: null,
-  lastAttemptFailed: true,
-  lastErrorMessage: "Gateway timeout",
-};
+/** A buying region the item has no price through yet. */
+const unpricedRow: ProfitRow = { item, analysis: { status: "pending" } };
 
 const pricedProfit = (
   rowByRegion: Record<string, ProfitRow> = {
@@ -210,18 +201,6 @@ describe("ScannedItemsTable", () => {
       ).toEqual(["Chaos", "Elemental"]);
     });
 
-    it("should warn about a buying region whose fetch failed", () => {
-      const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
-        "Raiden",
-        { 1: pricedProfit({ Europe: pricedRow("Chaos"), Japan: failedRow }) },
-      );
-
-      const [europe, japan] = tooltipSections(container);
-      expect(europe.querySelector(".stale-badge")).toBeNull();
-      expect(japan.querySelector(".stale-badge")).not.toBeNull();
-    });
-
     it("should link the profit tables' sell prices to the selected world's market page", () => {
       const { container } = renderTable(
         [scannedItem({ itemId: 1 })],
@@ -302,7 +281,7 @@ describe("ScannedItemsTable", () => {
         {
           1: pricedProfit({
             Europe: pricedRow("Chaos", null),
-            Japan: failedRow,
+            Japan: unpricedRow,
           }),
         },
         0,

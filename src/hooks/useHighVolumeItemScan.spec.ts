@@ -160,12 +160,6 @@ describe("useHighVolumeItemScan", () => {
       expect(result.current.results).toEqual([]);
     });
 
-    it("should not look for a completed scan before a world has been picked", async () => {
-      renderHook(() => useHighVolumeItemScan(""));
-
-      expect(mockedGetLatestScan).not.toHaveBeenCalled();
-    });
-
     it("should clear the latest completed scan from view as soon as a new scan starts, but only replace it once the new scan completes", async () => {
       mockedGetLatestScan.mockResolvedValue(previousScan);
       const itemIdsLookup = deferred<number[]>();

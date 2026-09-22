@@ -20,10 +20,10 @@ export const HighVolumeItemsContainer = ({
   currentCharacter,
 }: {
   config: TradingConfig;
-  currentCharacter: Character | null;
+  currentCharacter: Character;
 }) => {
   const { params } = config;
-  const world = currentCharacter?.homeWorld ?? "";
+  const world = currentCharacter.homeWorld;
   const { status, results, startScan } = useHighVolumeItemScan(world);
 
   const topItems = useMemo(
@@ -47,14 +47,14 @@ export const HighVolumeItemsContainer = ({
     number | undefined
   >(DEFAULT_HIGHLIGHT_PROFIT_PER_DAY);
 
-  const canStart = world !== "" && status.state !== "running";
+  const canStart = status.state !== "running";
 
   return (
     <div className="app">
       <title>High Volume Items</title>
       <header>
         <h1>High Volume Items</h1>
-        <p className="subtitle">Sale velocity on {world || "…"}</p>
+        <p className="subtitle">Sale velocity on {world}</p>
       </header>
 
       <div className="page-intro">

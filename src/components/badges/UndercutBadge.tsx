@@ -1,15 +1,17 @@
-import type { SellListingStatus } from "../types";
-import { formatGil } from "../utils/format";
-import { Tooltip } from "./Tooltip";
+import type { SellListingStatus } from "../../types";
+import { formatGil } from "../../utils/format";
+import { Badge } from "./Badge";
 
+/** Marks an item whose listing of ours has been undercut, listing the cheaper competition. */
 export const UndercutBadge = ({
   status,
 }: {
   status: Extract<SellListingStatus, { state: "undercut" }>;
 }) => {
   return (
-    <Tooltip
-      text={
+    <Badge
+      className="undercut-badge"
+      tooltip={
         <>
           <div>
             Your listing: {formatGil(status.ourPricePerUnit)} (rank #
@@ -39,15 +41,7 @@ export const UndercutBadge = ({
         </>
       }
     >
-      {(tooltipId) => (
-        <span
-          className="undercut-badge"
-          tabIndex={0}
-          aria-describedby={tooltipId}
-        >
-          undercut
-        </span>
-      )}
-    </Tooltip>
+      undercut
+    </Badge>
   );
 };

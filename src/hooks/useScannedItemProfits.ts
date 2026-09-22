@@ -48,7 +48,7 @@ const untrackedItem = (
 export const useScannedItemProfits = (
   items: { itemId: number; name: string | null }[],
   config: TradingConfig,
-  currentCharacter: Character | null,
+  currentCharacter: Character,
 ): Record<number, ScannedItemProfit> => {
   const { buyingRegions } = config;
   // Keyed on which items there are, not on the array holding them, so a caller building a fresh
@@ -62,7 +62,6 @@ export const useScannedItemProfits = (
   const combine = useCallback(
     (queries: QueryObserverResult<RowMarketData>[]) => {
       const profits: Record<number, ScannedItemProfit> = {};
-      if (!currentCharacter) return profits;
 
       pricedItems.forEach(({ itemId, name }, i) => {
         const regionQueries = queries.slice(
@@ -96,13 +95,11 @@ export const useScannedItemProfits = (
   );
 
   return useQueries({
-    queries: currentCharacter
-      ? pricedItems.flatMap(({ itemId }) =>
-          buyingRegions.map(({ region }) =>
-            rowMarketDataQuery(itemId, region, currentCharacter, config),
-          ),
-        )
-      : [],
+    queries: pricedItems.flatMap(({ itemId }) =>
+      buyingRegions.map(({ region }) =>
+        rowMarketDataQuery(itemId, region, currentCharacter, config),
+      ),
+    ),
     combine,
   });
 };

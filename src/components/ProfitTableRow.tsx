@@ -1,50 +1,27 @@
-import { buildMarketPageUrl } from "../api/universalis";
 import type { DisplayRow } from "../types";
 import { formatGil } from "../utils/format";
+import { GapBadge } from "./badges/GapBadge";
+import { HighQualityBadge } from "./badges/HighQualityBadge";
+import { UndercutBadge } from "./badges/UndercutBadge";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
+import { Profit } from "./Profit";
 import { Tooltip } from "./Tooltip";
-import { UndercutBadge } from "./UndercutBadge";
-
-const staleTooltip = (
-  lastSuccessAt: number | null,
-  lastErrorMessage: string | null,
-): string => {
-  const age =
-    lastSuccessAt === null
-      ? "Data has never loaded successfully"
-      : `Last good data from ${Math.round((Date.now() - lastSuccessAt) / 60_000)}m ago`;
-  return lastErrorMessage
-    ? `${age}. Latest fetch failed: ${lastErrorMessage}`
-    : age;
-};
-
-const numberClass = (value: number | null): string => {
-  if (value === null) return "";
-  return value >= 0 ? "positive" : "negative";
-};
+import { UniversalisLink } from "./UniversalisLink";
 
 export const ProfitTableRow = ({
   displayRow: { row, isRefreshing },
-  staleWarningThresholdMs,
   sellWorld,
   isCopied,
   onCopyName,
 }: {
   displayRow: DisplayRow;
-  staleWarningThresholdMs: number | null;
   sellWorld: string;
   isCopied: boolean;
   onCopyName: () => void;
 }) => {
-  const { item, analysis, lastSuccessAt, lastAttemptFailed, lastErrorMessage } =
-    row;
+  const { item, analysis } = row;
   const pricing = analysis.status === "ready" ? analysis : null;
-  const isStale =
-    staleWarningThresholdMs !== null &&
-    lastAttemptFailed &&
-    (lastSuccessAt === null ||
-      Date.now() - lastSuccessAt > staleWarningThresholdMs);
 
   const rowClasses = [
     pricing?.gapDetected ? "row-gap" : "",
@@ -61,98 +38,49 @@ export const ProfitTableRow = ({
           isCopied={isCopied}
           onCopy={onCopyName}
         />
-        {item.hq ? (
-          <Tooltip text="Priced as high quality">
-            {(tooltipId) => (
-              <span
-                className="quality-badge"
-                tabIndex={0}
-                aria-describedby={tooltipId}
-              >
-                HQ
-              </span>
-            )}
-          </Tooltip>
-        ) : null}
-        {pricing?.gapDetected ? (
-          <Tooltip text="Current listings are well above recent sale prices — room to undercut">
-            {(tooltipId) => (
-              <span
-                className="gap-badge"
-                tabIndex={0}
-                aria-describedby={tooltipId}
-              >
-                gap
-              </span>
-            )}
-          </Tooltip>
-        ) : null}
-        {isStale ? (
-          <Tooltip text={staleTooltip(lastSuccessAt, lastErrorMessage)}>
-            {(tooltipId) => (
-              <span
-                className="stale-badge"
-                tabIndex={0}
-                aria-describedby={tooltipId}
-              >
-                ⚠
-              </span>
-            )}
-          </Tooltip>
-        ) : null}
+        {item.hq ? <HighQualityBadge /> : null}
+        {pricing?.gapDetected ? <GapBadge /> : null}
       </td>
       <td>
         {pricing?.buy ? (
-          <a
-            href={buildMarketPageUrl(item.itemId, pricing.buyDataCenter)}
-            target="_blank"
-            rel="noopener noreferrer"
+          <UniversalisLink
+            itemId={item.itemId}
+            worldOrDataCenter={pricing.buyDataCenter}
           >
             {pricing.buyDataCenter}
-          </a>
+          </UniversalisLink>
         ) : (
           "—"
         )}
       </td>
       <td>{formatGil(pricing?.buy?.pricePerUnit ?? null)}</td>
       <td>
-        {sellWorld ? (
-          <a
-            href={buildMarketPageUrl(item.itemId, sellWorld)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {formatGil(pricing?.sellPricePerUnit ?? null)}
-          </a>
-        ) : (
-          formatGil(pricing?.sellPricePerUnit ?? null)
-        )}
-        {pricing && pricing.sellSampleSize > 0 && pricing.sellSampleSize < 3
-          ? ` (n=${pricing.sellSampleSize})`
-          : ""}
+        <UniversalisLink itemId={item.itemId} worldOrDataCenter={sellWorld}>
+          {formatGil(pricing?.sellPricePerUnit ?? null)}
+        </UniversalisLink>
         {pricing?.sellListingStatus.state === "undercut" ? (
           <UndercutBadge status={pricing.sellListingStatus} />
         ) : null}
       </td>
-      <td className={numberClass(pricing?.profitPerItem ?? null)}>
-        {formatGil(pricing?.profitPerItem ?? null)}
+      <td>
+        <Profit amount={pricing?.profitPerItem ?? null} />
       </td>
-      <td className={numberClass(pricing?.profitPerStack ?? null)}>
-        {formatGil(pricing?.profitPerStack ?? null)}
+      <td>
+        <Profit amount={pricing?.profitPerStack ?? null} />
       </td>
-      <td className={numberClass(pricing?.expectedProfitPerDay ?? null)}>
+      <td>
         {pricing ? (
           <Tooltip
             text={`Based on ${pricing.saleVelocityPerDay.toFixed(1)} sold in the last day`}
           >
             {(tooltipId) => (
               <span tabIndex={0} aria-describedby={tooltipId}>
-                {formatGil(pricing.expectedProfitPerDay)}
+                <Profit amount={pricing.expectedProfitPerDay} />
               </span>
             )}
           </Tooltip>
         ) : (
-          formatGil(null)
+          <Profit amount={null} />
         )}
       </td>
     </tr>

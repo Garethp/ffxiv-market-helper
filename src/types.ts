@@ -156,8 +156,6 @@ export interface TradingParameters {
   refreshIntervalMs: number;
   /** How long to wait before a single retry after a row's fetch fails. */
   retryDelayMs: number;
-  /** How stale a row's last successful data can get (while fetches keep failing) before we warn about it. */
-  staleWarningThresholdMs: number;
   /**
    * How many of the cheapest current listings (of the item's tracked
    * quality) count as "competitive". If our own retainer's listing for an
@@ -210,7 +208,6 @@ export interface ProfitPricing {
   buyDataCenter: string;
   buy: ConsistentPrice | null;
   sellPricePerUnit: number | null;
-  sellSampleSize: number;
   /** Whether sellPricePerUnit came from recent sale history or from current listings. */
   sellPriceSource: "history" | "listings" | null;
   /** True when sellPricePerUnit was brought down to the item's sellPriceCeiling because the market price exceeded it. */
@@ -234,8 +231,7 @@ export interface ProfitPricing {
  * haven't fetched yet; `ready` means we successfully fetched (its nested
  * fields can still legitimately be null, e.g. no listings currently exist —
  * that's a real market state, not a loading state). There's no `error`
- * state here deliberately: a failed fetch never changes what's displayed —
- * see ProfitRow's lastAttemptFailed/lastErrorMessage for that instead.
+ * state here deliberately: a failed fetch never changes what's displayed.
  */
 export type RowAnalysis =
   { status: "pending" } | ({ status: "ready" } & ProfitPricing);
@@ -244,12 +240,6 @@ export type RowAnalysis =
 export interface ProfitRow {
   item: PricedItem;
   analysis: RowAnalysis;
-  /** When the last successful fetch completed, or null if one never has. */
-  lastSuccessAt: number | null;
-  /** True if the most recent fetch attempt failed. Never affects `analysis` — a failure never overwrites previously-known-good data. */
-  lastAttemptFailed: boolean;
-  /** The error from the most recent failed attempt, for a tooltip. Cleared on the next success. */
-  lastErrorMessage: string | null;
 }
 
 /** A row paired with whether it's actively refreshing, for display. */

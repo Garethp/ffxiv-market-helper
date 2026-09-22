@@ -23,7 +23,6 @@ import {
 import { findDataCentersForRegion } from "../utils/worldDirectory";
 import type {
   Character,
-  ProfitRow,
   RegionInfo,
   RowAnalysis,
   PricedItem,
@@ -32,16 +31,6 @@ import type {
 
 /** The target quantity assumed when pricing an item that isn't tracked, and so has no target quantity of its own. */
 export const UNTRACKED_ITEM_TARGET_QUANTITY = 99;
-
-export const pendingRow = (item: PricedItem): ProfitRow => {
-  return {
-    item,
-    analysis: { status: "pending" },
-    lastSuccessAt: null,
-    lastAttemptFailed: false,
-    lastErrorMessage: null,
-  };
-};
 
 /** The market data a row's analysis is calculated from, for one item bought via one region. */
 export interface RowMarketData {

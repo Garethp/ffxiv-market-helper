@@ -23,12 +23,10 @@ const HintedColumnHeader = ({
 
 export const ProfitTable = ({
   rows,
-  staleWarningThresholdMs,
   sellWorld,
   gapThresholdMultiplier,
 }: {
   rows: DisplayRow[];
-  staleWarningThresholdMs: number | null;
   sellWorld: string;
   /** Explained in the sell price column's hint. */
   gapThresholdMultiplier: number;
@@ -69,7 +67,6 @@ export const ProfitTable = ({
             <ProfitTableRow
               key={key}
               displayRow={displayRow}
-              staleWarningThresholdMs={staleWarningThresholdMs}
               sellWorld={sellWorld}
               isCopied={copiedKey === key}
               onCopyName={() => copyText(key, item.name)}

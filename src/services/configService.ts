@@ -227,7 +227,6 @@ class HardcodedConfigService implements ConfigService {
     saleVelocityWindowMs: 24 * 60 * 60_000, // 1 day
     refreshIntervalMs: 90_000,
     retryDelayMs: 10_000,
-    staleWarningThresholdMs: 5 * 60_000,
     undercutListingThreshold: 3,
     undercutListingsShown: 10,
   };
