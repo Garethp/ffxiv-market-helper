@@ -2,26 +2,34 @@ import { useState } from "react";
 import type {
   CharacterDetails,
   RetainerDetails,
-  RosterChangeResult,
 } from "../services/characterService";
+import {
+  validateCharacter,
+  validateRetainer,
+  type ReferenceData,
+  type RosterValidationError,
+} from "../utils/validation/roster";
 import type { Character, RegionInfo, Retainer } from "../types";
-import { afterSuccess } from "../utils/afterSuccess";
 import { findRegionNameForWorld } from "../utils/worldDirectory";
+import { ErrorMessage } from "./ErrorMessage";
 import { CharacterForm } from "./CharacterForm";
 import { RetainerForm } from "./RetainerForm";
 
 const RetainerRow = ({
   retainer,
   marketBoardCities,
+  validate,
   onUpdate,
   onRemove,
 }: {
   retainer: Retainer;
   marketBoardCities: string[];
-  onUpdate: (details: RetainerDetails) => Promise<RosterChangeResult>;
-  onRemove: () => void;
+  validate: (details: RetainerDetails) => RosterValidationError | undefined;
+  onUpdate: (details: RetainerDetails) => Promise<void>;
+  onRemove: () => Promise<void>;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
 
   if (isEditing) {
     return (
@@ -30,9 +38,10 @@ const RetainerRow = ({
           marketBoardCities={marketBoardCities}
           initialDetails={retainer}
           submitLabel="Save retainer"
+          validate={validate}
           // Closed once the change is made, or left open to show why it wasn't.
           onSubmit={(details) =>
-            afterSuccess(onUpdate(details), () => setIsEditing(false))
+            onUpdate(details).then(() => setIsEditing(false))
           }
           onCancel={() => setIsEditing(false)}
         />
@@ -55,10 +64,13 @@ const RetainerRow = ({
       <button
         type="button"
         aria-label={`Remove ${retainer.name}`}
-        onClick={onRemove}
+        onClick={() => onRemove().catch(() => setHasFailed(true))}
       >
         Remove
       </button>
+      {hasFailed && (
+        <ErrorMessage>Something went wrong. Try again shortly.</ErrorMessage>
+      )}
     </li>
   );
 };
@@ -66,6 +78,7 @@ const RetainerRow = ({
 /** One character in the roster, with its retainers, and the controls for changing either. */
 export const CharacterCard = ({
   character,
+  roster,
   regions,
   marketBoardCities,
   onUpdate,
@@ -75,24 +88,28 @@ export const CharacterCard = ({
   onRemoveRetainer,
 }: {
   character: Character;
+  /** The whole roster, so a change can be checked for a name another character already has. */
+  roster: Character[];
   regions: RegionInfo[];
   marketBoardCities: string[];
-  onUpdate: (details: CharacterDetails) => Promise<RosterChangeResult>;
-  onRemove: () => void;
-  onAddRetainer: (details: RetainerDetails) => Promise<RosterChangeResult>;
+  onUpdate: (details: CharacterDetails) => Promise<void>;
+  onRemove: () => Promise<void>;
+  onAddRetainer: (details: RetainerDetails) => Promise<void>;
   onUpdateRetainer: (
     retainerId: string,
     details: RetainerDetails,
-  ) => Promise<RosterChangeResult>;
-  onRemoveRetainer: (retainerId: string) => void;
+  ) => Promise<void>;
+  onRemoveRetainer: (retainerId: string) => Promise<void>;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
   const region =
     findRegionNameForWorld(character.homeWorld, regions) ?? "Unknown region";
+  const reference: ReferenceData = { regions, marketBoardCities };
 
   const confirmRemove = () => {
     if (window.confirm(`Remove ${character.name} and their retainers?`)) {
-      onRemove();
+      onRemove().catch(() => setHasFailed(true));
     }
   };
 
@@ -103,9 +120,14 @@ export const CharacterCard = ({
           regions={regions}
           initialDetails={character}
           submitLabel="Save character"
+          validate={(details) =>
+            validateCharacter(details, roster, reference, {
+              excludingId: character.id,
+            })
+          }
           // Closed once the change is made, or left open to show why it wasn't.
           onSubmit={(details) =>
-            afterSuccess(onUpdate(details), () => setIsEditing(false))
+            onUpdate(details).then(() => setIsEditing(false))
           }
           onCancel={() => setIsEditing(false)}
         />
@@ -134,6 +156,11 @@ export const CharacterCard = ({
             </button>
           </div>
           {character.note && <p className="character-note">{character.note}</p>}
+          {hasFailed && (
+            <ErrorMessage>
+              Something went wrong. Try again shortly.
+            </ErrorMessage>
+          )}
         </>
       )}
 
@@ -147,6 +174,11 @@ export const CharacterCard = ({
               key={retainer.id}
               retainer={retainer}
               marketBoardCities={marketBoardCities}
+              validate={(details) =>
+                validateRetainer(details, character.retainers, reference, {
+                  excludingId: retainer.id,
+                })
+              }
               onUpdate={(details) => onUpdateRetainer(retainer.id, details)}
               onRemove={() => onRemoveRetainer(retainer.id)}
             />
@@ -156,6 +188,9 @@ export const CharacterCard = ({
       <RetainerForm
         marketBoardCities={marketBoardCities}
         submitLabel="Add retainer"
+        validate={(details) =>
+          validateRetainer(details, character.retainers, reference)
+        }
         onSubmit={onAddRetainer}
       />
     </section>

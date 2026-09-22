@@ -1,6 +1,7 @@
 import type { PricedItem, TrackedItem } from "../types";
 import { personalConfig } from "./configService";
 import { StoredList } from "./StoredList";
+import { validateItem } from "../utils/validation/trackedItems";
 
 /** The settings of a tracked item that can be changed once it's tracked. */
 export type TrackedItemSettings = Pick<
@@ -8,53 +9,31 @@ export type TrackedItemSettings = Pick<
   "hq" | "targetQuantity" | "sellPriceCeiling"
 >;
 
-/** Why a change to the tracked items was refused. */
-export type TrackedItemChangeError =
-  | { reason: "invalid-target-quantity" }
-  | { reason: "invalid-sell-price-ceiling" }
-  | { reason: "already-tracked"; name: string; hq: boolean }
-  | { reason: "not-found" };
-
-export type TrackedItemChangeResult =
-  { ok: true } | { ok: false; error: TrackedItemChangeError };
+/**
+ * A change the tracked items wouldn't accept, carrying the reason worded for the
+ * user. Callers check the rules first, so this reaching the UI means something
+ * the user can't act on — a stale screen, or a caller that skipped its checks.
+ */
+export class TrackedItemChangeRefused extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "TrackedItemChangeRefused";
+  }
+}
 
 /**
- * Source of the items we track, and where changes to them are made.
- * Implementations can be swapped out (e.g. for one backed by a real
- * database/API) without touching any calling code.
+ * Source of the items we track, and where changes to them are made. Every
+ * change either resolves, having been made, or rejects. Implementations can be
+ * swapped out (e.g. for one backed by a real database/API) without touching any
+ * calling code.
  */
 export interface TrackedItemService {
   getTrackedItems(): Promise<TrackedItem[]>;
   /** Adds the item to the end of the tracked items. */
-  trackItem(item: PricedItem): Promise<TrackedItemChangeResult>;
-  updateTrackedItem(
-    id: string,
-    settings: TrackedItemSettings,
-  ): Promise<TrackedItemChangeResult>;
-  untrackItem(id: string): Promise<TrackedItemChangeResult>;
+  trackItem(item: PricedItem): Promise<void>;
+  updateTrackedItem(id: string, settings: TrackedItemSettings): Promise<void>;
+  untrackItem(id: string): Promise<void>;
 }
-
-/** Why the item can't be tracked as it is alongside the other tracked items, if there's a reason. */
-const checkItem = (
-  item: PricedItem,
-  others: TrackedItem[],
-): TrackedItemChangeError | undefined => {
-  if (!Number.isInteger(item.targetQuantity) || item.targetQuantity < 1) {
-    return { reason: "invalid-target-quantity" };
-  }
-  const ceiling = item.sellPriceCeiling;
-  if (ceiling !== undefined && (!Number.isInteger(ceiling) || ceiling < 0)) {
-    return { reason: "invalid-sell-price-ceiling" };
-  }
-  const hq = item.hq ?? false;
-  const isAlreadyTracked = others.some(
-    (other) => other.itemId === item.itemId && (other.hq ?? false) === hq,
-  );
-  if (isAlreadyTracked) {
-    return { reason: "already-tracked", name: item.name, hq };
-  }
-  return undefined;
-};
 
 const withId = (item: PricedItem): TrackedItem => ({
   id: crypto.randomUUID(),
@@ -82,39 +61,41 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
     return this.storedItems.read();
   }
 
-  async trackItem(item: PricedItem): Promise<TrackedItemChangeResult> {
+  async trackItem(item: PricedItem): Promise<void> {
     const trackedItems = this.storedItems.read();
-    const error = checkItem(item, trackedItems);
-    if (error) return { ok: false, error };
+    this.refuseIfInvalid(validateItem(item, trackedItems));
     this.storedItems.write([...trackedItems, withId(item)]);
-    return { ok: true };
   }
 
   async updateTrackedItem(
     id: string,
     { hq, targetQuantity, sellPriceCeiling }: TrackedItemSettings,
-  ): Promise<TrackedItemChangeResult> {
+  ): Promise<void> {
     const trackedItems = this.storedItems.read();
     const existing = trackedItems.find((item) => item.id === id);
-    if (!existing) return { ok: false, error: { reason: "not-found" } };
+    if (!existing)
+      throw new TrackedItemChangeRefused("This item is no longer tracked.");
 
     const changed = { ...existing, hq, targetQuantity, sellPriceCeiling };
-    const others = trackedItems.filter((item) => item.id !== id);
-    const error = checkItem(changed, others);
-    if (error) return { ok: false, error };
+    this.refuseIfInvalid(
+      validateItem(changed, trackedItems, { excludingId: id }),
+    );
     this.storedItems.write(
       trackedItems.map((item) => (item.id === id ? changed : item)),
     );
-    return { ok: true };
   }
 
-  async untrackItem(id: string): Promise<TrackedItemChangeResult> {
+  async untrackItem(id: string): Promise<void> {
     const trackedItems = this.storedItems.read();
     if (!trackedItems.some((item) => item.id === id)) {
-      return { ok: false, error: { reason: "not-found" } };
+      throw new TrackedItemChangeRefused("This item is no longer tracked.");
     }
     this.storedItems.write(trackedItems.filter((item) => item.id !== id));
-    return { ok: true };
+  }
+
+  /** Backstop for a caller that didn't check the rules, or a screen that's gone stale. */
+  private refuseIfInvalid(reason: string | undefined): void {
+    if (reason) throw new TrackedItemChangeRefused(reason);
   }
 }
 

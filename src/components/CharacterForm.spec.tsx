@@ -8,10 +8,8 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  CharacterDetails,
-  RosterChangeResult,
-} from "../services/characterService";
+import type { CharacterDetails } from "../services/characterService";
+import type { RosterValidationError } from "../utils/validation/roster";
 import type { RegionInfo } from "../types";
 import { CharacterForm } from "./CharacterForm";
 
@@ -29,15 +27,18 @@ const regions: RegionInfo[] = [
   },
 ];
 
-const succeeds = (): RosterChangeResult => ({ ok: true });
+/** Nothing wrong with the details, whatever they are. */
+const anythingGoes = () => undefined;
 
 const renderForm = ({
   initialDetails,
-  onSubmit = vi.fn(async () => succeeds()),
+  validate = anythingGoes,
+  onSubmit = vi.fn(async () => {}),
   onCancel,
 }: {
   initialDetails?: CharacterDetails;
-  onSubmit?: (details: CharacterDetails) => Promise<RosterChangeResult>;
+  validate?: (details: CharacterDetails) => RosterValidationError | undefined;
+  onSubmit?: (details: CharacterDetails) => Promise<void>;
   onCancel?: () => void;
 } = {}) => {
   render(
@@ -45,6 +46,7 @@ const renderForm = ({
       regions={regions}
       initialDetails={initialDetails}
       submitLabel="Save character"
+      validate={validate}
       onSubmit={onSubmit}
       onCancel={onCancel}
     />,
@@ -169,11 +171,11 @@ describe("CharacterForm", () => {
     });
 
     it("should no longer explain an earlier refusal", async () => {
-      const onSubmit = vi
-        .fn<(details: CharacterDetails) => Promise<RosterChangeResult>>()
-        .mockResolvedValueOnce({ ok: false, error: { reason: "missing-name" } })
-        .mockResolvedValueOnce(succeeds());
-      renderForm({ onSubmit });
+      const validate = vi
+        .fn<(details: CharacterDetails) => RosterValidationError | undefined>()
+        .mockReturnValueOnce({ reason: "missing-name" })
+        .mockReturnValue(undefined);
+      renderForm({ validate });
       fillIn({ name: " ", homeWorld: "Raiden" });
       fireEvent.click(submitButton());
       await screen.findByRole("alert");
@@ -185,14 +187,15 @@ describe("CharacterForm", () => {
     });
   });
 
-  describe("when the change is refused", () => {
-    const refuse = async (): Promise<RosterChangeResult> => ({
-      ok: false,
-      error: { reason: "duplicate-character", name: "Alice", world: "Raiden" },
+  describe("when the roster wouldn't accept the details", () => {
+    const refuses = () => ({
+      reason: "duplicate-character" as const,
+      name: "Alice",
+      world: "Raiden",
     });
 
     it("should explain why", async () => {
-      renderForm({ onSubmit: refuse });
+      renderForm({ validate: refuses });
 
       fillIn({ name: "Alice", homeWorld: "Raiden" });
       fireEvent.click(submitButton());
@@ -202,8 +205,47 @@ describe("CharacterForm", () => {
       );
     });
 
+    it("should not attempt the change at all", async () => {
+      const onSubmit = renderForm({ validate: refuses });
+
+      fillIn({ name: "Alice", homeWorld: "Raiden" });
+      fireEvent.click(submitButton());
+
+      await screen.findByRole("alert");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it("should keep the details as entered, so they can be corrected", async () => {
-      renderForm({ onSubmit: refuse });
+      renderForm({ validate: refuses });
+
+      fillIn({ name: "Alice", homeWorld: "Raiden", note: "Crafter" });
+      fireEvent.click(submitButton());
+      await screen.findByRole("alert");
+
+      expect(fieldValues()).toEqual({
+        name: "Alice",
+        homeWorld: "Raiden",
+        note: "Crafter",
+      });
+    });
+  });
+
+  describe("when the change itself fails", () => {
+    const fails = () => Promise.reject(new Error("storage is full"));
+
+    it("should say something went wrong, without guessing at a reason", async () => {
+      renderForm({ onSubmit: fails });
+
+      fillIn({ name: "Alice", homeWorld: "Raiden" });
+      fireEvent.click(submitButton());
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
+    });
+
+    it("should keep the details as entered, so the change can be tried again", async () => {
+      renderForm({ onSubmit: fails });
 
       fillIn({ name: "Alice", homeWorld: "Raiden", note: "Crafter" });
       fireEvent.click(submitButton());

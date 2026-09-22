@@ -1,6 +1,7 @@
-import type { RosterChangeError } from "../services/characterService";
+import type { RosterValidationError } from "../utils/validation/roster";
+import { ErrorMessage } from "./ErrorMessage";
 
-const describe = (error: RosterChangeError): string => {
+const describe = (error: RosterValidationError): string => {
   switch (error.reason) {
     case "missing-name":
       return "A name is needed.";
@@ -12,22 +13,14 @@ const describe = (error: RosterChangeError): string => {
       return `There's already a character named ${error.name} on ${error.world}.`;
     case "duplicate-retainer":
       return `This character already has a retainer named ${error.name}.`;
-    case "character-not-found":
-      return "This character has since been removed. Refresh the page to see the current roster.";
-    case "retainer-not-found":
-      return "This retainer has since been removed. Refresh the page to see the current roster.";
   }
 };
 
-/** Why a change to the character roster wasn't made. */
+/** Why the roster wouldn't accept the details as entered. */
 export const RosterChangeErrorMessage = ({
   error,
 }: {
-  error: RosterChangeError;
+  error: RosterValidationError;
 }) => {
-  return (
-    <p role="alert" className="form-error">
-      {describe(error)}
-    </p>
-  );
+  return <ErrorMessage>{describe(error)}</ErrorMessage>;
 };

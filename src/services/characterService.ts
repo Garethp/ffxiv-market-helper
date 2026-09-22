@@ -1,10 +1,17 @@
-import type { Character, RegionInfo, Retainer } from "../types";
-import { findRegionNameForWorld } from "../utils/worldDirectory";
+import type { Character, Retainer } from "../types";
 import {
   configService,
   personalConfig,
   type ConfigService,
 } from "./configService";
+import {
+  validateCharacter,
+  validateRetainer,
+  tidyCharacterDetails,
+  tidyRetainerDetails,
+  type ReferenceData,
+  type RosterValidationError,
+} from "../utils/validation/roster";
 import { StoredList } from "./StoredList";
 
 /** A character's own details, as entered: everything but its ID and its retainers, which are managed separately. */
@@ -16,18 +23,26 @@ export type RetainerDetails = Omit<Retainer, "id">;
 /** A character and its retainers, before any of them have been given an ID. */
 export type NewCharacter = CharacterDetails & { retainers: RetainerDetails[] };
 
-/** Why a change to the character roster was refused. */
-export type RosterChangeError =
-  | { reason: "missing-name" }
-  | { reason: "unknown-world"; world: string }
-  | { reason: "unknown-city"; city: string }
-  | { reason: "duplicate-character"; name: string; world: string }
-  | { reason: "duplicate-retainer"; name: string }
+/**
+ * Why a change to the character roster was refused: a rule the caller was meant
+ * to check first, or a character or retainer that's no longer in the roster.
+ */
+export type RosterChangeRefusal =
+  | RosterValidationError
   | { reason: "character-not-found" }
   | { reason: "retainer-not-found" };
 
-export type RosterChangeResult =
-  { ok: true } | { ok: false; error: RosterChangeError };
+/**
+ * A change the roster wouldn't accept. Callers check the rules first, so this
+ * reaching the UI means something the user can't act on — a stale screen, or a
+ * caller that skipped its checks.
+ */
+export class RosterChangeRefused extends Error {
+  constructor(readonly refusal: RosterChangeRefusal) {
+    super(`The roster refused the change: ${refusal.reason}`);
+    this.name = "RosterChangeRefused";
+  }
+}
 
 /**
  * Source of our character roster, and where changes to it are made.
@@ -36,96 +51,22 @@ export type RosterChangeResult =
  */
 export interface CharacterService {
   getCharacters(): Promise<Character[]>;
-  addCharacter(details: CharacterDetails): Promise<RosterChangeResult>;
+  addCharacter(details: CharacterDetails): Promise<void>;
   /** Replaces the character's details. Its retainers are left as they are. */
   updateCharacter(
     characterId: string,
     details: CharacterDetails,
-  ): Promise<RosterChangeResult>;
+  ): Promise<void>;
   /** Removes the character along with its retainers. */
-  removeCharacter(characterId: string): Promise<RosterChangeResult>;
-  addRetainer(
-    characterId: string,
-    details: RetainerDetails,
-  ): Promise<RosterChangeResult>;
+  removeCharacter(characterId: string): Promise<void>;
+  addRetainer(characterId: string, details: RetainerDetails): Promise<void>;
   updateRetainer(
     characterId: string,
     retainerId: string,
     details: RetainerDetails,
-  ): Promise<RosterChangeResult>;
-  removeRetainer(
-    characterId: string,
-    retainerId: string,
-  ): Promise<RosterChangeResult>;
+  ): Promise<void>;
+  removeRetainer(characterId: string, retainerId: string): Promise<void>;
 }
-
-/** The reference data a change to the roster is checked against. */
-interface ReferenceData {
-  regions: RegionInfo[];
-  marketBoardCities: string[];
-}
-
-const tidyCharacterDetails = ({
-  name,
-  homeWorld,
-  note,
-}: CharacterDetails): CharacterDetails => ({
-  name: name.trim(),
-  homeWorld,
-  note: note?.trim() || undefined,
-});
-
-const tidyRetainerDetails = ({
-  name,
-  city,
-}: RetainerDetails): RetainerDetails => ({
-  name: name.trim(),
-  city,
-});
-
-/** Why the character can't be in the roster as it is, if there's a reason. */
-const checkCharacter = (
-  character: Character,
-  roster: Character[],
-  { regions }: ReferenceData,
-): RosterChangeError | undefined => {
-  if (character.name === "") return { reason: "missing-name" };
-  if (findRegionNameForWorld(character.homeWorld, regions) === undefined) {
-    return { reason: "unknown-world", world: character.homeWorld };
-  }
-  // Names are only unique within a world in-game, so the same name on two worlds is two characters.
-  const isDuplicate = roster.some(
-    (other) =>
-      other.id !== character.id &&
-      other.name === character.name &&
-      other.homeWorld === character.homeWorld,
-  );
-  if (isDuplicate) {
-    return {
-      reason: "duplicate-character",
-      name: character.name,
-      world: character.homeWorld,
-    };
-  }
-  return undefined;
-};
-
-/** Why the retainer can't be one of its character's retainers as it is, if there's a reason. */
-const checkRetainer = (
-  retainer: Retainer,
-  retainers: Retainer[],
-  { marketBoardCities }: ReferenceData,
-): RosterChangeError | undefined => {
-  if (retainer.name === "") return { reason: "missing-name" };
-  if (!marketBoardCities.includes(retainer.city)) {
-    return { reason: "unknown-city", city: retainer.city };
-  }
-  const isDuplicate = retainers.some(
-    (other) => other.id !== retainer.id && other.name === retainer.name,
-  );
-  if (isDuplicate) return { reason: "duplicate-retainer", name: retainer.name };
-  return undefined;
-};
 
 const withIds = (character: NewCharacter): Character => ({
   ...character,
@@ -163,15 +104,16 @@ export class LocalStorageCharacterService implements CharacterService {
     return this.storedRoster.read();
   }
 
-  addCharacter(details: CharacterDetails): Promise<RosterChangeResult> {
+  addCharacter(details: CharacterDetails): Promise<void> {
     return this.changeRoster((roster, reference) => {
+      const tidied = tidyCharacterDetails(details);
       const character: Character = {
         id: crypto.randomUUID(),
-        ...tidyCharacterDetails(details),
+        ...tidied,
         retainers: [],
       };
       return (
-        checkCharacter(character, roster, reference) ?? [...roster, character]
+        validateCharacter(tidied, roster, reference) ?? [...roster, character]
       );
     });
   }
@@ -179,19 +121,21 @@ export class LocalStorageCharacterService implements CharacterService {
   updateCharacter(
     characterId: string,
     details: CharacterDetails,
-  ): Promise<RosterChangeResult> {
+  ): Promise<void> {
     return this.changeRoster((roster, reference) => {
       const existing = roster.find(({ id }) => id === characterId);
       if (!existing) return { reason: "character-not-found" };
       const character = { ...existing, ...tidyCharacterDetails(details) };
       return (
-        checkCharacter(character, roster, reference) ??
+        validateCharacter(character, roster, reference, {
+          excludingId: characterId,
+        }) ??
         roster.map((other) => (other.id === characterId ? character : other))
       );
     });
   }
 
-  removeCharacter(characterId: string): Promise<RosterChangeResult> {
+  removeCharacter(characterId: string): Promise<void> {
     return this.changeRoster((roster) =>
       roster.some(({ id }) => id === characterId)
         ? roster.filter(({ id }) => id !== characterId)
@@ -199,17 +143,12 @@ export class LocalStorageCharacterService implements CharacterService {
     );
   }
 
-  addRetainer(
-    characterId: string,
-    details: RetainerDetails,
-  ): Promise<RosterChangeResult> {
+  addRetainer(characterId: string, details: RetainerDetails): Promise<void> {
     return this.changeRetainers(characterId, (retainers, reference) => {
-      const retainer: Retainer = {
-        id: crypto.randomUUID(),
-        ...tidyRetainerDetails(details),
-      };
+      const tidied = tidyRetainerDetails(details);
+      const retainer: Retainer = { id: crypto.randomUUID(), ...tidied };
       return (
-        checkRetainer(retainer, retainers, reference) ?? [
+        validateRetainer(tidied, retainers, reference) ?? [
           ...retainers,
           retainer,
         ]
@@ -221,22 +160,21 @@ export class LocalStorageCharacterService implements CharacterService {
     characterId: string,
     retainerId: string,
     details: RetainerDetails,
-  ): Promise<RosterChangeResult> {
+  ): Promise<void> {
     return this.changeRetainers(characterId, (retainers, reference) => {
       const existing = retainers.find(({ id }) => id === retainerId);
       if (!existing) return { reason: "retainer-not-found" };
       const retainer = { ...existing, ...tidyRetainerDetails(details) };
       return (
-        checkRetainer(retainer, retainers, reference) ??
+        validateRetainer(retainer, retainers, reference, {
+          excludingId: retainerId,
+        }) ??
         retainers.map((other) => (other.id === retainerId ? retainer : other))
       );
     });
   }
 
-  removeRetainer(
-    characterId: string,
-    retainerId: string,
-  ): Promise<RosterChangeResult> {
+  removeRetainer(characterId: string, retainerId: string): Promise<void> {
     return this.changeRetainers(characterId, (retainers) =>
       retainers.some(({ id }) => id === retainerId)
         ? retainers.filter(({ id }) => id !== retainerId)
@@ -244,13 +182,13 @@ export class LocalStorageCharacterService implements CharacterService {
     );
   }
 
-  /** Saves the roster `change` makes from the current one, unless it gives a reason not to. */
+  /** Saves the roster `change` makes from the current one, or rejects with the reason it gave not to. */
   private async changeRoster(
     change: (
       roster: Character[],
       reference: ReferenceData,
-    ) => Character[] | RosterChangeError,
-  ): Promise<RosterChangeResult> {
+    ) => Character[] | RosterChangeRefusal,
+  ): Promise<void> {
     const [regions, marketBoardCities] = await Promise.all([
       this.config.getRegions(),
       this.config.getMarketBoardCities(),
@@ -260,19 +198,18 @@ export class LocalStorageCharacterService implements CharacterService {
       regions,
       marketBoardCities,
     });
-    if (!Array.isArray(changed)) return { ok: false, error: changed };
+    if (!Array.isArray(changed)) throw new RosterChangeRefused(changed);
     this.storedRoster.write(changed);
-    return { ok: true };
   }
 
-  /** Saves the retainers `change` makes from one character's current ones, unless it gives a reason not to. */
+  /** Saves the retainers `change` makes from one character's current ones, or rejects with the reason it gave not to. */
   private changeRetainers(
     characterId: string,
     change: (
       retainers: Retainer[],
       reference: ReferenceData,
-    ) => Retainer[] | RosterChangeError,
-  ): Promise<RosterChangeResult> {
+    ) => Retainer[] | RosterChangeRefusal,
+  ): Promise<void> {
     return this.changeRoster((roster, reference) => {
       const character = roster.find(({ id }) => id === characterId);
       if (!character) return { reason: "character-not-found" };

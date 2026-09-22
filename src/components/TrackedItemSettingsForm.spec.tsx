@@ -1,16 +1,7 @@
 // @vitest-environment jsdom
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  TrackedItemChangeResult,
-  TrackedItemSettings,
-} from "../services/trackedItemService";
+import type { TrackedItemSettings } from "../services/trackedItemService";
 import { TrackedItemSettingsForm } from "./TrackedItemSettingsForm";
 
 type Initial = {
@@ -19,19 +10,17 @@ type Initial = {
   sellPriceCeiling?: number;
 };
 
-const succeeds = (): TrackedItemChangeResult => ({ ok: true });
-
 const renderForm = ({
   initial = { quality: null, targetQuantity: 999 },
   submitLabel = "Track item",
-  onSubmit = vi.fn(async () => succeeds()),
+  errorMessage,
+  onSubmit = vi.fn(),
   onCancel = vi.fn(),
 }: {
   initial?: Initial;
   submitLabel?: string;
-  onSubmit?: (
-    settings: TrackedItemSettings,
-  ) => Promise<TrackedItemChangeResult>;
+  errorMessage?: string | null;
+  onSubmit?: (settings: TrackedItemSettings) => void;
   onCancel?: () => void;
 } = {}) => {
   render(
@@ -39,6 +28,7 @@ const renderForm = ({
       label="Track Cordial"
       initial={initial}
       submitLabel={submitLabel}
+      errorMessage={errorMessage}
       onSubmit={onSubmit}
       onCancel={onCancel}
     />,
@@ -100,7 +90,7 @@ describe("TrackedItemSettingsForm", () => {
       expect(submitButton().disabled).toBe(false);
     });
 
-    it("should submit HQ and the target quantity and sell price ceiling as entered", async () => {
+    it("should submit HQ and the target quantity and sell price ceiling as entered", () => {
       const { onSubmit } = renderForm();
 
       fireEvent.click(qualityOption("HQ"));
@@ -108,31 +98,27 @@ describe("TrackedItemSettingsForm", () => {
       setField(sellPriceCeilingField(), "5000");
       fireEvent.click(submitButton());
 
-      await waitFor(() =>
-        expect(onSubmit).toHaveBeenCalledWith({
-          hq: true,
-          targetQuantity: 60,
-          sellPriceCeiling: 5000,
-        }),
-      );
+      expect(onSubmit).toHaveBeenCalledWith({
+        hq: true,
+        targetQuantity: 60,
+        sellPriceCeiling: 5000,
+      });
     });
 
-    it("should submit NQ as not HQ", async () => {
+    it("should submit NQ as not HQ", () => {
       const { onSubmit } = renderForm();
 
       fireEvent.click(qualityOption("NQ"));
       fireEvent.click(submitButton());
 
-      await waitFor(() =>
-        expect(onSubmit).toHaveBeenCalledWith({
-          hq: false,
-          targetQuantity: 999,
-          sellPriceCeiling: undefined,
-        }),
-      );
+      expect(onSubmit).toHaveBeenCalledWith({
+        hq: false,
+        targetQuantity: 999,
+        sellPriceCeiling: undefined,
+      });
     });
 
-    it("should submit an emptied target quantity as 0", async () => {
+    it("should submit an emptied target quantity as 0", () => {
       const { onSubmit } = renderForm({
         initial: { quality: "NQ", targetQuantity: 999 },
       });
@@ -140,51 +126,36 @@ describe("TrackedItemSettingsForm", () => {
       setField(targetQuantityField(), "");
       fireEvent.click(submitButton());
 
-      await waitFor(() =>
-        expect(onSubmit).toHaveBeenCalledWith(
-          expect.objectContaining({ targetQuantity: 0 }),
-        ),
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ targetQuantity: 0 }),
       );
     });
   });
 
-  describe("when the change is refused", () => {
-    const refuse = async (): Promise<TrackedItemChangeResult> => ({
-      ok: false,
-      error: { reason: "already-tracked", name: "Cordial", hq: true },
-    });
+  describe("what went wrong with the last change", () => {
+    it("should show the message it's given, whatever the reason was", () => {
+      renderForm({ errorMessage: "Cordial is already tracked as HQ." });
 
-    it("should explain why", async () => {
-      renderForm({ onSubmit: refuse });
-
-      fireEvent.click(qualityOption("HQ"));
-      fireEvent.click(submitButton());
-
-      expect((await screen.findByRole("alert")).textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toBe(
         "Cordial is already tracked as HQ.",
       );
     });
-  });
 
-  describe("when a later change is made", () => {
-    it("should no longer explain an earlier refusal", async () => {
-      const onSubmit = vi
-        .fn<
-          (settings: TrackedItemSettings) => Promise<TrackedItemChangeResult>
-        >()
-        .mockResolvedValueOnce({
-          ok: false,
-          error: { reason: "invalid-target-quantity" },
-        })
-        .mockResolvedValueOnce(succeeds());
-      renderForm({ onSubmit });
+    it("should show nothing when there's no message to show", () => {
+      renderForm({ errorMessage: null });
+
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("should still submit, leaving it to the caller whether to try again", () => {
+      const { onSubmit } = renderForm({
+        errorMessage: "Something went wrong.",
+      });
+
       fireEvent.click(qualityOption("NQ"));
       fireEvent.click(submitButton());
-      await screen.findByRole("alert");
 
-      fireEvent.click(submitButton());
-
-      await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+      expect(onSubmit).toHaveBeenCalledOnce();
     });
   });
 

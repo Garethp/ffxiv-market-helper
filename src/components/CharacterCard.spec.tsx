@@ -10,7 +10,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   CharacterDetails,
   RetainerDetails,
-  RosterChangeResult,
 } from "../services/characterService";
 import type { Character, RegionInfo } from "../types";
 import { CharacterCard } from "./CharacterCard";
@@ -24,7 +23,9 @@ const regions: RegionInfo[] = [
 
 const marketBoardCities = ["Ul'dah", "Kugane"];
 
-const saved = async (): Promise<RosterChangeResult> => ({ ok: true });
+const saved = async (): Promise<void> => {};
+
+const fails = () => Promise.reject(new Error("no storage"));
 
 const aCharacter = (overrides: Partial<Character> = {}): Character => ({
   id: "alice",
@@ -36,27 +37,33 @@ const aCharacter = (overrides: Partial<Character> = {}): Character => ({
 
 const renderCard = (
   character: Character,
-  handlers: Partial<{
-    onUpdate: (details: CharacterDetails) => Promise<RosterChangeResult>;
-    onRemove: () => void;
-    onAddRetainer: (details: RetainerDetails) => Promise<RosterChangeResult>;
+  {
+    roster,
+    ...handlers
+  }: Partial<{
+    /** The rest of the roster, when a test needs a name the character could clash with. */
+    roster: Character[];
+    onUpdate: (details: CharacterDetails) => Promise<void>;
+    onRemove: () => Promise<void>;
+    onAddRetainer: (details: RetainerDetails) => Promise<void>;
     onUpdateRetainer: (
       retainerId: string,
       details: RetainerDetails,
-    ) => Promise<RosterChangeResult>;
-    onRemoveRetainer: (retainerId: string) => void;
+    ) => Promise<void>;
+    onRemoveRetainer: (retainerId: string) => Promise<void>;
   }> = {},
 ) => {
   return render(
     <CharacterCard
       character={character}
+      roster={roster ?? [character]}
       regions={regions}
       marketBoardCities={marketBoardCities}
       onUpdate={saved}
-      onRemove={() => {}}
+      onRemove={saved}
       onAddRetainer={saved}
       onUpdateRetainer={saved}
-      onRemoveRetainer={() => {}}
+      onRemoveRetainer={saved}
       {...handlers}
     />,
   );
@@ -171,17 +178,11 @@ describe("CharacterCard", () => {
       );
     });
 
-    it("should keep the form open, explaining why, when the details can't be saved", async () => {
-      renderCard(aCharacter(), {
-        onUpdate: async () => ({
-          ok: false,
-          error: {
-            reason: "duplicate-character",
-            name: "Bob",
-            world: "Raiden",
-          },
-        }),
-      });
+    it("should keep the form open, explaining why, when another character has that name and world", async () => {
+      const alice = aCharacter();
+      const bob = aCharacter({ id: "bob", name: "Bob" });
+      const onUpdate = vi.fn(saved);
+      renderCard(alice, { roster: [alice, bob], onUpdate });
 
       fireEvent.click(screen.getByRole("button", { name: "Edit Alice" }));
       const form = formFor("Save character");
@@ -196,6 +197,38 @@ describe("CharacterCard", () => {
       expect(
         screen.getByRole("button", { name: "Save character" }),
       ).toBeTruthy();
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it("should let the character keep its own name and world", async () => {
+      const alice = aCharacter();
+      const onUpdate = vi.fn(saved);
+      renderCard(alice, { roster: [alice], onUpdate });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit Alice" }));
+      const form = formFor("Save character");
+      fillIn(form, { Note: "Crafter" });
+      fireEvent.click(
+        within(form).getByRole("button", { name: "Save character" }),
+      );
+
+      await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("should say something went wrong when the details couldn't be saved", async () => {
+      renderCard(aCharacter(), { onUpdate: fails });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit Alice" }));
+      const form = formFor("Save character");
+      fillIn(form, { Note: "Crafter" });
+      fireEvent.click(
+        within(form).getByRole("button", { name: "Save character" }),
+      );
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
     });
 
     it("should close the form without saving anything when editing is cancelled", () => {
@@ -219,7 +252,7 @@ describe("CharacterCard", () => {
   describe("removing the character", () => {
     it("should remove the character once it's confirmed", () => {
       vi.spyOn(window, "confirm").mockReturnValue(true);
-      const onRemove = vi.fn();
+      const onRemove = vi.fn(saved);
       renderCard(aCharacter(), { onRemove });
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
@@ -229,12 +262,23 @@ describe("CharacterCard", () => {
 
     it("should keep the character when removing it isn't confirmed", () => {
       vi.spyOn(window, "confirm").mockReturnValue(false);
-      const onRemove = vi.fn();
+      const onRemove = vi.fn(saved);
       renderCard(aCharacter(), { onRemove });
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
 
       expect(onRemove).not.toHaveBeenCalled();
+    });
+
+    it("should say something went wrong when the character couldn't be removed", async () => {
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      renderCard(aCharacter(), { onRemove: fails });
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
     });
   });
 
@@ -309,13 +353,8 @@ describe("CharacterCard", () => {
       );
     });
 
-    it("should keep the form open, explaining why, when the details can't be saved", async () => {
-      renderCard(withRetainers(), {
-        onUpdateRetainer: async () => ({
-          ok: false,
-          error: { reason: "duplicate-retainer", name: "Amarana" },
-        }),
-      });
+    it("should keep the form open, explaining why, when another retainer has that name", async () => {
+      renderCard(withRetainers());
 
       fireEvent.click(screen.getByRole("button", { name: "Edit Bertrand" }));
       const form = formFor("Save retainer");
@@ -349,7 +388,7 @@ describe("CharacterCard", () => {
 
   describe("removing a retainer", () => {
     it("should remove that retainer", () => {
-      const onRemoveRetainer = vi.fn();
+      const onRemoveRetainer = vi.fn(saved);
       renderCard(
         aCharacter({
           retainers: [
@@ -364,6 +403,21 @@ describe("CharacterCard", () => {
 
       expect(onRemoveRetainer).toHaveBeenCalledWith("r2");
       expect(onRemoveRetainer).toHaveBeenCalledTimes(1);
+    });
+
+    it("should say something went wrong when the retainer couldn't be removed", async () => {
+      renderCard(
+        aCharacter({
+          retainers: [{ id: "r1", name: "Amarana", city: "Ul'dah" }],
+        }),
+        { onRemoveRetainer: fails },
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove Amarana" }));
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
     });
   });
 });

@@ -21,7 +21,7 @@ const trackItem = async (
   service: TrackedItemService,
   item: PricedItem = cordial,
 ): Promise<TrackedItem> => {
-  expect(await service.trackItem(item)).toEqual({ ok: true });
+  await service.trackItem(item);
   const trackedItems = await service.getTrackedItems();
   return trackedItems[trackedItems.length - 1];
 };
@@ -73,8 +73,10 @@ describe("trackedItemService", () => {
       async (targetQuantity) => {
         const service = createService();
 
-        expect(await service.trackItem({ ...cordial, targetQuantity })).toEqual(
-          { ok: false, error: { reason: "invalid-target-quantity" } },
+        await expect(
+          service.trackItem({ ...cordial, targetQuantity }),
+        ).rejects.toThrow(
+          "Target quantity needs to be a whole number of at least 1.",
         );
         expect(await service.getTrackedItems()).toEqual([]);
       },
@@ -85,12 +87,11 @@ describe("trackedItemService", () => {
       async (sellPriceCeiling) => {
         const service = createService();
 
-        expect(
-          await service.trackItem({ ...cordial, sellPriceCeiling }),
-        ).toEqual({
-          ok: false,
-          error: { reason: "invalid-sell-price-ceiling" },
-        });
+        await expect(
+          service.trackItem({ ...cordial, sellPriceCeiling }),
+        ).rejects.toThrow(
+          "Sell price ceiling needs to be a whole number of gil, or left empty.",
+        );
         expect(await service.getTrackedItems()).toEqual([]);
       },
     );
@@ -99,10 +100,9 @@ describe("trackedItemService", () => {
       const service = createService();
       await trackItem(service, { ...cordial, hq: false });
 
-      expect(await service.trackItem(cordial)).toEqual({
-        ok: false,
-        error: { reason: "already-tracked", name: "Cordial", hq: false },
-      });
+      await expect(service.trackItem(cordial)).rejects.toThrow(
+        "Cordial is already tracked as NQ.",
+      );
     });
   });
 
@@ -139,9 +139,7 @@ describe("trackedItemService", () => {
       const service = createService();
       const tracked = await trackItem(service);
 
-      expect(
-        await service.updateTrackedItem(tracked.id, { targetQuantity: 5 }),
-      ).toEqual({ ok: true });
+      await service.updateTrackedItem(tracked.id, { targetQuantity: 5 });
     });
 
     it("should refuse a quality the same item is already tracked with", async () => {
@@ -149,24 +147,16 @@ describe("trackedItemService", () => {
       await trackItem(service, { ...cordial, hq: true });
       const nq = await trackItem(service, cordial);
 
-      expect(
-        await service.updateTrackedItem(nq.id, {
-          hq: true,
-          targetQuantity: 999,
-        }),
-      ).toEqual({
-        ok: false,
-        error: { reason: "already-tracked", name: "Cordial", hq: true },
-      });
+      await expect(
+        service.updateTrackedItem(nq.id, { hq: true, targetQuantity: 999 }),
+      ).rejects.toThrow("Cordial is already tracked as HQ.");
       expect((await service.getTrackedItems())[1].hq).toBeUndefined();
     });
 
     it("should refuse to change an item that isn't tracked", async () => {
-      expect(
-        await createService().updateTrackedItem("missing", {
-          targetQuantity: 1,
-        }),
-      ).toEqual({ ok: false, error: { reason: "not-found" } });
+      await expect(
+        createService().updateTrackedItem("missing", { targetQuantity: 1 }),
+      ).rejects.toThrow("This item is no longer tracked.");
     });
   });
 
@@ -182,10 +172,9 @@ describe("trackedItemService", () => {
     });
 
     it("should refuse to remove an item that isn't tracked", async () => {
-      expect(await createService().untrackItem("missing")).toEqual({
-        ok: false,
-        error: { reason: "not-found" },
-      });
+      await expect(createService().untrackItem("missing")).rejects.toThrow(
+        "This item is no longer tracked.",
+      );
     });
   });
 });

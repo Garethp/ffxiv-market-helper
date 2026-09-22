@@ -1,11 +1,8 @@
 import { CharacterCard } from "../components/CharacterCard";
 import { CharacterForm } from "../components/CharacterForm";
-import {
-  characterService,
-  type RosterChangeResult,
-} from "../services/characterService";
+import { characterService } from "../services/characterService";
+import { validateCharacter } from "../utils/validation/roster";
 import type { TradingConfig } from "../services/tradingConfig";
-import { afterSuccess } from "../utils/afterSuccess";
 
 /** Where the character roster is set up: adding, changing and removing characters and their retainers. */
 export const CharactersContainer = ({
@@ -18,8 +15,8 @@ export const CharactersContainer = ({
 }) => {
   const { characters, regions, marketBoardCities } = config;
 
-  const reportingChanges = (change: Promise<RosterChangeResult>) =>
-    afterSuccess(change, onCharactersChanged);
+  const reportingChanges = (change: Promise<void>) =>
+    change.then(onCharactersChanged);
 
   return (
     <div className="app">
@@ -55,6 +52,7 @@ export const CharactersContainer = ({
         <CharacterCard
           key={character.id}
           character={character}
+          roster={characters}
           regions={regions}
           marketBoardCities={marketBoardCities}
           onUpdate={(details) =>
@@ -92,6 +90,12 @@ export const CharactersContainer = ({
         <CharacterForm
           regions={regions}
           submitLabel="Add character"
+          validate={(details) =>
+            validateCharacter(details, characters, {
+              regions,
+              marketBoardCities,
+            })
+          }
           onSubmit={(details) =>
             reportingChanges(characterService.addCharacter(details))
           }

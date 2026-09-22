@@ -7,15 +7,10 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  TrackedItemChangeResult,
-  TrackedItemSettings,
-} from "../services/trackedItemService";
+import type { TrackedItemSettings } from "../services/trackedItemService";
 import type { TrackedItem } from "../types";
 import { TrackedItemRow } from "./TrackedItemRow";
 import { withQueryClient } from "../testing/withQueryClient";
-
-const saved = async (): Promise<TrackedItemChangeResult> => ({ ok: true });
 
 const aTrackedItem = (overrides: Partial<TrackedItem> = {}): TrackedItem => ({
   id: "cordial",
@@ -28,24 +23,30 @@ const aTrackedItem = (overrides: Partial<TrackedItem> = {}): TrackedItem => ({
 
 const renderRow = (
   item: TrackedItem,
-  handlers: Partial<{
-    onUpdate: (
-      settings: TrackedItemSettings,
-    ) => Promise<TrackedItemChangeResult>;
+  props: Partial<{
+    isEditing: boolean;
+    errorMessage: string | null;
+    onEdit: () => void;
+    onCancelEdit: () => void;
+    onUpdate: (settings: TrackedItemSettings) => void;
     onUntrack: () => void;
   }> = {},
-) =>
+) => {
+  const handlers = {
+    onEdit: vi.fn(),
+    onCancelEdit: vi.fn(),
+    onUpdate: vi.fn(),
+    onUntrack: vi.fn(),
+    ...props,
+  };
   render(
     <ul>
-      <TrackedItemRow
-        item={item}
-        onUpdate={saved}
-        onUntrack={() => {}}
-        {...handlers}
-      />
+      <TrackedItemRow item={item} isEditing={false} {...handlers} />
     </ul>,
     { wrapper: withQueryClient() },
   );
+  return handlers;
+};
 
 const rowText = () => screen.getByRole("listitem").textContent;
 
@@ -72,18 +73,26 @@ describe("TrackedItemRow", () => {
     it("should mark an HQ item as HQ", () => {
       renderRow(aTrackedItem({ hq: true }));
 
-      expect(document.querySelector(".quality-badge")?.textContent).toBe("HQ");
+      expect(rowText()).toContain("HQ");
     });
   });
 
   describe("editing the item", () => {
-    it("should open a form filled in with the item's current settings", () => {
-      renderRow(
-        aTrackedItem({ hq: true, targetQuantity: 60, sellPriceCeiling: 5000 }),
-      );
+    it("should ask for editing to start rather than opening a form itself", () => {
+      const { onEdit } = renderRow(aTrackedItem());
 
       fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (HQ)" }),
+        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
+      );
+
+      expect(onEdit).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("form")).toBeNull();
+    });
+
+    it("should show a form filled in with the item's current settings while it's being edited", () => {
+      renderRow(
+        aTrackedItem({ hq: true, targetQuantity: 60, sellPriceCeiling: 5000 }),
+        { isEditing: true },
       );
 
       const form = editForm("Edit Cordial (HQ)");
@@ -100,13 +109,9 @@ describe("TrackedItemRow", () => {
       ).toBe("5k");
     });
 
-    it("should save the entered settings and close the form once they're saved", async () => {
-      const onUpdate = vi.fn(saved);
-      renderRow(aTrackedItem(), { onUpdate });
+    it("should pass on the entered settings", () => {
+      const { onUpdate } = renderRow(aTrackedItem(), { isEditing: true });
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
       const form = editForm("Edit Cordial (NQ)");
       fireEvent.click(within(form).getByLabelText("HQ"));
       fireEvent.change(within(form).getByLabelText("Target quantity"), {
@@ -114,65 +119,60 @@ describe("TrackedItemRow", () => {
       });
       fireEvent.click(within(form).getByRole("button", { name: "Save" }));
 
-      await screen.findByRole("button", { name: "Edit Cordial (NQ)" });
       expect(onUpdate).toHaveBeenCalledWith({
         hq: true,
         targetQuantity: 60,
         sellPriceCeiling: undefined,
       });
-      expect(screen.queryByRole("form")).toBeNull();
     });
 
-    it("should keep the form open, explaining why, when the settings can't be saved", async () => {
+    it("should show why the last change wasn't made, while the form stays open", () => {
       renderRow(aTrackedItem(), {
-        onUpdate: async () => ({
-          ok: false,
-          error: { reason: "already-tracked", name: "Cordial", hq: true },
-        }),
+        isEditing: true,
+        errorMessage: "Cordial is already tracked as HQ.",
       });
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
-      const form = editForm("Edit Cordial (NQ)");
-      fireEvent.click(within(form).getByLabelText("HQ"));
-      fireEvent.click(within(form).getByRole("button", { name: "Save" }));
-
-      expect((await screen.findByRole("alert")).textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toBe(
         "Cordial is already tracked as HQ.",
       );
       expect(editForm("Edit Cordial (NQ)")).toBeTruthy();
     });
 
-    it("should close the form without saving anything when editing is cancelled", () => {
-      const onUpdate = vi.fn(saved);
-      renderRow(aTrackedItem(), { onUpdate });
+    it("should report a cancellation without passing on anything", () => {
+      const { onCancelEdit, onUpdate } = renderRow(aTrackedItem(), {
+        isEditing: true,
+      });
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
       fireEvent.change(
         within(editForm("Edit Cordial (NQ)")).getByLabelText("Target quantity"),
         { target: { value: "60" } },
       );
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(screen.queryByRole("form")).toBeNull();
-      expect(rowText()).toContain("Target quantity 999");
+      expect(onCancelEdit).toHaveBeenCalledOnce();
       expect(onUpdate).not.toHaveBeenCalled();
     });
   });
 
   describe("no longer tracking the item", () => {
     it("should report that the item is no longer to be tracked", () => {
-      const onUntrack = vi.fn();
-      renderRow(aTrackedItem(), { onUntrack });
+      const { onUntrack } = renderRow(aTrackedItem());
 
       fireEvent.click(
         screen.getByRole("button", { name: "Stop tracking Cordial (NQ)" }),
       );
 
       expect(onUntrack).toHaveBeenCalledOnce();
+    });
+
+    it("should show why the last change wasn't made, alongside the item", () => {
+      renderRow(aTrackedItem(), {
+        errorMessage: "Something went wrong. Try again shortly.",
+      });
+
+      expect(screen.getByRole("alert").textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
     });
   });
 });

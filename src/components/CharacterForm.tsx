@@ -1,10 +1,8 @@
 import { useState, type FormEvent } from "react";
-import type {
-  CharacterDetails,
-  RosterChangeError,
-  RosterChangeResult,
-} from "../services/characterService";
+import type { CharacterDetails } from "../services/characterService";
+import type { RosterValidationError } from "../utils/validation/roster";
 import type { RegionInfo } from "../types";
+import { ErrorMessage } from "./ErrorMessage";
 import { RosterChangeErrorMessage } from "./RosterChangeErrorMessage";
 
 const NO_DETAILS: CharacterDetails = { name: "", homeWorld: "" };
@@ -14,32 +12,43 @@ export const CharacterForm = ({
   regions,
   initialDetails = NO_DETAILS,
   submitLabel,
+  validate,
   onSubmit,
   onCancel,
 }: {
   regions: RegionInfo[];
   initialDetails?: CharacterDetails;
   submitLabel: string;
-  onSubmit: (details: CharacterDetails) => Promise<RosterChangeResult>;
+  /** Why the roster wouldn't accept these details, checked before anything is attempted. */
+  validate: (details: CharacterDetails) => RosterValidationError | undefined;
+  onSubmit: (details: CharacterDetails) => Promise<void>;
   onCancel?: () => void;
 }) => {
   const [name, setName] = useState(initialDetails.name);
   const [homeWorld, setHomeWorld] = useState(initialDetails.homeWorld);
   const [note, setNote] = useState(initialDetails.note ?? "");
-  const [error, setError] = useState<RosterChangeError | null>(null);
+  const [invalid, setInvalid] = useState<RosterValidationError | null>(null);
+  const [hasFailed, setHasFailed] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const result = await onSubmit({ name, homeWorld, note });
-    if (!result.ok) {
-      setError(result.error);
+    const details = { name, homeWorld, note };
+    const reason = validate(details);
+    setInvalid(reason ?? null);
+    setHasFailed(false);
+    // Nothing is attempted while the roster wouldn't accept it.
+    if (reason) return;
+
+    try {
+      await onSubmit(details);
+    } catch {
+      setHasFailed(true);
       return;
     }
     // Cleared for the next entry, for a form that stays open after its change is made.
     setName(initialDetails.name);
     setHomeWorld(initialDetails.homeWorld);
     setNote(initialDetails.note ?? "");
-    setError(null);
   };
 
   return (
@@ -92,7 +101,10 @@ export const CharacterForm = ({
           </button>
         )}
       </div>
-      {error && <RosterChangeErrorMessage error={error} />}
+      {invalid && <RosterChangeErrorMessage error={invalid} />}
+      {hasFailed && (
+        <ErrorMessage>Something went wrong. Try again shortly.</ErrorMessage>
+      )}
     </form>
   );
 };

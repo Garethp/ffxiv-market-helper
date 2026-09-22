@@ -7,10 +7,8 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type {
-  RetainerDetails,
-  RosterChangeResult,
-} from "../services/characterService";
+import type { RetainerDetails } from "../services/characterService";
+import type { RosterValidationError } from "../utils/validation/roster";
 import { RetainerForm } from "./RetainerForm";
 
 const marketBoardCities = ["Ul'dah", "Kugane"];
@@ -28,14 +26,14 @@ const renderForm = (
   props: Partial<Parameters<typeof RetainerForm>[0]> = {},
 ) => {
   const onSubmit = vi.fn(
-    async (_details: RetainerDetails): Promise<RosterChangeResult> => ({
-      ok: true,
-    }),
+    async (_details: RetainerDetails): Promise<void> => {},
   );
   render(
     <RetainerForm
       marketBoardCities={marketBoardCities}
       submitLabel="Add retainer"
+      // Nothing wrong with the details, whatever they are.
+      validate={() => undefined}
       onSubmit={onSubmit}
       {...props}
     />,
@@ -114,14 +112,11 @@ describe("RetainerForm", () => {
     });
 
     it("should no longer show why an earlier change wasn't made", async () => {
-      const onSubmit = vi
-        .fn<(details: RetainerDetails) => Promise<RosterChangeResult>>()
-        .mockResolvedValueOnce({
-          ok: false,
-          error: { reason: "duplicate-retainer", name: "Amarana" },
-        })
-        .mockResolvedValueOnce({ ok: true });
-      renderForm({ onSubmit });
+      const validate = vi
+        .fn<(details: RetainerDetails) => RosterValidationError | undefined>()
+        .mockReturnValueOnce({ reason: "duplicate-retainer", name: "Amarana" })
+        .mockReturnValue(undefined);
+      renderForm({ validate });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();
@@ -133,15 +128,14 @@ describe("RetainerForm", () => {
     });
   });
 
-  describe("when the change isn't made", () => {
-    const refusingSubmit = () =>
-      vi.fn(async (): Promise<RosterChangeResult> => ({
-        ok: false,
-        error: { reason: "duplicate-retainer", name: "Amarana" },
-      }));
+  describe("when the character wouldn't accept the retainer", () => {
+    const refuses = () => ({
+      reason: "duplicate-retainer" as const,
+      name: "Amarana",
+    });
 
     it("should explain why", async () => {
-      renderForm({ onSubmit: refusingSubmit() });
+      renderForm({ validate: refuses });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();
@@ -151,8 +145,42 @@ describe("RetainerForm", () => {
       );
     });
 
+    it("should not attempt the change at all", async () => {
+      const { onSubmit } = renderForm({ validate: refuses });
+
+      fillIn({ name: "Amarana", city: "Ul'dah" });
+      submit();
+
+      await screen.findByRole("alert");
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it("should keep the entered details so they can be corrected", async () => {
-      renderForm({ onSubmit: refusingSubmit() });
+      renderForm({ validate: refuses });
+
+      fillIn({ name: "Amarana", city: "Ul'dah" });
+      submit();
+      await screen.findByRole("alert");
+
+      expect(nameInput().value).toBe("Amarana");
+      expect(citySelect().value).toBe("Ul'dah");
+    });
+  });
+
+  describe("when the change itself fails", () => {
+    it("should say something went wrong, without guessing at a reason", async () => {
+      renderForm({ onSubmit: () => Promise.reject(new Error("no storage")) });
+
+      fillIn({ name: "Amarana", city: "Ul'dah" });
+      submit();
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Something went wrong. Try again shortly.",
+      );
+    });
+
+    it("should keep the entered details so the change can be tried again", async () => {
+      renderForm({ onSubmit: () => Promise.reject(new Error("no storage")) });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();

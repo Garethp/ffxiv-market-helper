@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { RosterChangeError } from "../services/characterService";
+import type { RosterValidationError } from "../utils/validation/roster";
 import { RosterChangeErrorMessage } from "./RosterChangeErrorMessage";
 
-const alertText = (error: RosterChangeError) => {
+const alertText = (error: RosterValidationError) => {
   render(<RosterChangeErrorMessage error={error} />);
   return screen.getByRole("alert").textContent;
 };

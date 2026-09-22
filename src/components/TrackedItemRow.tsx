@@ -1,27 +1,35 @@
-import { useState } from "react";
-import type {
-  TrackedItemChangeResult,
-  TrackedItemSettings,
-} from "../services/trackedItemService";
+import type { TrackedItemSettings } from "../services/trackedItemService";
 import type { PricedItem, TrackedItem } from "../types";
-import { afterSuccess } from "../utils/afterSuccess";
 import { formatAmount } from "../utils/amount";
+import { ErrorMessage } from "./ErrorMessage";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { TrackedItemSettingsForm } from "./TrackedItemSettingsForm";
 
 const qualityOf = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
 
-/** One tracked item, with the controls for changing its settings or no longer tracking it. */
+/**
+ * One tracked item, with the controls for changing its settings or no longer
+ * tracking it. Shows what it's told to: whether its settings are being edited,
+ * and what went wrong with the last change, are the caller's to decide.
+ */
 export const TrackedItemRow = ({
   item,
+  isEditing,
+  errorMessage,
+  onEdit,
+  onCancelEdit,
   onUpdate,
   onUntrack,
 }: {
   item: TrackedItem;
-  onUpdate: (settings: TrackedItemSettings) => Promise<TrackedItemChangeResult>;
+  isEditing: boolean;
+  /** Why the last change to this item wasn't made, if it wasn't. */
+  errorMessage?: string | null;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onUpdate: (settings: TrackedItemSettings) => void;
   onUntrack: () => void;
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
   const description = `${item.name} (${qualityOf(item)})`;
 
   if (isEditing) {
@@ -31,10 +39,9 @@ export const TrackedItemRow = ({
           label={`Edit ${description}`}
           initial={{ ...item, quality: qualityOf(item) }}
           submitLabel="Save"
-          onSubmit={(settings) =>
-            afterSuccess(onUpdate(settings), () => setIsEditing(false))
-          }
-          onCancel={() => setIsEditing(false)}
+          errorMessage={errorMessage}
+          onSubmit={onUpdate}
+          onCancel={onCancelEdit}
         />
       </li>
     );
@@ -54,11 +61,7 @@ export const TrackedItemRow = ({
           ? "No sell price ceiling"
           : `Sell price ceiling ${formatAmount(item.sellPriceCeiling)}`}
       </span>
-      <button
-        type="button"
-        aria-label={`Edit ${description}`}
-        onClick={() => setIsEditing(true)}
-      >
+      <button type="button" aria-label={`Edit ${description}`} onClick={onEdit}>
         Edit
       </button>
       <button
@@ -68,6 +71,7 @@ export const TrackedItemRow = ({
       >
         Stop tracking
       </button>
+      {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
     </li>
   );
 };

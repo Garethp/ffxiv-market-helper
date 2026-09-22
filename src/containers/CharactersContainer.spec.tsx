@@ -101,6 +101,22 @@ describe("CharactersContainer", () => {
       expect(within(card).getByText("Raiden (Europe)")).toBeTruthy();
       expect(await characterService.getCharacters()).toHaveLength(1);
     });
+
+    it("should explain a name the roster already has, without adding a second one", async () => {
+      await renderPage();
+      await addCharacterThroughPage("Alice", "Raiden");
+
+      const form = screen.getByRole("region", { name: "Add a character" });
+      fillIn(form, { Name: "Alice", "Home world": "Raiden" });
+      fireEvent.click(
+        within(form).getByRole("button", { name: "Add character" }),
+      );
+
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "There's already a character named Alice on Raiden.",
+      );
+      expect(await characterService.getCharacters()).toHaveLength(1);
+    });
   });
 
   describe("changing a character", () => {

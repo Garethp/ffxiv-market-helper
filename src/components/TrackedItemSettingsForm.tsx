@@ -1,21 +1,23 @@
 import { useId, useState, type FormEvent } from "react";
-import type {
-  TrackedItemChangeError,
-  TrackedItemChangeResult,
-  TrackedItemSettings,
-} from "../services/trackedItemService";
+import type { TrackedItemSettings } from "../services/trackedItemService";
+import { ErrorMessage } from "./ErrorMessage";
 import { HintedField } from "./forms/HintedField";
 import { NumberInput } from "./forms/NumberInput";
 import { pricingHints } from "./pricingHints";
-import { TrackedItemChangeErrorMessage } from "./TrackedItemChangeErrorMessage";
 
 type Quality = "NQ" | "HQ";
 
-/** Enters how an item is tracked, for tracking a new item or changing one that's already tracked. */
+/**
+ * Enters how an item is tracked, for tracking a new item or changing one that's
+ * already tracked. Holds nothing but the fields: whether the settings are ones
+ * the tracked items would accept, and what to say when they aren't, is the
+ * caller's to decide and pass back as `errorMessage`.
+ */
 export const TrackedItemSettingsForm = ({
   label,
   initial,
   submitLabel,
+  errorMessage,
   onSubmit,
   onCancel,
 }: {
@@ -28,7 +30,9 @@ export const TrackedItemSettingsForm = ({
     sellPriceCeiling?: number;
   };
   submitLabel: string;
-  onSubmit: (settings: TrackedItemSettings) => Promise<TrackedItemChangeResult>;
+  /** Why the settings last submitted weren't taken, if they weren't. */
+  errorMessage?: string | null;
+  onSubmit: (settings: TrackedItemSettings) => void;
   onCancel: () => void;
 }) => {
   const qualityName = useId();
@@ -39,17 +43,14 @@ export const TrackedItemSettingsForm = ({
   const [sellPriceCeiling, setSellPriceCeiling] = useState(
     initial.sellPriceCeiling,
   );
-  const [error, setError] = useState<TrackedItemChangeError | null>(null);
-
-  const submit = async (e: FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault();
-    const result = await onSubmit({
+    onSubmit({
       hq: quality === "HQ",
-      // An empty target quantity is refused like any other that isn't at least 1.
+      // An empty target quantity is passed on like any other that isn't at least 1.
       targetQuantity: targetQuantity ?? 0,
       sellPriceCeiling,
     });
-    setError(result.ok ? null : result.error);
   };
 
   return (
@@ -100,7 +101,7 @@ export const TrackedItemSettingsForm = ({
           Cancel
         </button>
       </div>
-      {error && <TrackedItemChangeErrorMessage error={error} />}
+      {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
     </form>
   );
 };
