@@ -4,8 +4,8 @@ import type {
   TrackedItemChangeResult,
   TrackedItemSettings,
 } from "../services/trackedItemService";
-import { HintedField } from "./Hint";
-import { NumberInput } from "./NumberInput";
+import { HintedField } from "./forms/HintedField";
+import { NumberInput } from "./forms/NumberInput";
 import { pricingHints } from "./pricingHints";
 import { TrackedItemChangeErrorMessage } from "./TrackedItemChangeErrorMessage";
 

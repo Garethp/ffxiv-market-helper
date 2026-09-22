@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ExpertDeliveryItemsTable } from "../components/ExpertDeliveryItemsTable";
 import { ExpertDeliveryRoute } from "../components/ExpertDeliveryRoute";
-import { NumberInput } from "../components/NumberInput";
+import { NumberInput } from "../components/forms/NumberInput";
 import { useCopyText } from "../hooks/useCopyText";
 import { useExpertDeliveryPrices } from "../hooks/useExpertDeliveryPrices";
 import {

@@ -1,5 +1,5 @@
 import { useState, type InputHTMLAttributes } from "react";
-import { formatAmount, parseAmount } from "../utils/amount";
+import { formatAmount, parseAmount } from "../../utils/amount";
 
 type PassThroughProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,

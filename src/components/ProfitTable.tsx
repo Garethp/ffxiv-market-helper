@@ -1,25 +1,8 @@
-import type { ReactNode } from "react";
 import { useCopyText } from "../hooks/useCopyText";
 import type { DisplayRow } from "../types";
-import { Hint } from "./Hint";
+import { HintedColumnHeader } from "./tables/HintedColumnHeader";
 import { profitColumnHints } from "./pricingHints";
 import { ProfitTableRow } from "./ProfitTableRow";
-
-/**
- * A column header with a hint explaining how the column is worked out. Named
- * after the column alone, so the explanation isn't read out with every cell.
- */
-const HintedColumnHeader = ({
-  name,
-  hint,
-}: {
-  name: string;
-  hint: ReactNode;
-}) => (
-  <th aria-label={name}>
-    {name} <Hint about={name}>{hint}</Hint>
-  </th>
-);
 
 export const ProfitTable = ({
   rows,

@@ -5,7 +5,7 @@ import {
   type RouteStop,
 } from "../services/expertDelivery";
 import { formatGil } from "../utils/format";
-import { FixedWidthColumns } from "./FixedWidthColumns";
+import { FixedWidthColumns } from "./tables/FixedWidthColumns";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 

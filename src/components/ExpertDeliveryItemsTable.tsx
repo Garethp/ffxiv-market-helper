@@ -7,7 +7,7 @@ import {
 import type { RegionInfo } from "../types";
 import { formatGil } from "../utils/format";
 import { findDataCenterForWorld } from "../utils/worldDirectory";
-import { FixedWidthColumns } from "./FixedWidthColumns";
+import { FixedWidthColumns } from "./tables/FixedWidthColumns";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 

@@ -6,7 +6,7 @@ import { GapBadge } from "./badges/GapBadge";
 import { HighQualityBadge } from "./badges/HighQualityBadge";
 import { UndercutBadge } from "./badges/UndercutBadge";
 import { CopyButton } from "./CopyButton";
-import { ExpandableList, ExpandableRow } from "./ExpandableList";
+import { ExpandableList, ExpandableRow } from "./tables/ExpandableList";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { Profit } from "./Profit";
 import { Tooltip } from "./Tooltip";

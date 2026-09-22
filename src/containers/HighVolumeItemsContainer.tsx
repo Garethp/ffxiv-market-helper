@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { NumberInput } from "../components/NumberInput";
+import { NumberInput } from "../components/forms/NumberInput";
 import { ScannedItemsTable } from "../components/ScannedItemsTable";
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
 import { useScannedItemProfits } from "../hooks/useScannedItemProfits";
