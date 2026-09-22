@@ -8,14 +8,14 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ItemSearchResult } from "../types";
+import type { ItemSearchResult } from "../../types";
 
-vi.mock("../services/itemService", () => ({
+vi.mock("../../services/itemService", () => ({
   itemService: { searchItems: vi.fn(), getItemSummaries: vi.fn() },
 }));
 
-import { itemService } from "../services/itemService";
-import { withQueryClient } from "../testing/withQueryClient";
+import { itemService } from "../../services/itemService";
+import { withQueryClient } from "../../testing/withQueryClient";
 import { ItemSearch } from "./ItemSearch";
 
 const mockedSearchItems = vi.mocked(itemService.searchItems);

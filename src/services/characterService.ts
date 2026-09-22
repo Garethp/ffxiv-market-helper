@@ -24,23 +24,24 @@ export type RetainerDetails = Omit<Retainer, "id">;
 export type NewCharacter = CharacterDetails & { retainers: RetainerDetails[] };
 
 /**
- * Why a change to the character roster was refused: a rule the caller was meant
- * to check first, or a character or retainer that's no longer in the roster.
+ * What went wrong with a change to the character roster: a rule the caller was
+ * meant to validate first, or a character or retainer that's no longer in the
+ * roster.
  */
-export type RosterChangeRefusal =
+export type RosterChangeFailure =
   | RosterValidationError
   | { reason: "character-not-found" }
   | { reason: "retainer-not-found" };
 
 /**
- * A change the roster wouldn't accept. Callers check the rules first, so this
+ * A change to the roster that couldn't be made. Callers validate first, so this
  * reaching the UI means something the user can't act on — a stale screen, or a
  * caller that skipped its checks.
  */
-export class RosterChangeRefused extends Error {
-  constructor(readonly refusal: RosterChangeRefusal) {
-    super(`The roster refused the change: ${refusal.reason}`);
-    this.name = "RosterChangeRefused";
+export class RosterChangeError extends Error {
+  constructor(readonly failure: RosterChangeFailure) {
+    super(`The roster couldn't make the change: ${failure.reason}`);
+    this.name = "RosterChangeError";
   }
 }
 
@@ -182,12 +183,12 @@ export class LocalStorageCharacterService implements CharacterService {
     );
   }
 
-  /** Saves the roster `change` makes from the current one, or rejects with the reason it gave not to. */
+  /** Saves the roster `change` makes from the current one, or rejects with what it gave as the reason not to. */
   private async changeRoster(
     change: (
       roster: Character[],
       reference: ReferenceData,
-    ) => Character[] | RosterChangeRefusal,
+    ) => Character[] | RosterChangeFailure,
   ): Promise<void> {
     const [regions, marketBoardCities] = await Promise.all([
       this.config.getRegions(),
@@ -198,17 +199,17 @@ export class LocalStorageCharacterService implements CharacterService {
       regions,
       marketBoardCities,
     });
-    if (!Array.isArray(changed)) throw new RosterChangeRefused(changed);
+    if (!Array.isArray(changed)) throw new RosterChangeError(changed);
     this.storedRoster.write(changed);
   }
 
-  /** Saves the retainers `change` makes from one character's current ones, or rejects with the reason it gave not to. */
+  /** Saves the retainers `change` makes from one character's current ones, or rejects with what it gave as the reason not to. */
   private changeRetainers(
     characterId: string,
     change: (
       retainers: Retainer[],
       reference: ReferenceData,
-    ) => Retainer[] | RosterChangeRefusal,
+    ) => Retainer[] | RosterChangeFailure,
   ): Promise<void> {
     return this.changeRoster((roster, reference) => {
       const character = roster.find(({ id }) => id === characterId);

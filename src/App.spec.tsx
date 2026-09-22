@@ -72,6 +72,17 @@ vi.mock("./containers/manageItems/TrackNewItemContainer", () => ({
     </button>
   ),
 }));
+vi.mock("./containers/manageItems/EditTrackedItemContainer", () => ({
+  EditTrackedItemContainer: ({
+    onTrackedItemsChanged,
+  }: {
+    onTrackedItemsChanged: () => void;
+  }) => (
+    <button type="button" onClick={onTrackedItemsChanged}>
+      Change this item
+    </button>
+  ),
+}));
 vi.mock("./containers/CharactersContainer", () => ({
   CharactersContainer: ({
     onCharactersChanged,
@@ -276,6 +287,19 @@ describe("App", () => {
       renderApp("/manage-items");
 
       await screen.findByRole("button", { name: "Change the tracked items" });
+    });
+
+    it("should read the tracked items again after one is changed on its own page", async () => {
+      renderApp("/manage-items/edit/cordial");
+      const changeButton = await screen.findByRole("button", {
+        name: "Change this item",
+      });
+      mockedGetTrackedItems.mockResolvedValue([cordial]);
+
+      fireEvent.click(changeButton);
+      fireEvent.click(navLink("Tracked Items"));
+
+      await screen.findByText("Cordial");
     });
 
     it("should read the tracked items again after a new one is tracked on its own page", async () => {

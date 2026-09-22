@@ -10,14 +10,14 @@ export type TrackedItemSettings = Pick<
 >;
 
 /**
- * A change the tracked items wouldn't accept, carrying the reason worded for the
- * user. Callers check the rules first, so this reaching the UI means something
+ * A change to the tracked items that couldn't be made, carrying why in words the
+ * user can read. Callers validate first, so this reaching the UI means something
  * the user can't act on — a stale screen, or a caller that skipped its checks.
  */
-export class TrackedItemChangeRefused extends Error {
+export class TrackedItemChangeError extends Error {
   constructor(reason: string) {
     super(reason);
-    this.name = "TrackedItemChangeRefused";
+    this.name = "TrackedItemChangeError";
   }
 }
 
@@ -63,7 +63,7 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
 
   async trackItem(item: PricedItem): Promise<void> {
     const trackedItems = this.storedItems.read();
-    this.refuseIfInvalid(validateItem(item, trackedItems));
+    this.throwIfInvalid(validateItem(item, trackedItems));
     this.storedItems.write([...trackedItems, withId(item)]);
   }
 
@@ -74,10 +74,10 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
     const trackedItems = this.storedItems.read();
     const existing = trackedItems.find((item) => item.id === id);
     if (!existing)
-      throw new TrackedItemChangeRefused("This item is no longer tracked.");
+      throw new TrackedItemChangeError("This item is no longer tracked.");
 
     const changed = { ...existing, hq, targetQuantity, sellPriceCeiling };
-    this.refuseIfInvalid(
+    this.throwIfInvalid(
       validateItem(changed, trackedItems, { excludingId: id }),
     );
     this.storedItems.write(
@@ -88,14 +88,14 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
   async untrackItem(id: string): Promise<void> {
     const trackedItems = this.storedItems.read();
     if (!trackedItems.some((item) => item.id === id)) {
-      throw new TrackedItemChangeRefused("This item is no longer tracked.");
+      throw new TrackedItemChangeError("This item is no longer tracked.");
     }
     this.storedItems.write(trackedItems.filter((item) => item.id !== id));
   }
 
-  /** Backstop for a caller that didn't check the rules, or a screen that's gone stale. */
-  private refuseIfInvalid(reason: string | undefined): void {
-    if (reason) throw new TrackedItemChangeRefused(reason);
+  /** Backstop for a caller that didn't validate, or a screen that's gone stale. */
+  private throwIfInvalid(reason: string | undefined): void {
+    if (reason) throw new TrackedItemChangeError(reason);
   }
 }
 

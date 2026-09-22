@@ -1,9 +1,9 @@
 import { useId, useState, type FormEvent } from "react";
-import type { TrackedItemSettings } from "../services/trackedItemService";
-import { ErrorMessage } from "./ErrorMessage";
-import { HintedField } from "./forms/HintedField";
-import { NumberInput } from "./forms/NumberInput";
-import { pricingHints } from "./pricingHints";
+import type { TrackedItemSettings } from "../../services/trackedItemService";
+import { ErrorMessage } from "../ErrorMessage";
+import { HintedField } from "../forms/HintedField";
+import { NumberInput } from "../forms/NumberInput";
+import { pricingHints } from "../pricingHints";
 
 type Quality = "NQ" | "HQ";
 

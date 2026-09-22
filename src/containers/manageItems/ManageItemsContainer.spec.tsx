@@ -1,11 +1,5 @@
 // @vitest-environment jsdom
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ItemSearchResult, TradingParameters } from "../../types";
@@ -61,11 +55,6 @@ const renderPage = async () => {
   await screen.findByRole("heading", { name: "Manage Items" });
 };
 
-const setField = (container: HTMLElement, label: string, value: string) =>
-  fireEvent.change(within(container).getByLabelText(label), {
-    target: { value },
-  });
-
 beforeEach(() => {
   localStorage.clear();
 });
@@ -85,7 +74,7 @@ describe("ManageItemsContainer", () => {
     });
   });
 
-  describe("changing a tracked item", () => {
+  describe("a tracked item", () => {
     beforeEach(async () => {
       await trackedItemService.trackItem({
         ...cordial,
@@ -94,47 +83,27 @@ describe("ManageItemsContainer", () => {
       });
     });
 
-    it("should save the changed settings", async () => {
+    it("should lead to the page for changing its settings", async () => {
+      await renderPage();
+      const [item] = await trackedItemService.getTrackedItems();
+
+      const link = screen.getByRole("link", { name: "Edit Cordial (NQ)" });
+
+      expect(link.getAttribute("href")).toBe(`/manage-items/edit/${item.id}`);
+    });
+
+    it("should stop tracking the item", async () => {
       await renderPage();
 
       fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
+        screen.getByRole("button", { name: "Stop tracking Cordial (NQ)" }),
       );
-      const form = screen.getByRole("form", { name: "Edit Cordial (NQ)" });
-      fireEvent.click(within(form).getByLabelText("HQ"));
-      setField(form, "Target quantity", "60");
-      setField(form, "Sell price ceiling", "");
-      fireEvent.click(within(form).getByRole("button", { name: "Save" }));
 
-      await screen.findByRole("button", { name: "Edit Cordial (HQ)" });
-      const [changed] = await trackedItemService.getTrackedItems();
-      expect(changed).toMatchObject({ hq: true, targetQuantity: 60 });
-      expect(changed.sellPriceCeiling).toBeUndefined();
+      await screen.findByText(/No items are tracked yet/);
+      expect(await trackedItemService.getTrackedItems()).toEqual([]);
     });
 
-    it("should explain a quality the item is already tracked with, leaving it as it was", async () => {
-      await trackedItemService.trackItem({
-        ...cordial,
-        hq: true,
-        targetQuantity: 999,
-      });
-      await renderPage();
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
-      const form = screen.getByRole("form", { name: "Edit Cordial (NQ)" });
-      fireEvent.click(within(form).getByLabelText("HQ"));
-      fireEvent.click(within(form).getByRole("button", { name: "Save" }));
-
-      expect((await screen.findByRole("alert")).textContent).toBe(
-        "Cordial is already tracked as HQ.",
-      );
-      const [unchanged] = await trackedItemService.getTrackedItems();
-      expect(unchanged.hq).toBeUndefined();
-    });
-
-    it("should say something went wrong when the change couldn't be made at all", async () => {
+    it("should say something went wrong when it couldn't be untracked at all", async () => {
       vi.spyOn(trackedItemService, "untrackItem").mockRejectedValue(
         new Error("storage is full"),
       );
@@ -148,37 +117,6 @@ describe("ManageItemsContainer", () => {
         "Something went wrong. Try again shortly.",
       );
       expect(screen.getByText("Cordial")).toBeTruthy();
-    });
-
-    it("should stop explaining a refusal once editing is given up on", async () => {
-      await trackedItemService.trackItem({
-        ...cordial,
-        hq: true,
-        targetQuantity: 999,
-      });
-      await renderPage();
-      fireEvent.click(
-        screen.getByRole("button", { name: "Edit Cordial (NQ)" }),
-      );
-      const form = screen.getByRole("form", { name: "Edit Cordial (NQ)" });
-      fireEvent.click(within(form).getByLabelText("HQ"));
-      fireEvent.click(within(form).getByRole("button", { name: "Save" }));
-      await screen.findByRole("alert");
-
-      fireEvent.click(within(form).getByRole("button", { name: "Cancel" }));
-
-      expect(screen.queryByRole("alert")).toBeNull();
-    });
-
-    it("should stop tracking the item", async () => {
-      await renderPage();
-
-      fireEvent.click(
-        screen.getByRole("button", { name: "Stop tracking Cordial (NQ)" }),
-      );
-
-      await screen.findByText(/No items are tracked yet/);
-      expect(await trackedItemService.getTrackedItems()).toEqual([]);
     });
   });
 

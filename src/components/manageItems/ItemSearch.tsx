@@ -1,9 +1,9 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { itemService } from "../services/itemService";
-import type { ItemSearchResult } from "../types";
-import { ErrorMessage } from "./ErrorMessage";
-import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
+import { itemService } from "../../services/itemService";
+import type { ItemSearchResult } from "../../types";
+import { ErrorMessage } from "../ErrorMessage";
+import { ItemSummaryTooltip } from "../ItemSummaryTooltip";
 
 /** How long typing has to pause before searching, so there isn't a search for every character typed. */
 const TYPING_PAUSE_MS = 300;

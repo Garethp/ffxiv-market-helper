@@ -129,13 +129,13 @@ describe("RetainerForm", () => {
   });
 
   describe("when the character wouldn't accept the retainer", () => {
-    const refuses = () => ({
+    const isInvalid = () => ({
       reason: "duplicate-retainer" as const,
       name: "Amarana",
     });
 
     it("should explain why", async () => {
-      renderForm({ validate: refuses });
+      renderForm({ validate: isInvalid });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();
@@ -146,7 +146,7 @@ describe("RetainerForm", () => {
     });
 
     it("should not attempt the change at all", async () => {
-      const { onSubmit } = renderForm({ validate: refuses });
+      const { onSubmit } = renderForm({ validate: isInvalid });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();
@@ -156,7 +156,7 @@ describe("RetainerForm", () => {
     });
 
     it("should keep the entered details so they can be corrected", async () => {
-      renderForm({ validate: refuses });
+      renderForm({ validate: isInvalid });
 
       fillIn({ name: "Amarana", city: "Ul'dah" });
       submit();

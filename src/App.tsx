@@ -10,6 +10,7 @@ import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
 import { ManageItemsContainer } from "./containers/manageItems/ManageItemsContainer";
 import { TrackNewItemContainer } from "./containers/manageItems/TrackNewItemContainer";
+import { EditTrackedItemContainer } from "./containers/manageItems/EditTrackedItemContainer";
 import { useItemDataStatus } from "./hooks/useItemDataStatus";
 import { useReloadable } from "./hooks/useReloadable";
 import { characterService } from "./services/characterService";
@@ -143,6 +144,15 @@ const App = () => {
           path="/manage-items/track"
           element={
             <TrackNewItemContainer
+              config={config}
+              onTrackedItemsChanged={reloadTrackedItems}
+            />
+          }
+        />
+        <Route
+          path="/manage-items/edit/:itemId"
+          element={
+            <EditTrackedItemContainer
               config={config}
               onTrackedItemsChanged={reloadTrackedItems}
             />

@@ -170,7 +170,7 @@ describe("CharacterForm", () => {
       );
     });
 
-    it("should no longer explain an earlier refusal", async () => {
+    it("should no longer explain what was wrong earlier", async () => {
       const validate = vi
         .fn<(details: CharacterDetails) => RosterValidationError | undefined>()
         .mockReturnValueOnce({ reason: "missing-name" })
@@ -188,14 +188,14 @@ describe("CharacterForm", () => {
   });
 
   describe("when the roster wouldn't accept the details", () => {
-    const refuses = () => ({
+    const isInvalid = () => ({
       reason: "duplicate-character" as const,
       name: "Alice",
       world: "Raiden",
     });
 
     it("should explain why", async () => {
-      renderForm({ validate: refuses });
+      renderForm({ validate: isInvalid });
 
       fillIn({ name: "Alice", homeWorld: "Raiden" });
       fireEvent.click(submitButton());
@@ -206,7 +206,7 @@ describe("CharacterForm", () => {
     });
 
     it("should not attempt the change at all", async () => {
-      const onSubmit = renderForm({ validate: refuses });
+      const onSubmit = renderForm({ validate: isInvalid });
 
       fillIn({ name: "Alice", homeWorld: "Raiden" });
       fireEvent.click(submitButton());
@@ -216,7 +216,7 @@ describe("CharacterForm", () => {
     });
 
     it("should keep the details as entered, so they can be corrected", async () => {
-      renderForm({ validate: refuses });
+      renderForm({ validate: isInvalid });
 
       fillIn({ name: "Alice", homeWorld: "Raiden", note: "Crafter" });
       fireEvent.click(submitButton());

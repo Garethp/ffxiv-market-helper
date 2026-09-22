@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { TrackedItemRow } from "../../components/TrackedItemRow";
-import {
-  trackedItemService,
-  type TrackedItemSettings,
-} from "../../services/trackedItemService";
-import { validateItem } from "../../utils/validation/trackedItems";
+import { TrackedItemRow } from "../../components/manageItems/TrackedItemRow";
+import { trackedItemService } from "../../services/trackedItemService";
 import type { TradingConfig } from "../../services/tradingConfig";
 import type { TrackedItem } from "../../types";
 
 /**
- * Where the tracked items are listed: changing their settings and no longer
- * tracking them. Decides whether a change can be made and what to say when it
- * can't, so the rows and their forms only have to show it.
+ * Where the tracked items are listed, with the way to each item's own settings
+ * page and the way to stop tracking one. Decides what to say when a change
+ * couldn't be made, so the rows only have to show it.
  */
 export const ManageItemsContainer = ({
   config,
@@ -23,50 +19,24 @@ export const ManageItemsContainer = ({
   onTrackedItemsChanged: () => void;
 }) => {
   const { trackedItems } = config;
-  // Only one item's settings are edited at a time, and only that item can have
-  // a change of its own that didn't go through.
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [refused, setRefused] = useState<{
+  // Changes are made one at a time, so only the item last changed can have an
+  // error of its own to show.
+  const [failed, setFailed] = useState<{
     itemId: string;
     message: string;
   } | null>(null);
 
-  const startEditing = (item: TrackedItem) => {
-    setEditingId(item.id);
-    setRefused(null);
-  };
-
-  const stopEditing = () => {
-    setEditingId(null);
-    setRefused(null);
-  };
-
-  const refuse = (item: TrackedItem, message: string) =>
-    setRefused({ itemId: item.id, message });
-
-  const update = (item: TrackedItem, settings: TrackedItemSettings) => {
-    const refusal = validateItem({ ...item, ...settings }, trackedItems, {
-      excludingId: item.id,
-    });
-    // Nothing is attempted while the tracked items wouldn't accept it.
-    if (refusal) return refuse(item, refusal);
-
-    setRefused(null);
-    trackedItemService
-      .updateTrackedItem(item.id, settings)
-      .then(() => {
-        setEditingId(null);
-        onTrackedItemsChanged();
-      })
-      .catch(() => refuse(item, "Something went wrong. Try again shortly."));
-  };
-
   const untrack = (item: TrackedItem) => {
-    setRefused(null);
+    setFailed(null);
     trackedItemService
       .untrackItem(item.id)
       .then(onTrackedItemsChanged)
-      .catch(() => refuse(item, "Something went wrong. Try again shortly."));
+      .catch(() =>
+        setFailed({
+          itemId: item.id,
+          message: "Something went wrong. Try again shortly.",
+        }),
+      );
   };
 
   return (
@@ -90,13 +60,10 @@ export const ManageItemsContainer = ({
               <TrackedItemRow
                 key={item.id}
                 item={item}
-                isEditing={item.id === editingId}
+                editHref={`/manage-items/edit/${item.id}`}
                 errorMessage={
-                  refused?.itemId === item.id ? refused.message : null
+                  failed?.itemId === item.id ? failed.message : null
                 }
-                onEdit={() => startEditing(item)}
-                onCancelEdit={stopEditing}
-                onUpdate={(settings) => update(item, settings)}
                 onUntrack={() => untrack(item)}
               />
             ))}

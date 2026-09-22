@@ -69,7 +69,7 @@ describe("trackedItemService", () => {
     });
 
     it.each([0, 1.5])(
-      "should refuse a target quantity of %s, which isn't a whole number of at least 1",
+      "should not track a target quantity of %s, which isn't a whole number of at least 1",
       async (targetQuantity) => {
         const service = createService();
 
@@ -83,7 +83,7 @@ describe("trackedItemService", () => {
     );
 
     it.each([-1, 10.5])(
-      "should refuse a sell price ceiling of %s, which isn't a whole number of gil",
+      "should not track a sell price ceiling of %s, which isn't a whole number of gil",
       async (sellPriceCeiling) => {
         const service = createService();
 
@@ -142,7 +142,7 @@ describe("trackedItemService", () => {
       await service.updateTrackedItem(tracked.id, { targetQuantity: 5 });
     });
 
-    it("should refuse a quality the same item is already tracked with", async () => {
+    it("should not save a quality the same item is already tracked with", async () => {
       const service = createService();
       await trackItem(service, { ...cordial, hq: true });
       const nq = await trackItem(service, cordial);
@@ -153,7 +153,7 @@ describe("trackedItemService", () => {
       expect((await service.getTrackedItems())[1].hq).toBeUndefined();
     });
 
-    it("should refuse to change an item that isn't tracked", async () => {
+    it("should fail to change an item that isn't tracked", async () => {
       await expect(
         createService().updateTrackedItem("missing", { targetQuantity: 1 }),
       ).rejects.toThrow("This item is no longer tracked.");
@@ -171,7 +171,7 @@ describe("trackedItemService", () => {
       expect(await service.getTrackedItems()).toEqual([hq]);
     });
 
-    it("should refuse to remove an item that isn't tracked", async () => {
+    it("should fail to remove an item that isn't tracked", async () => {
       await expect(createService().untrackItem("missing")).rejects.toThrow(
         "This item is no longer tracked.",
       );

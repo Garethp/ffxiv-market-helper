@@ -88,34 +88,34 @@ describe("characterService", () => {
       expect(character.note).toBeUndefined();
     });
 
-    it("should refuse a character with no name", async () => {
+    it("should not add a character with no name", async () => {
       const service = createService();
 
       await expect(
         service.addCharacter({ name: " ", homeWorld: "Raiden" }),
       ).rejects.toMatchObject({
-        refusal: { reason: "missing-name" },
+        failure: { reason: "missing-name" },
       });
       expect(await service.getCharacters()).toEqual([]);
     });
 
-    it("should refuse a home world that isn't in the region directory", async () => {
+    it("should not add a home world that isn't in the region directory", async () => {
       const service = createService();
 
       await expect(
         service.addCharacter({ name: "Alice", homeWorld: "Nowhere" }),
       ).rejects.toMatchObject({
-        refusal: { reason: "unknown-world", world: "Nowhere" },
+        failure: { reason: "unknown-world", world: "Nowhere" },
       });
       expect(await service.getCharacters()).toEqual([]);
     });
 
-    it("should refuse a second character with the same name on the same world", async () => {
+    it("should not add a second character with the same name on the same world", async () => {
       const service = createService();
       await addCharacter(service);
 
       await expect(service.addCharacter(alice)).rejects.toMatchObject({
-        refusal: {
+        failure: {
           reason: "duplicate-character",
           name: "Alice",
           world: "Raiden",
@@ -178,7 +178,7 @@ describe("characterService", () => {
       await service.updateCharacter(character.id, { ...alice, note: "Hi" });
     });
 
-    it("should refuse a name and world another character already has", async () => {
+    it("should not save a name and world another character already has", async () => {
       const service = createService();
       await addCharacter(service, alice);
       const bob = await addCharacter(service, { ...alice, name: "Bob" });
@@ -186,7 +186,7 @@ describe("characterService", () => {
       await expect(
         service.updateCharacter(bob.id, alice),
       ).rejects.toMatchObject({
-        refusal: {
+        failure: {
           reason: "duplicate-character",
           name: "Alice",
           world: "Raiden",
@@ -195,11 +195,11 @@ describe("characterService", () => {
       expect((await service.getCharacters())[1].name).toBe("Bob");
     });
 
-    it("should refuse to change a character that isn't in the roster", async () => {
+    it("should fail to change a character that isn't in the roster", async () => {
       await expect(
         createService().updateCharacter("missing", alice),
       ).rejects.toMatchObject({
-        refusal: { reason: "character-not-found" },
+        failure: { reason: "character-not-found" },
       });
     });
   });
@@ -215,11 +215,11 @@ describe("characterService", () => {
       expect(await service.getCharacters()).toEqual([second]);
     });
 
-    it("should refuse to remove a character that isn't in the roster", async () => {
+    it("should fail to remove a character that isn't in the roster", async () => {
       await expect(
         createService().removeCharacter("missing"),
       ).rejects.toMatchObject({
-        refusal: { reason: "character-not-found" },
+        failure: { reason: "character-not-found" },
       });
     });
   });
@@ -240,29 +240,29 @@ describe("characterService", () => {
       ]);
     });
 
-    it("should refuse a retainer with no name", async () => {
+    it("should not add a retainer with no name", async () => {
       const service = createService();
       const character = await addCharacter(service);
 
       await expect(
         service.addRetainer(character.id, { name: "", city: "Ul'dah" }),
       ).rejects.toMatchObject({
-        refusal: { reason: "missing-name" },
+        failure: { reason: "missing-name" },
       });
     });
 
-    it("should refuse a city that isn't a market board city", async () => {
+    it("should not add a city that isn't a market board city", async () => {
       const service = createService();
       const character = await addCharacter(service);
 
       await expect(
         service.addRetainer(character.id, { name: "Amarana", city: "Nowhere" }),
       ).rejects.toMatchObject({
-        refusal: { reason: "unknown-city", city: "Nowhere" },
+        failure: { reason: "unknown-city", city: "Nowhere" },
       });
     });
 
-    it("should refuse a second retainer with the same name on the same character", async () => {
+    it("should not add a second retainer with the same name on the same character", async () => {
       const service = createService();
       const character = await addCharacter(service);
       const retainer = { name: "Amarana", city: "Ul'dah" };
@@ -271,7 +271,7 @@ describe("characterService", () => {
       await expect(
         service.addRetainer(character.id, retainer),
       ).rejects.toMatchObject({
-        refusal: { reason: "duplicate-retainer", name: "Amarana" },
+        failure: { reason: "duplicate-retainer", name: "Amarana" },
       });
     });
 
@@ -285,14 +285,14 @@ describe("characterService", () => {
       await service.addRetainer(second.id, retainer);
     });
 
-    it("should refuse to add a retainer to a character that isn't in the roster", async () => {
+    it("should fail to add a retainer to a character that isn't in the roster", async () => {
       await expect(
         createService().addRetainer("missing", {
           name: "Amarana",
           city: "Ul'dah",
         }),
       ).rejects.toMatchObject({
-        refusal: { reason: "character-not-found" },
+        failure: { reason: "character-not-found" },
       });
     });
   });
@@ -337,7 +337,7 @@ describe("characterService", () => {
       });
     });
 
-    it("should refuse a name another of the character's retainers already has", async () => {
+    it("should not save a name another of the character's retainers already has", async () => {
       const service = createService();
       const character = await addCharacterWithRetainers(
         service,
@@ -352,11 +352,11 @@ describe("characterService", () => {
           city: "Ul'dah",
         }),
       ).rejects.toMatchObject({
-        refusal: { reason: "duplicate-retainer", name: "Amarana" },
+        failure: { reason: "duplicate-retainer", name: "Amarana" },
       });
     });
 
-    it("should refuse to change a retainer the character doesn't have", async () => {
+    it("should fail to change a retainer the character doesn't have", async () => {
       const service = createService();
       const character = await addCharacter(service);
 
@@ -366,7 +366,7 @@ describe("characterService", () => {
           city: "Ul'dah",
         }),
       ).rejects.toMatchObject({
-        refusal: { reason: "retainer-not-found" },
+        failure: { reason: "retainer-not-found" },
       });
     });
   });
@@ -390,14 +390,14 @@ describe("characterService", () => {
       expect((await service.getCharacters())[0].retainers).toEqual([second]);
     });
 
-    it("should refuse to remove a retainer the character doesn't have", async () => {
+    it("should fail to remove a retainer the character doesn't have", async () => {
       const service = createService();
       const character = await addCharacter(service);
 
       await expect(
         service.removeRetainer(character.id, "missing"),
       ).rejects.toMatchObject({
-        refusal: { reason: "retainer-not-found" },
+        failure: { reason: "retainer-not-found" },
       });
     });
   });

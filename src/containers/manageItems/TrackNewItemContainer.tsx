@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { ItemSearchResult } from "../../types";
-import { ItemSearch } from "../../components/ItemSearch";
-import { TrackedItemSettingsForm } from "../../components/TrackedItemSettingsForm";
+import { ItemSearch } from "../../components/manageItems/ItemSearch";
+import { TrackedItemSettingsForm } from "../../components/manageItems/TrackedItemSettingsForm";
 import {
   trackedItemService,
   type TrackedItemSettings,

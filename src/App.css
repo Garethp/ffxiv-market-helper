@@ -489,6 +489,21 @@ header h1 {
   margin-right: auto;
 }
 
+/* An action that leads to a page of its own, sitting alongside the row's buttons. */
+.entry-row a {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #3a3e4a;
+  border-radius: 0.25rem;
+  background: #1c1f27;
+  color: #e8e8e8;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.entry-row a:hover {
+  border-color: #8ab4f8;
+}
+
 .entry-form {
   display: flex;
   flex-wrap: wrap;
