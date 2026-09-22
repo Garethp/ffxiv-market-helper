@@ -194,7 +194,14 @@ header h1 {
   display: flex;
 }
 
+/* Neighbouring borders overlap rather than one being dropped, so a
+   highlighted button can sit on top and show all four of its edges. */
+.view-toggle button {
+  position: relative;
+}
+
 .view-toggle button:not(:first-child) {
+  margin-left: -1px;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
@@ -202,12 +209,16 @@ header h1 {
 .view-toggle button:not(:last-child) {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  border-right: none;
 }
 
 .toolbar .view-toggle button[aria-pressed="true"] {
+  z-index: 1;
   background: #2a3550;
   border-color: #8ab4f8;
+}
+
+.toolbar .view-toggle button:not(:disabled):hover {
+  z-index: 2;
 }
 
 .route-leg {
