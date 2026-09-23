@@ -258,6 +258,17 @@ header h1 {
   border-color: #8ab4f8;
 }
 
+/* A section of the page that stands on its own rather than inside a card, for content that draws
+   its own box. */
+.page-section {
+  margin-bottom: 1.5rem;
+}
+
+.page-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
 /* What the page is for and how to read it, above everything it explains. */
 .page-intro {
   max-width: 50rem;
@@ -521,6 +532,14 @@ header h1 {
 
 .entry-form-wide {
   flex: 1 1 16rem;
+}
+
+/* One field per row, so nothing has to share a line with anything else on a narrow
+   screen. Kept to a readable column width rather than the whole page. */
+.entry-form-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 24rem;
 }
 
 .entry-form input,
@@ -1170,6 +1189,69 @@ header h1 {
 
 .profit-row-details a {
   color: #8ab4f8;
+}
+
+/* Tracked items being managed on a phone: what each is tracked as, opening up into what the item
+   is and the ways to change it. */
+/* Both figures along one line, the way the profit rows show theirs. */
+.tracked-item-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0.25rem 0 0;
+}
+
+.tracked-item-figures div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.tracked-item-figures dt {
+  color: #9aa0aa;
+  font-size: 0.85rem;
+}
+
+.tracked-item-figures dd {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.tracked-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* The icon and description belong to the opened row rather than a tooltip, so they get the row's
+   own text colour and size. */
+.tracked-item-details .item-summary {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.tracked-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* A link and a button sitting side by side, so they're given the same shape. */
+.tracked-item-actions a,
+.tracked-item-actions button {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #3a3e4a;
+  border-radius: 0.25rem;
+  background: #1c1f27;
+  color: #e8e8e8;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tracked-item-actions a:hover,
+.tracked-item-actions button:hover {
+  border-color: #8ab4f8;
 }
 
 /* The badges and summary start at the row's left edge, the details end at its right, so their

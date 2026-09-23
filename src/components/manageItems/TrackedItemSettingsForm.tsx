@@ -54,7 +54,11 @@ export const TrackedItemSettingsForm = ({
   };
 
   return (
-    <form aria-label={label} className="entry-form" onSubmit={submit}>
+    <form
+      aria-label={label}
+      className="entry-form entry-form-stacked"
+      onSubmit={submit}
+    >
       <fieldset className="quality-choice">
         <legend>Quality</legend>
         {(["NQ", "HQ"] as const).map((option) => (

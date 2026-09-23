@@ -1,8 +1,17 @@
 import { useState, type MouseEvent, type ReactNode } from "react";
 
 /** A list of rows that each open up in place, bordered as one block so it reads like a table. */
-export const ExpandableList = ({ children }: { children: ReactNode }) => (
-  <ul className="expandable-list">{children}</ul>
+export const ExpandableList = ({
+  label,
+  children,
+}: {
+  /** Names the list, for when its rows alone don't say what it holds. */
+  label?: string;
+  children: ReactNode;
+}) => (
+  <ul className="expandable-list" aria-label={label}>
+    {children}
+  </ul>
 );
 
 /**

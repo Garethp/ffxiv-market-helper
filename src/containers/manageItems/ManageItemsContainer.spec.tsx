@@ -4,6 +4,13 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ItemSearchResult, TradingParameters } from "../../types";
 
+vi.mock("../../hooks/useIsNarrowScreen", () => ({
+  useIsNarrowScreen: vi.fn(),
+}));
+// Nothing here opens a row far enough to need a real summary.
+vi.mock("../../services/itemService", () => ({
+  itemService: { getItemSummaries: vi.fn().mockResolvedValue(new Map()) },
+}));
 // The real localStorage implementation, starting out with nothing tracked.
 vi.mock("../../services/trackedItemService", async (importOriginal) => {
   const actual =
@@ -14,6 +21,7 @@ vi.mock("../../services/trackedItemService", async (importOriginal) => {
   };
 });
 
+import { useIsNarrowScreen } from "../../hooks/useIsNarrowScreen";
 import { useReloadable } from "../../hooks/useReloadable";
 import { trackedItemService } from "../../services/trackedItemService";
 import { buildTradingConfig } from "../../services/tradingConfig";
@@ -55,8 +63,11 @@ const renderPage = async () => {
   await screen.findByRole("heading", { name: "Manage Items" });
 };
 
+const mockedIsNarrowScreen = vi.mocked(useIsNarrowScreen);
+
 beforeEach(() => {
   localStorage.clear();
+  mockedIsNarrowScreen.mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -117,6 +128,41 @@ describe("ManageItemsContainer", () => {
         "Something went wrong. Try again shortly.",
       );
       expect(screen.getByText("Cordial")).toBeTruthy();
+    });
+  });
+
+  describe("on a narrow screen", () => {
+    beforeEach(async () => {
+      mockedIsNarrowScreen.mockReturnValue(true);
+      await trackedItemService.trackItem({ ...cordial, targetQuantity: 999 });
+    });
+
+    it("should show each item as a row that opens up, holding the ways to change it", async () => {
+      await renderPage();
+
+      expect(
+        screen.queryByRole("link", { name: "Edit Cordial (NQ)" }),
+      ).toBeNull();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show what Cordial (NQ) is" }),
+      );
+      expect(
+        screen.getByRole("link", { name: "Edit Cordial (NQ)" }),
+      ).toBeTruthy();
+    });
+
+    it("should stop tracking an item from its opened row", async () => {
+      await renderPage();
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show what Cordial (NQ) is" }),
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: "Stop tracking Cordial (NQ)" }),
+      );
+
+      await screen.findByText(/No items are tracked yet/);
+      expect(await trackedItemService.getTrackedItems()).toEqual([]);
     });
   });
 
