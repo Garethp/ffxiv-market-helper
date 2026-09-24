@@ -6,7 +6,7 @@ import {
 } from "../services/rowAnalysis";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, ProfitRow, PricedItem } from "../types";
-import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
+import { buildProfitRow, buildRowMarketDataQuery } from "./profitRowQuery";
 
 /**
  * How far pricing a scanned item has got. An item that isn't being priced, or
@@ -28,7 +28,7 @@ export type ScannedItemProfit =
  * decides whether it's in demand as HQ, wherever it's bought — with ties going
  * to NQ.
  */
-const untrackedItem = (
+const buildUntrackedItem = (
   itemId: number,
   name: string,
   { sell }: RowMarketData,
@@ -46,7 +46,7 @@ const untrackedItem = (
  * Character — but once per set of items, without refreshing afterward.
  */
 export const useScannedItemProfits = (
-  items: { itemId: number; name: string | null }[],
+  items: { itemId: number; name?: string }[],
   config: TradingConfig,
   currentCharacter: Character,
 ): Record<number, ScannedItemProfit> => {
@@ -78,13 +78,13 @@ export const useScannedItemProfits = (
         )?.data;
         if (!loaded) return;
 
-        const item = untrackedItem(itemId, name ?? `#${itemId}`, loaded);
+        const item = buildUntrackedItem(itemId, name ?? `#${itemId}`, loaded);
         profits[itemId] = {
           status: "ready",
           rowByRegion: Object.fromEntries(
             buyingRegions.map(({ region }, r) => [
               region,
-              profitRow(regionQueries[r], item, currentCharacter, config),
+              buildProfitRow(regionQueries[r], item, currentCharacter, config),
             ]),
           ),
         };
@@ -97,7 +97,7 @@ export const useScannedItemProfits = (
   return useQueries({
     queries: pricedItems.flatMap(({ itemId }) =>
       buyingRegions.map(({ region }) =>
-        rowMarketDataQuery(itemId, region, currentCharacter, config),
+        buildRowMarketDataQuery(itemId, region, currentCharacter, config),
       ),
     ),
     combine,

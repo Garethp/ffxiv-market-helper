@@ -23,7 +23,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 });
 
 import { fetchRowMarketData } from "../services/rowAnalysis";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { useTrackedItemsAnalysis } from "./useTrackedItemsAnalysis";
 
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
@@ -73,7 +73,7 @@ const config: TradingConfig = {
   ownRetainers: [],
 };
 
-const marketData = (
+const buildMarketData = (
   data: Partial<UniversalisMarketData>,
 ): UniversalisMarketData => ({
   itemID: 1,
@@ -86,7 +86,7 @@ const marketData = (
 
 /** Sells for 1,000 and can be bought for 400. */
 const rowMarketData: RowMarketData = {
-  sell: marketData({
+  sell: buildMarketData({
     recentHistory: [1, 2, 3].map(() => ({
       pricePerUnit: 1000,
       quantity: 1,
@@ -98,7 +98,7 @@ const rowMarketData: RowMarketData = {
   buy: [
     {
       dataCenter: "Light",
-      data: marketData({
+      data: buildMarketData({
         listings: [
           {
             pricePerUnit: 400,
@@ -115,7 +115,7 @@ const rowMarketData: RowMarketData = {
 const renderTrackedItems = (character: Character = alice) =>
   renderHook(({ character }) => useTrackedItemsAnalysis(config, character), {
     initialProps: { character },
-    wrapper: withQueryClient(),
+    wrapper: createQueryClientWrapper(),
   });
 
 /** Lets fetches settle, and runs whatever is due within the given time. */
@@ -124,34 +124,34 @@ const advance = (ms = 0) =>
     await vi.advanceTimersByTimeAsync(ms);
   });
 
-const europeRow = (result: {
+const getEuropeRow = (result: {
   current: ReturnType<typeof useTrackedItemsAnalysis>;
 }) => result.current.rowsByRegion["Europe"][0];
 
-beforeAll(() => {
-  // TanStack Query hands results to React on a zero-delay timer, which fake timers only run once
-  // the clock moves past it. Handing them over straight away lets each test move the clock by
-  // exactly the time it describes.
-  notifyManager.setScheduler(queueMicrotask);
-});
-
-afterAll(() => {
-  notifyManager.setScheduler(defaultScheduler);
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.useFakeTimers();
-  vi.setSystemTime(startTime);
-  mockedFetchRowMarketData.mockResolvedValue(rowMarketData);
-});
-
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-});
-
 describe("useTrackedItemsAnalysis", () => {
+  beforeAll(() => {
+    // TanStack Query hands results to React on a zero-delay timer, which fake timers only run once
+    // the clock moves past it. Handing them over straight away lets each test move the clock by
+    // exactly the time it describes.
+    notifyManager.setScheduler(queueMicrotask);
+  });
+
+  afterAll(() => {
+    notifyManager.setScheduler(defaultScheduler);
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(startTime);
+    mockedFetchRowMarketData.mockResolvedValue(rowMarketData);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
   it("should show every tracked item in every buying region as refreshing until its market data arrives", () => {
     mockedFetchRowMarketData.mockReturnValue(new Promise(() => {}));
 
@@ -168,7 +168,7 @@ describe("useTrackedItemsAnalysis", () => {
         },
       ]);
     }
-    expect(result.current.lastUpdated).toBeNull();
+    expect(result.current.lastUpdated).toBeUndefined();
   });
 
   it("should price every tracked item through every buying region, selling through the Current Character", async () => {
@@ -183,7 +183,7 @@ describe("useTrackedItemsAnalysis", () => {
       [1, "Europe", alice],
       [1, "Japan", alice],
     ]);
-    expect(europeRow(result)).toMatchObject({
+    expect(getEuropeRow(result)).toMatchObject({
       row: {
         analysis: { status: "ready", profitPerItem: 600 },
       },
@@ -238,7 +238,7 @@ describe("useTrackedItemsAnalysis", () => {
 
       await advance(10_000);
       expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4);
-      expect(europeRow(result).row.analysis).toEqual({ status: "pending" });
+      expect(getEuropeRow(result).row.analysis).toEqual({ status: "pending" });
     });
 
     it("should keep showing the row's last good prices when a later refresh fails", async () => {
@@ -248,7 +248,7 @@ describe("useTrackedItemsAnalysis", () => {
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
       await advance(90_000 + 10_000);
 
-      expect(europeRow(result).row.analysis).toMatchObject({
+      expect(getEuropeRow(result).row.analysis).toMatchObject({
         status: "ready",
         profitPerItem: 600,
       });

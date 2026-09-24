@@ -19,7 +19,7 @@ const regions: RegionInfo[] = [
   },
 ];
 
-const aCharacter = (overrides: Partial<Character> = {}): Character => ({
+const buildCharacter = (overrides: Partial<Character> = {}): Character => ({
   id: "alice",
   name: "Alice",
   homeWorld: "Raiden",
@@ -53,15 +53,15 @@ const renderCard = (
   return { onRemove };
 };
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
-
 describe("CharacterCard", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   describe("showing the character", () => {
     it("should show the character's name, home world and region", () => {
-      renderCard(aCharacter({ name: "Alice", homeWorld: "Odin" }));
+      renderCard(buildCharacter({ name: "Alice", homeWorld: "Odin" }));
 
       expect(
         screen.getByRole("heading", { level: 2, name: "Alice Odin (Europe)" }),
@@ -69,7 +69,7 @@ describe("CharacterCard", () => {
     });
 
     it("should say the region is unknown when the home world isn't in the directory", () => {
-      renderCard(aCharacter({ homeWorld: "Nowhere" }));
+      renderCard(buildCharacter({ homeWorld: "Nowhere" }));
 
       expect(
         screen.getByRole("heading", {
@@ -80,7 +80,7 @@ describe("CharacterCard", () => {
     });
 
     it("should show the character's note", () => {
-      renderCard(aCharacter({ note: "Needs a manual meetup" }));
+      renderCard(buildCharacter({ note: "Needs a manual meetup" }));
 
       expect(screen.getByText("Needs a manual meetup")).toBeTruthy();
     });
@@ -89,7 +89,7 @@ describe("CharacterCard", () => {
   describe("showing the retainers", () => {
     it("should list the retainer rows it's given", () => {
       renderCard(
-        aCharacter({
+        buildCharacter({
           retainers: [{ id: "r1", name: "Amarana", city: "Ul'dah" }],
         }),
         { children: <li>Amarana's row</li> },
@@ -100,7 +100,7 @@ describe("CharacterCard", () => {
     });
 
     it("should say when the character has no retainers yet", () => {
-      renderCard(aCharacter({ retainers: [] }));
+      renderCard(buildCharacter({ retainers: [] }));
 
       expect(screen.getByText("No retainers yet.")).toBeTruthy();
       expect(screen.queryByRole("list")).toBeNull();
@@ -111,7 +111,7 @@ describe("CharacterCard", () => {
     ["Edit Alice", "/characters/alice/edit"],
     ["Add a retainer for Alice", "/characters/alice/retainers/new"],
   ])("should lead to the page for %s", (name, href) => {
-    renderCard(aCharacter());
+    renderCard(buildCharacter());
 
     expect(screen.getByRole("link", { name }).getAttribute("href")).toBe(href);
   });
@@ -119,7 +119,7 @@ describe("CharacterCard", () => {
   describe("removing the character", () => {
     it("should report the removal once it's confirmed", () => {
       vi.spyOn(window, "confirm").mockReturnValue(true);
-      const { onRemove } = renderCard(aCharacter());
+      const { onRemove } = renderCard(buildCharacter());
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
 
@@ -128,7 +128,7 @@ describe("CharacterCard", () => {
 
     it("should report nothing when removing it isn't confirmed", () => {
       vi.spyOn(window, "confirm").mockReturnValue(false);
-      const { onRemove } = renderCard(aCharacter());
+      const { onRemove } = renderCard(buildCharacter());
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
 

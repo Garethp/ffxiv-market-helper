@@ -26,8 +26,8 @@ vi.mock("../hooks/useExpertDeliveryPrices", () => ({
 
 import { useExpertDeliveryPrices } from "../hooks/useExpertDeliveryPrices";
 import { itemService } from "../services/itemService";
-import { columnHeaderNames } from "../testing/columnHeaderNames";
-import { withQueryClient } from "../testing/withQueryClient";
+import { getColumnHeaderNames } from "../testing/getColumnHeaderNames";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { ExpertDeliveryContainer } from "./ExpertDeliveryContainer";
 
 const mockedGetExpertDeliveryItems = vi.mocked(
@@ -80,11 +80,11 @@ const renderPage = (currentCharacter = alice) =>
       config={config}
       currentCharacter={currentCharacter}
     />,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
 
 /** A cell's text as it reads, leaving out the copy button and its tooltip. */
-const cellText = (cell: HTMLElement) => {
+const getCellText = (cell: HTMLElement) => {
   const copy = cell.cloneNode(true) as HTMLElement;
   copy
     .querySelectorAll('[role="tooltip"], button, a')
@@ -92,30 +92,35 @@ const cellText = (cell: HTMLElement) => {
   return copy.textContent;
 };
 
-const rowsOf = (table: HTMLElement) =>
+const getRowsOf = (table: HTMLElement) =>
   within(table)
     .getAllByRole("row")
     .slice(1)
-    .map((row) => within(row).getAllByRole("cell").map(cellText));
+    .map((row) => within(row).getAllByRole("cell").map(getCellText));
 
-const tableRows = () => rowsOf(screen.getByRole("table"));
+const getTableRows = () => getRowsOf(screen.getByRole("table"));
 
-const itemNames = () => tableRows().map(([name]) => name);
+const getItemNames = () => getTableRows().map(([name]) => name);
 
-const pricesGiven = (prices: Record<number, ExpertDeliveryPrice>) =>
+const stubPrices = (prices: Record<number, ExpertDeliveryPrice>) =>
   mockedUseExpertDeliveryPrices.mockReturnValue(prices);
 
-const at = (pricePerUnit: number, worldName = "Zodiark"): RegionListing => ({
+const buildListing = (
+  pricePerUnit: number,
+  worldName = "Zodiark",
+): RegionListing => ({
   pricePerUnit,
   worldName,
 });
 
-const listed = (...listings: RegionListing[]): ExpertDeliveryPrice => ({
+const buildListedPrice = (
+  ...listings: RegionListing[]
+): ExpertDeliveryPrice => ({
   status: "listed",
   listings,
 });
 
-const itemsLoaded = () =>
+const waitForItemsLoaded = () =>
   waitFor(() => expect(screen.queryByText("Loading items…")).toBeNull());
 
 const setField = (label: string, value: string) =>
@@ -126,29 +131,29 @@ const showRoute = () =>
 
 let writeText: ReturnType<typeof vi.fn>;
 
-beforeEach(() => {
-  pricesGiven({});
-  writeText = vi.fn().mockResolvedValue(undefined);
-  Object.defineProperty(navigator, "clipboard", {
-    value: { writeText },
-    configurable: true,
-  });
-});
-
-afterEach(() => {
-  cleanup();
-  vi.resetAllMocks();
-  vi.useRealTimers();
-});
-
 describe("ExpertDeliveryContainer", () => {
+  beforeEach(() => {
+    stubPrices({});
+    writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.resetAllMocks();
+    vi.useRealTimers();
+  });
+
   describe("the items", () => {
     it("should list only items worth at least 150 seals", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([]);
 
       renderPage();
 
-      await itemsLoaded();
+      await waitForItemsLoaded();
       expect(mockedGetExpertDeliveryItems).toHaveBeenCalledExactlyOnceWith(150);
     });
 
@@ -209,7 +214,7 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should say it's loading until every item has been priced", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 1: listed(at(100)) });
+      stubPrices({ 1: buildListedPrice(buildListing(100)) });
 
       const { rerender } = renderPage();
       await waitFor(() =>
@@ -222,21 +227,30 @@ describe("ExpertDeliveryContainer", () => {
       expect(screen.getByText("Loading items…")).not.toBeNull();
       expect(screen.queryByRole("table")).toBeNull();
 
-      pricesGiven({ 8455: listed(at(100)), 1: listed(at(100)) });
+      stubPrices({
+        8455: buildListedPrice(buildListing(100)),
+        1: buildListedPrice(buildListing(100)),
+      });
       rerender(
         <ExpertDeliveryContainer config={config} currentCharacter={alice} />,
       );
 
       expect(screen.queryByText("Loading items…")).toBeNull();
-      expect(itemNames()).toEqual(["Some Sword", "Augmented Wolfram Cuirass"]);
+      expect(getItemNames()).toEqual([
+        "Some Sword",
+        "Augmented Wolfram Cuirass",
+      ]);
     });
 
     it("should say how many items couldn't be priced, in either view", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 8455: { status: "failed" }, 1: listed(at(100)) });
+      stubPrices({
+        8455: { status: "failed" },
+        1: buildListedPrice(buildListing(100)),
+      });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
       expect(
         screen.getByText("Couldn't fetch prices for 1 item."),
@@ -249,10 +263,13 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should say when no listings meet the filters, once everything's priced", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 8455: listed(at(5000)), 1: { status: "unlisted" } });
+      stubPrices({
+        8455: buildListedPrice(buildListing(5000)),
+        1: { status: "unlisted" },
+      });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
       expect(screen.getByText("No listings meet the filters.")).not.toBeNull();
       expect(screen.queryByRole("table")).toBeNull();
@@ -267,7 +284,7 @@ describe("ExpertDeliveryContainer", () => {
 
       renderPage();
 
-      await itemsLoaded();
+      await waitForItemsLoaded();
       expect(
         (screen.getByLabelText("Minimum seals / gil") as HTMLInputElement)
           .value,
@@ -279,33 +296,41 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should apply the limits as they're changed", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 8455: listed(at(100)), 1: listed(at(500)) });
+      stubPrices({
+        8455: buildListedPrice(buildListing(100)),
+        1: buildListedPrice(buildListing(500)),
+      });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       setField("Maximum price", "200");
 
-      expect(itemNames()).toEqual(["Augmented Wolfram Cuirass"]);
+      expect(getItemNames()).toEqual(["Augmented Wolfram Cuirass"]);
 
       setField("Maximum price", "");
       setField("Minimum seals / gil", "4");
 
-      expect(itemNames()).toEqual(["Augmented Wolfram Cuirass"]);
+      expect(getItemNames()).toEqual(["Augmented Wolfram Cuirass"]);
     });
   });
 
   describe("the list", () => {
     it("should show each item at its best listing, with how many listings meet the filters and their average seals per gil", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([sword]);
-      pricesGiven({
+      stubPrices({
         // The last is worth too few seals per gil to count.
-        1: listed(at(150, "Lich"), at(100, "Omega"), at(400), at(500)),
+        1: buildListedPrice(
+          buildListing(150, "Lich"),
+          buildListing(100, "Omega"),
+          buildListing(400),
+          buildListing(500),
+        ),
       });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
-      expect(columnHeaderNames(screen.getByRole("table"))).toEqual([
+      expect(getColumnHeaderNames(screen.getByRole("table"))).toEqual([
         "Item",
         "Lowest price",
         "Seals / gil",
@@ -314,31 +339,33 @@ describe("ExpertDeliveryContainer", () => {
         "Average seals / gil",
         "World",
       ]);
-      expect(tableRows()).toEqual([
+      expect(getTableRows()).toEqual([
         ["Some Sword", "100", "18.12", "1,812", "3", "11.58", "Omega - Chaos"],
       ]);
     });
 
     it("should show only the world for a world that isn't in the directory", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ 8455: listed(at(100, "Brand New World")) });
+      stubPrices({
+        8455: buildListedPrice(buildListing(100, "Brand New World")),
+      });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
-      expect(tableRows()[0].slice(-1)).toEqual(["Brand New World"]);
+      expect(getTableRows()[0].slice(-1)).toEqual(["Brand New World"]);
     });
   });
 
   describe("the route", () => {
-    const itemAt = (
+    const buildItem = (
       itemId: number,
       name: string,
       seals: number,
     ): ExpertDeliveryItem => ({ itemId, name, itemLevel: 100, seals });
 
     /** Each data center's heading, followed by the headings of the worlds in it. */
-    const routeHeadings = () =>
+    const getRouteHeadings = () =>
       screen
         .getAllByRole("heading", { level: 2 })
         .concat(screen.queryAllByRole("heading", { level: 3 }))
@@ -349,43 +376,43 @@ describe("ExpertDeliveryContainer", () => {
         )
         .map((heading) => heading.textContent);
 
-    const worldTable = (world: string) =>
+    const getWorldTable = (world: string) =>
       within(screen.getByRole("region", { name: world })).getByRole("table");
 
     it("should show the list until the route is picked", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([]);
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
-      const pressed = (name: string) =>
+      const getAriaPressed = (name: string) =>
         screen.getByRole("button", { name }).getAttribute("aria-pressed");
-      expect(pressed("List")).toBe("true");
-      expect(pressed("Route")).toBe("false");
+      expect(getAriaPressed("List")).toBe("true");
+      expect(getAriaPressed("Route")).toBe("false");
       showRoute();
-      expect(pressed("List")).toBe("false");
-      expect(pressed("Route")).toBe("true");
+      expect(getAriaPressed("List")).toBe("false");
+      expect(getAriaPressed("Route")).toBe("true");
     });
 
     it("should visit the home world, then the rest of its data center, then other data centers, most seals first", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([
-        itemAt(1, "On Omega", 5000),
-        itemAt(2, "On Lich", 300),
-        itemAt(3, "At home", 200),
-        itemAt(4, "On Odin", 900),
+        buildItem(1, "On Omega", 5000),
+        buildItem(2, "On Lich", 300),
+        buildItem(3, "At home", 200),
+        buildItem(4, "On Odin", 900),
       ]);
-      pricesGiven({
-        1: listed(at(100, "Omega")),
-        2: listed(at(50, "Lich")),
-        3: listed(at(10, "Zodiark")),
-        4: listed(at(100, "Odin")),
+      stubPrices({
+        1: buildListedPrice(buildListing(100, "Omega")),
+        2: buildListedPrice(buildListing(50, "Lich")),
+        3: buildListedPrice(buildListing(10, "Zodiark")),
+        4: buildListedPrice(buildListing(100, "Odin")),
       });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       showRoute();
 
-      expect(routeHeadings()).toEqual([
+      expect(getRouteHeadings()).toEqual([
         "Light",
         "Zodiark (home world) 1 listing, 200 seals",
         "Odin 1 listing, 900 seals",
@@ -397,30 +424,34 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should buy an item at each of its listings, among the other listings on that world most seals per gil first", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([
-        itemAt(1, "Sword", 900),
-        itemAt(2, "Shield", 500),
+        buildItem(1, "Sword", 900),
+        buildItem(2, "Shield", 500),
       ]);
-      pricesGiven({
-        1: listed(at(100, "Lich"), at(120, "Omega"), at(200, "Lich")),
-        2: listed(at(100, "Lich")),
+      stubPrices({
+        1: buildListedPrice(
+          buildListing(100, "Lich"),
+          buildListing(120, "Omega"),
+          buildListing(200, "Lich"),
+        ),
+        2: buildListedPrice(buildListing(100, "Lich")),
       });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       showRoute();
 
-      expect(columnHeaderNames(worldTable("Lich"))).toEqual([
+      expect(getColumnHeaderNames(getWorldTable("Lich"))).toEqual([
         "Item",
         "Price",
         "Seals / gil",
         "Seals",
       ]);
-      expect(rowsOf(worldTable("Lich"))).toEqual([
+      expect(getRowsOf(getWorldTable("Lich"))).toEqual([
         ["Sword", "100", "9.00", "900"],
         ["Shield", "100", "5.00", "500"],
         ["Sword", "200", "4.50", "900"],
       ]);
-      expect(rowsOf(worldTable("Omega"))).toEqual([
+      expect(getRowsOf(getWorldTable("Omega"))).toEqual([
         ["Sword", "120", "7.50", "900"],
       ]);
       expect(
@@ -430,19 +461,19 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should put worlds it doesn't know the data center of last", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([
-        itemAt(1, "Somewhere new", 5000),
-        itemAt(2, "On Omega", 300),
+        buildItem(1, "Somewhere new", 5000),
+        buildItem(2, "On Omega", 300),
       ]);
-      pricesGiven({
-        1: listed(at(100, "Brand New World")),
-        2: listed(at(50, "Omega")),
+      stubPrices({
+        1: buildListedPrice(buildListing(100, "Brand New World")),
+        2: buildListedPrice(buildListing(50, "Omega")),
       });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       showRoute();
 
-      expect(routeHeadings()).toEqual([
+      expect(getRouteHeadings()).toEqual([
         "Chaos",
         "Omega 1 listing, 300 seals",
         "Unknown data center",
@@ -454,9 +485,9 @@ describe("ExpertDeliveryContainer", () => {
   describe("what an item is", () => {
     it("should show it when a name in the list is hovered", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ [cuirass.itemId]: listed(at(100)) });
+      stubPrices({ [cuirass.itemId]: buildListedPrice(buildListing(100)) });
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
 
       fireEvent.mouseEnter(screen.getByText("Augmented Wolfram Cuirass"));
 
@@ -465,7 +496,7 @@ describe("ExpertDeliveryContainer", () => {
   });
 
   describe("copying an item name", () => {
-    const copyButtonsFor = (name: string) =>
+    const getCopyButtonsFor = (name: string) =>
       screen
         .getAllByRole("row")
         .filter((row) => row.textContent?.includes(name))
@@ -475,7 +506,7 @@ describe("ExpertDeliveryContainer", () => {
 
     const copy = async (name: string) => {
       await act(async () => {
-        fireEvent.click(copyButtonsFor(name)[0]);
+        fireEvent.click(getCopyButtonsFor(name)[0]);
       });
     };
 
@@ -483,14 +514,17 @@ describe("ExpertDeliveryContainer", () => {
       button.textContent?.includes("Copied!") ?? false;
 
     const isNameMarkedCopied = (name: string) =>
-      copyButtonsFor(name).every(isMarkedCopied);
+      getCopyButtonsFor(name).every(isMarkedCopied);
 
     it("should copy the item's name from the list, and mark only that item as copied", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({ 8455: listed(at(100)), 1: listed(at(100)) });
+      stubPrices({
+        8455: buildListedPrice(buildListing(100)),
+        1: buildListedPrice(buildListing(100)),
+      });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       await copy("Some Sword");
 
       expect(writeText).toHaveBeenCalledWith("Some Sword");
@@ -500,19 +534,23 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should mark only the route listing copied from, not the item's other listings on that world or others", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-      pricesGiven({
-        8455: listed(at(100, "Omega")),
-        1: listed(at(100), at(100), at(100, "Omega")),
+      stubPrices({
+        8455: buildListedPrice(buildListing(100, "Omega")),
+        1: buildListedPrice(
+          buildListing(100),
+          buildListing(100),
+          buildListing(100, "Omega"),
+        ),
       });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       showRoute();
       await copy("Augmented Wolfram Cuirass");
       await copy("Some Sword");
 
       expect(writeText).toHaveBeenLastCalledWith("Some Sword");
-      expect(copyButtonsFor("Some Sword").map(isMarkedCopied)).toEqual([
+      expect(getCopyButtonsFor("Some Sword").map(isMarkedCopied)).toEqual([
         true,
         false,
         false,
@@ -522,10 +560,10 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should stop marking the item as copied after a short delay", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ 8455: listed(at(100)) });
+      stubPrices({ 8455: buildListedPrice(buildListing(100)) });
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       vi.useFakeTimers();
       await copy("Augmented Wolfram Cuirass");
       act(() => {
@@ -543,10 +581,13 @@ describe("ExpertDeliveryContainer", () => {
       "should not let an earlier copy's delay unmark a later copy of %s",
       async (_, laterCopy) => {
         mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
-        pricesGiven({ 8455: listed(at(100)), 1: listed(at(100)) });
+        stubPrices({
+          8455: buildListedPrice(buildListing(100)),
+          1: buildListedPrice(buildListing(100)),
+        });
 
         renderPage();
-        await itemsLoaded();
+        await waitForItemsLoaded();
         vi.useFakeTimers();
         await copy("Augmented Wolfram Cuirass");
         act(() => {
@@ -563,11 +604,11 @@ describe("ExpertDeliveryContainer", () => {
 
     it("should not mark the item as copied when the clipboard can't be written to", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      pricesGiven({ 8455: listed(at(100)) });
+      stubPrices({ 8455: buildListedPrice(buildListing(100)) });
       writeText.mockRejectedValue(new Error("Denied"));
 
       renderPage();
-      await itemsLoaded();
+      await waitForItemsLoaded();
       await copy("Augmented Wolfram Cuirass");
 
       expect(isNameMarkedCopied("Augmented Wolfram Cuirass")).toBe(false);

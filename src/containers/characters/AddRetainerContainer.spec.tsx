@@ -67,7 +67,7 @@ const add = async (name: string) => {
   return characters[characters.length - 1].id;
 };
 
-const retainersOf = async (characterId: string) =>
+const readRetainersOf = async (characterId: string) =>
   (await characterService.getCharacters()).find(({ id }) => id === characterId)!
     .retainers;
 
@@ -86,7 +86,7 @@ const renderPage = (characterId: string) =>
   );
 
 /** The page's form, once the character it's for has been read. */
-const addForm = () => screen.findByRole("form");
+const findAddForm = () => screen.findByRole("form");
 
 const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
   Object.entries(fields).forEach(([label, value]) =>
@@ -95,24 +95,24 @@ const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
     }),
   );
 
-const backOnTheRoster = () => screen.findByText("Characters page");
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  onCharactersChanged.mockReset();
-  vi.restoreAllMocks();
-});
+const waitForRosterPage = () => screen.findByText("Characters page");
 
 describe("AddRetainerContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    onCharactersChanged.mockReset();
+    vi.restoreAllMocks();
+  });
+
   it("should name the character the retainer is for", async () => {
     const id = await add("Alice");
 
     renderPage(id);
-    const form = await addForm();
+    const form = await findAddForm();
 
     screen.getByRole("heading", { name: "Add a Retainer for Alice" });
     expect(form.getAttribute("aria-label")).toBe("Add a retainer for Alice");
@@ -122,16 +122,16 @@ describe("AddRetainerContainer", () => {
     const aliceId = await add("Alice");
     const bobId = await add("Bob");
     renderPage(aliceId);
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { "Retainer name": "Amarana", City: "Ul'dah" });
     fireEvent.click(within(form).getByRole("button", { name: "Add retainer" }));
 
-    await backOnTheRoster();
-    expect(await retainersOf(aliceId)).toEqual([
+    await waitForRosterPage();
+    expect(await readRetainersOf(aliceId)).toEqual([
       { id: expect.any(String), name: "Amarana", city: "Ul'dah" },
     ]);
-    expect(await retainersOf(bobId)).toEqual([]);
+    expect(await readRetainersOf(bobId)).toEqual([]);
     expect(onCharactersChanged).toHaveBeenCalled();
   });
 
@@ -139,7 +139,7 @@ describe("AddRetainerContainer", () => {
     const id = await add("Alice");
     await characterService.addRetainer(id, { name: "Amarana", city: "Ul'dah" });
     renderPage(id);
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { "Retainer name": "Amarana", City: "Kugane" });
     fireEvent.click(within(form).getByRole("button", { name: "Add retainer" }));
@@ -148,7 +148,7 @@ describe("AddRetainerContainer", () => {
       "This character already has a retainer named Amarana.",
     );
     expect(screen.queryByText("Characters page")).toBeNull();
-    expect(await retainersOf(id)).toHaveLength(1);
+    expect(await readRetainersOf(id)).toHaveLength(1);
     expect(onCharactersChanged).not.toHaveBeenCalled();
   });
 
@@ -158,7 +158,7 @@ describe("AddRetainerContainer", () => {
       new Error("storage is full"),
     );
     renderPage(id);
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { "Retainer name": "Amarana", City: "Ul'dah" });
     fireEvent.click(within(form).getByRole("button", { name: "Add retainer" }));
@@ -174,13 +174,13 @@ describe("AddRetainerContainer", () => {
     async (control) => {
       const id = await add("Alice");
       renderPage(id);
-      const form = await addForm();
+      const form = await findAddForm();
       fillIn(form, { "Retainer name": "Amarana", City: "Ul'dah" });
 
       fireEvent.click(screen.getByText(control));
 
-      await backOnTheRoster();
-      expect(await retainersOf(id)).toEqual([]);
+      await waitForRosterPage();
+      expect(await readRetainersOf(id)).toEqual([]);
       expect(onCharactersChanged).not.toHaveBeenCalled();
     },
   );
@@ -188,7 +188,7 @@ describe("AddRetainerContainer", () => {
   it("should go straight back to the roster when the character isn't in it", async () => {
     renderPage("never-added");
 
-    await backOnTheRoster();
+    await waitForRosterPage();
     expect(screen.queryByRole("form")).toBeNull();
   });
 });

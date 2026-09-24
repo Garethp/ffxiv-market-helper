@@ -74,7 +74,7 @@ const addAliceWithRetainers = async (
   return saved;
 };
 
-const savedRetainers = async () =>
+const readSavedRetainers = async () =>
   (await characterService.getCharacters())[0].retainers;
 
 /** The page for one retainer, alongside a stand-in for the roster it goes back to. */
@@ -96,9 +96,9 @@ const renderPage = (characterId: string, retainerId: string) =>
   );
 
 /** The page's form, once the retainer it's for has been read. */
-const editForm = () => screen.findByRole("form");
+const findEditForm = () => screen.findByRole("form");
 
-const fieldValue = (form: HTMLElement, label: string) =>
+const getFieldValue = (form: HTMLElement, label: string) =>
   (within(form).getByLabelText(label) as HTMLInputElement).value;
 
 const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
@@ -108,43 +108,43 @@ const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
     }),
   );
 
-const backOnTheRoster = () => screen.findByText("Characters page");
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  onCharactersChanged.mockReset();
-  vi.restoreAllMocks();
-});
+const waitForRosterPage = () => screen.findByText("Characters page");
 
 describe("EditRetainerContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    onCharactersChanged.mockReset();
+    vi.restoreAllMocks();
+  });
+
   it("should name the retainer and start with its current details", async () => {
     const alice = await addAliceWithRetainers("Amarana");
 
     renderPage(alice.id, alice.retainers[0].id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     screen.getByRole("heading", { name: "Edit Amarana" });
-    expect(fieldValue(form, "Retainer name")).toBe("Amarana");
-    expect(fieldValue(form, "City")).toBe("Ul'dah");
+    expect(getFieldValue(form, "Retainer name")).toBe("Amarana");
+    expect(getFieldValue(form, "City")).toBe("Ul'dah");
   });
 
   it("should save the entered details for only that retainer and go back to the roster, reporting the change", async () => {
     const alice = await addAliceWithRetainers("Amarana", "Bertrand");
     const [amarana, bertrand] = alice.retainers;
     renderPage(alice.id, bertrand.id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { "Retainer name": "Bertie", City: "Kugane" });
     fireEvent.click(
       within(form).getByRole("button", { name: "Save retainer" }),
     );
 
-    await backOnTheRoster();
-    expect(await savedRetainers()).toEqual([
+    await waitForRosterPage();
+    expect(await readSavedRetainers()).toEqual([
       amarana,
       { id: bertrand.id, name: "Bertie", city: "Kugane" },
     ]);
@@ -154,21 +154,21 @@ describe("EditRetainerContainer", () => {
   it("should let the retainer keep its own name", async () => {
     const alice = await addAliceWithRetainers("Amarana");
     renderPage(alice.id, alice.retainers[0].id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { City: "Kugane" });
     fireEvent.click(
       within(form).getByRole("button", { name: "Save retainer" }),
     );
 
-    await backOnTheRoster();
-    expect((await savedRetainers())[0].city).toBe("Kugane");
+    await waitForRosterPage();
+    expect((await readSavedRetainers())[0].city).toBe("Kugane");
   });
 
   it("should stay put explaining details the character wouldn't take, saving nothing", async () => {
     const alice = await addAliceWithRetainers("Amarana", "Bertrand");
     renderPage(alice.id, alice.retainers[1].id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { "Retainer name": "Amarana" });
     fireEvent.click(
@@ -179,7 +179,7 @@ describe("EditRetainerContainer", () => {
       "This character already has a retainer named Amarana.",
     );
     expect(screen.queryByText("Characters page")).toBeNull();
-    expect(await savedRetainers()).toEqual(alice.retainers);
+    expect(await readSavedRetainers()).toEqual(alice.retainers);
     expect(onCharactersChanged).not.toHaveBeenCalled();
   });
 
@@ -189,7 +189,7 @@ describe("EditRetainerContainer", () => {
       new Error("storage is full"),
     );
     renderPage(alice.id, alice.retainers[0].id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { City: "Kugane" });
     fireEvent.click(
@@ -207,13 +207,13 @@ describe("EditRetainerContainer", () => {
     async (control) => {
       const alice = await addAliceWithRetainers("Amarana");
       renderPage(alice.id, alice.retainers[0].id);
-      const form = await editForm();
+      const form = await findEditForm();
       fillIn(form, { City: "Kugane" });
 
       fireEvent.click(screen.getByText(control));
 
-      await backOnTheRoster();
-      expect(await savedRetainers()).toEqual(alice.retainers);
+      await waitForRosterPage();
+      expect(await readSavedRetainers()).toEqual(alice.retainers);
       expect(onCharactersChanged).not.toHaveBeenCalled();
     },
   );
@@ -228,7 +228,7 @@ describe("EditRetainerContainer", () => {
 
       renderPage(characterId ?? alice.id, retainerId);
 
-      await backOnTheRoster();
+      await waitForRosterPage();
       expect(screen.queryByRole("form")).toBeNull();
     },
   );

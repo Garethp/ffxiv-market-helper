@@ -89,11 +89,11 @@ export type TaxRatesByCity = Record<string, number>;
 /** Fetches current retainer tax rates per market board city for a given world. */
 export const fetchTaxRates = async (
   world: string,
-  options: { signal?: AbortSignal } = {},
+  signal?: AbortSignal,
 ): Promise<TaxRatesByCity> => {
   const url = `${BASE_URL}/tax-rates?world=${encodeURIComponent(world)}`;
 
-  const response = await client.fetch(url, { signal: options.signal });
+  const response = await client.fetch(url, { signal });
   if (!response.ok) {
     throw new Error(
       `Universalis tax-rates request failed (${response.status}) for world ${world}`,
@@ -189,7 +189,7 @@ const UNIVERSALIS_REGION_NAMES: Record<string, string> = {
   "North America": "North-America",
 };
 
-const universalisRegionName = (region: string): string =>
+const toUniversalisRegionName = (region: string): string =>
   UNIVERSALIS_REGION_NAMES[region] ?? region;
 
 /**
@@ -201,7 +201,7 @@ const universalisRegionName = (region: string): string =>
 export const fetchRegionListings = async (
   region: string,
   itemIds: number[],
-  options: { signal?: AbortSignal } = {},
+  signal?: AbortSignal,
 ): Promise<Map<number, RegionListing[]>> => {
   if (itemIds.length === 0) return new Map();
   if (itemIds.length > REGION_LISTINGS_BATCH_SIZE) {
@@ -216,11 +216,9 @@ export const fetchRegionListings = async (
     .map((field) => `${isSingleItem ? "" : "items."}listings.${field}`)
     .join(",");
   // Leaving out the number of listings asks for all of them, which Universalis gives cheapest first.
-  const url = `${BASE_URL}/${encodeURIComponent(universalisRegionName(region))}/${itemIds.join(",")}?entries=0&fields=${listingFields}`;
+  const url = `${BASE_URL}/${encodeURIComponent(toUniversalisRegionName(region))}/${itemIds.join(",")}?entries=0&fields=${listingFields}`;
 
-  const response = await backgroundClient.fetch(url, {
-    signal: options.signal,
-  });
+  const response = await backgroundClient.fetch(url, { signal });
   // An item Universalis doesn't know is left out of a response for several, but is a 404 on its own.
   if (isSingleItem && response.status === 404) return new Map();
   if (!response.ok) {

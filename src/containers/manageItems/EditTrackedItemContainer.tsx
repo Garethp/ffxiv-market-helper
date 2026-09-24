@@ -24,7 +24,7 @@ export const EditTrackedItemContainer = ({
   const { trackedItems } = config;
   const { itemId } = useParams();
   const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   // Untracked in another tab, or an address typed by hand. Replaced rather than
   // pushed, so going back doesn't land here again.
@@ -36,7 +36,7 @@ export const EditTrackedItemContainer = ({
     // Nothing is attempted while the tracked items wouldn't accept it.
     if (error) return setErrorMessage(error);
 
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     trackedItemService
       .updateTrackedItem(item.id, settings)
       .then(() => {

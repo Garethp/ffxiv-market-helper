@@ -15,7 +15,7 @@ vi.mock("../../services/itemService", () => ({
 }));
 
 import { itemService } from "../../services/itemService";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 import { ItemSearch } from "./ItemSearch";
 
 const mockedSearchItems = vi.mocked(itemService.searchItems);
@@ -33,7 +33,7 @@ const wateredCordial: ItemSearchResult = {
 };
 
 /** A promise whose resolution is controlled from outside. */
-const deferred = <T,>() => {
+const createDeferred = <T,>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolve = r;
@@ -42,7 +42,9 @@ const deferred = <T,>() => {
 };
 
 const renderSearch = (onPick = vi.fn()) => {
-  render(<ItemSearch onPick={onPick} />, { wrapper: withQueryClient() });
+  render(<ItemSearch onPick={onPick} />, {
+    wrapper: createQueryClientWrapper(),
+  });
   return onPick;
 };
 
@@ -57,24 +59,24 @@ const typeText = (text: string) => {
 const waitLongerThanTypingPause = () =>
   act(() => new Promise((resolve) => setTimeout(resolve, 500)));
 
-beforeEach(() => {
-  mockedSearchItems.mockResolvedValue([cordial, wateredCordial]);
-  mockedGetItemSummaries.mockResolvedValue(
-    new Map([
-      [
-        6141,
-        { type: "Medicine", description: "A sweet, fermented concoction." },
-      ],
-    ]),
-  );
-});
-
-afterEach(() => {
-  cleanup();
-  vi.resetAllMocks();
-});
-
 describe("ItemSearch", () => {
+  beforeEach(() => {
+    mockedSearchItems.mockResolvedValue([cordial, wateredCordial]);
+    mockedGetItemSummaries.mockResolvedValue(
+      new Map([
+        [
+          6141,
+          { type: "Medicine", description: "A sweet, fermented concoction." },
+        ],
+      ]),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.resetAllMocks();
+  });
+
   it("should search once typing stops, listing the matching items", async () => {
     renderSearch();
 
@@ -85,9 +87,10 @@ describe("ItemSearch", () => {
       screen.getByRole("button", { name: "Watered Cordial" }),
     ).toBeTruthy();
     expect(mockedSearchItems).toHaveBeenCalledTimes(1);
-    expect(mockedSearchItems).toHaveBeenCalledWith("cordial", {
-      signal: expect.any(AbortSignal),
-    });
+    expect(mockedSearchItems).toHaveBeenCalledWith(
+      "cordial",
+      expect.any(AbortSignal),
+    );
   });
 
   it("should not search until at least 2 characters are typed", async () => {
@@ -109,7 +112,9 @@ describe("ItemSearch", () => {
   });
 
   it("should show that it's searching", async () => {
-    mockedSearchItems.mockReturnValue(deferred<ItemSearchResult[]>().promise);
+    mockedSearchItems.mockReturnValue(
+      createDeferred<ItemSearchResult[]>().promise,
+    );
     renderSearch();
 
     typeText("cordial");
@@ -136,7 +141,7 @@ describe("ItemSearch", () => {
   });
 
   it("should only show results for the latest text, even when an earlier search finishes last", async () => {
-    const earlier = deferred<ItemSearchResult[]>();
+    const earlier = createDeferred<ItemSearchResult[]>();
     mockedSearchItems
       .mockReturnValueOnce(earlier.promise)
       .mockResolvedValueOnce([wateredCordial]);

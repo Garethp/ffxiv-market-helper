@@ -49,9 +49,9 @@ export interface RowMarketData {
 const UNIVERSALIS_REUSE_MS = 30_000;
 
 /** Settles the way `promise` does, unless the signal is aborted first, in which case it rejects with the abort reason straight away. */
-const unlessAborted = <T>(
+const rejectOnAbort = <T>(
   promise: Promise<T>,
-  signal: AbortSignal | undefined,
+  signal?: AbortSignal,
 ): Promise<T> =>
   new Promise((resolve, reject) => {
     signal?.throwIfAborted();
@@ -72,7 +72,7 @@ const fetchShared = async <T>(
   client: QueryClient,
   queryKey: QueryKey,
   request: (signal: AbortSignal) => Promise<T>,
-  signal: AbortSignal | undefined,
+  signal?: AbortSignal,
 ): Promise<T> => {
   const options = queryOptions({
     queryKey,
@@ -83,7 +83,7 @@ const fetchShared = async <T>(
   // request for as long as it's waiting on it.
   const stopObserving = new QueryObserver(client, options).subscribe(() => {});
   try {
-    return await unlessAborted(client.fetchQuery(options), signal);
+    return await rejectOnAbort(client.fetchQuery(options), signal);
   } finally {
     stopObserving();
   }
@@ -105,7 +105,7 @@ export const fetchRowMarketData = async (
   params: TradingParameters,
   signal?: AbortSignal,
 ): Promise<RowMarketData> => {
-  const marketData = (
+  const fetchMarketDataFor = (
     worldOrDataCenter: string,
     options: { listings: number; entries: number; statsWithinMs?: number },
   ) =>
@@ -122,7 +122,7 @@ export const fetchRowMarketData = async (
 
   const sellWorld = sellingCharacter.homeWorld;
   const [sell, sellTaxRates, buy] = await Promise.all([
-    marketData(sellWorld, {
+    fetchMarketDataFor(sellWorld, {
       listings: params.sellListingsFetchCount,
       entries: params.sellHistoryFetchCount,
       statsWithinMs: params.saleVelocityWindowMs,
@@ -130,13 +130,13 @@ export const fetchRowMarketData = async (
     fetchShared(
       client,
       ["taxRates", sellWorld],
-      (requestSignal) => fetchTaxRates(sellWorld, { signal: requestSignal }),
+      (requestSignal) => fetchTaxRates(sellWorld, requestSignal),
       signal,
     ),
     Promise.all(
       findDataCentersForRegion(region, regions).map(async (dataCenter) => ({
         dataCenter,
-        data: await marketData(dataCenter, {
+        data: await fetchMarketDataFor(dataCenter, {
           listings: params.buyListingsFetchCount,
           entries: 0,
         }),
@@ -190,10 +190,12 @@ export const analyzeRow = (
     ? marketData.sell.hqSaleVelocity
     : marketData.sell.nqSaleVelocity;
 
-  let best: {
-    dataCenter: string;
-    price: NonNullable<ReturnType<typeof calculateConsistentPrice>>;
-  } | null = null;
+  let best:
+    | {
+        dataCenter: string;
+        price: NonNullable<ReturnType<typeof calculateConsistentPrice>>;
+      }
+    | undefined;
   for (const { dataCenter, data } of marketData.buy) {
     const buyableListings = data.listings
       .filter(matchesQuality)
@@ -209,7 +211,7 @@ export const analyzeRow = (
 
   return buildReadyAnalysis(
     best?.dataCenter ?? marketData.buy[0]?.dataCenter ?? "",
-    best?.price ?? null,
+    best?.price,
     sellHistory,
     sellListings,
     item.stackSize,

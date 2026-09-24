@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { descriptionOf } from "../../testing/descriptionOf";
+import { getDescription } from "../../testing/getDescription";
 import { HintedField } from "./HintedField";
 
-afterEach(cleanup);
-
 describe("HintedField", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const renderField = () =>
     render(
       <HintedField label="Target quantity" hint="How many to buy.">
@@ -24,7 +26,7 @@ describe("HintedField", () => {
     renderField();
 
     expect(
-      descriptionOf(
+      getDescription(
         screen.getByRole("button", { name: "About target quantity" }),
       ),
     ).toBe("How many to buy.");
@@ -46,7 +48,7 @@ describe("HintedField", () => {
       (screen.getByLabelText("Sell price ceiling") as HTMLInputElement).value,
     ).toBe("second");
     expect(
-      descriptionOf(
+      getDescription(
         screen.getByRole("button", { name: "About sell price ceiling" }),
       ),
     ).toBe("The most to list for.");

@@ -25,13 +25,10 @@ export const ManageItemsContainer = ({
   const isNarrowScreen = useIsNarrowScreen();
   // Changes are made one at a time, so only the item last changed can have an
   // error of its own to show.
-  const [failed, setFailed] = useState<{
-    itemId: string;
-    message: string;
-  } | null>(null);
+  const [failed, setFailed] = useState<{ itemId: string; message: string }>();
 
   const untrack = (item: TrackedItem) => {
-    setFailed(null);
+    setFailed(undefined);
     trackedItemService
       .untrackItem(item.id)
       .then(onTrackedItemsChanged)
@@ -44,10 +41,10 @@ export const ManageItemsContainer = ({
   };
 
   // Both rows show the same things about an item, so they're given the same things.
-  const rowProps = (item: TrackedItem) => ({
+  const buildRowProps = (item: TrackedItem) => ({
     item,
     editHref: `/manage-items/edit/${item.id}`,
-    errorMessage: failed?.itemId === item.id ? failed.message : null,
+    errorMessage: failed?.itemId === item.id ? failed.message : undefined,
     onUntrack: () => untrack(item),
   });
 
@@ -72,13 +69,16 @@ export const ManageItemsContainer = ({
              what the item is and the ways to change it. */
           <ExpandableList label="Tracked items">
             {trackedItems.map((item) => (
-              <TrackedItemExpandableRow key={item.id} {...rowProps(item)} />
+              <TrackedItemExpandableRow
+                key={item.id}
+                {...buildRowProps(item)}
+              />
             ))}
           </ExpandableList>
         ) : (
           <ul className="entry-list" aria-label="Tracked items">
             {trackedItems.map((item) => (
-              <TrackedItemRow key={item.id} {...rowProps(item)} />
+              <TrackedItemRow key={item.id} {...buildRowProps(item)} />
             ))}
           </ul>
         )}

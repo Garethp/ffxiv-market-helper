@@ -5,13 +5,13 @@ import type { TrackedItemSettings } from "../../services/trackedItemService";
 import { TrackedItemSettingsForm } from "./TrackedItemSettingsForm";
 
 type Initial = {
-  quality: "NQ" | "HQ" | null;
+  quality?: "NQ" | "HQ";
   targetQuantity: number;
   sellPriceCeiling?: number;
 };
 
 const renderForm = ({
-  initial = { quality: null, targetQuantity: 999 },
+  initial = { targetQuantity: 999 },
   submitLabel = "Track item",
   errorMessage,
   onSubmit = vi.fn(),
@@ -19,7 +19,7 @@ const renderForm = ({
 }: {
   initial?: Initial;
   submitLabel?: string;
-  errorMessage?: string | null;
+  errorMessage?: string;
   onSubmit?: (settings: TrackedItemSettings) => void;
   onCancel?: () => void;
 } = {}) => {
@@ -36,21 +36,23 @@ const renderForm = ({
   return { onSubmit, onCancel };
 };
 
-const qualityOption = (quality: "NQ" | "HQ") =>
+const getQualityOption = (quality: "NQ" | "HQ") =>
   screen.getByLabelText(quality) as HTMLInputElement;
-const targetQuantityField = () =>
+const getTargetQuantityField = () =>
   screen.getByLabelText("Target quantity") as HTMLInputElement;
-const sellPriceCeilingField = () =>
+const getSellPriceCeilingField = () =>
   screen.getByLabelText("Sell price ceiling") as HTMLInputElement;
-const submitButton = (name = "Track item") =>
+const getSubmitButton = (name = "Track item") =>
   screen.getByRole("button", { name }) as HTMLButtonElement;
 
 const setField = (field: HTMLInputElement, value: string) =>
   fireEvent.change(field, { target: { value } });
 
-afterEach(cleanup);
-
 describe("TrackedItemSettingsForm", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be named as given", () => {
     renderForm();
 
@@ -61,8 +63,8 @@ describe("TrackedItemSettingsForm", () => {
     it("should have the given quality chosen", () => {
       renderForm({ initial: { quality: "HQ", targetQuantity: 999 } });
 
-      expect(qualityOption("NQ").checked).toBe(false);
-      expect(qualityOption("HQ").checked).toBe(true);
+      expect(getQualityOption("NQ").checked).toBe(false);
+      expect(getQualityOption("HQ").checked).toBe(true);
     });
 
     it("should start with the given target quantity and sell price ceiling filled in", () => {
@@ -70,14 +72,14 @@ describe("TrackedItemSettingsForm", () => {
         initial: { quality: "NQ", targetQuantity: 60, sellPriceCeiling: 5000 },
       });
 
-      expect(targetQuantityField().value).toBe("60");
-      expect(sellPriceCeilingField().value).toBe("5k");
+      expect(getTargetQuantityField().value).toBe("60");
+      expect(getSellPriceCeilingField().value).toBe("5k");
     });
 
     it("should leave the sell price ceiling empty when none is given", () => {
       renderForm();
 
-      expect(sellPriceCeilingField().value).toBe("");
+      expect(getSellPriceCeilingField().value).toBe("");
     });
   });
 
@@ -85,18 +87,18 @@ describe("TrackedItemSettingsForm", () => {
     it("should only allow submitting once NQ or HQ has been chosen", () => {
       renderForm();
 
-      expect(submitButton().disabled).toBe(true);
-      fireEvent.click(qualityOption("HQ"));
-      expect(submitButton().disabled).toBe(false);
+      expect(getSubmitButton().disabled).toBe(true);
+      fireEvent.click(getQualityOption("HQ"));
+      expect(getSubmitButton().disabled).toBe(false);
     });
 
     it("should submit HQ and the target quantity and sell price ceiling as entered", () => {
       const { onSubmit } = renderForm();
 
-      fireEvent.click(qualityOption("HQ"));
-      setField(targetQuantityField(), "60");
-      setField(sellPriceCeilingField(), "5000");
-      fireEvent.click(submitButton());
+      fireEvent.click(getQualityOption("HQ"));
+      setField(getTargetQuantityField(), "60");
+      setField(getSellPriceCeilingField(), "5000");
+      fireEvent.click(getSubmitButton());
 
       expect(onSubmit).toHaveBeenCalledWith({
         hq: true,
@@ -108,8 +110,8 @@ describe("TrackedItemSettingsForm", () => {
     it("should submit NQ as not HQ", () => {
       const { onSubmit } = renderForm();
 
-      fireEvent.click(qualityOption("NQ"));
-      fireEvent.click(submitButton());
+      fireEvent.click(getQualityOption("NQ"));
+      fireEvent.click(getSubmitButton());
 
       expect(onSubmit).toHaveBeenCalledWith({
         hq: false,
@@ -123,8 +125,8 @@ describe("TrackedItemSettingsForm", () => {
         initial: { quality: "NQ", targetQuantity: 999 },
       });
 
-      setField(targetQuantityField(), "");
-      fireEvent.click(submitButton());
+      setField(getTargetQuantityField(), "");
+      fireEvent.click(getSubmitButton());
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ targetQuantity: 0 }),
@@ -142,7 +144,7 @@ describe("TrackedItemSettingsForm", () => {
     });
 
     it("should show nothing when there's no message to show", () => {
-      renderForm({ errorMessage: null });
+      renderForm();
 
       expect(screen.queryByRole("alert")).toBeNull();
     });
@@ -152,8 +154,8 @@ describe("TrackedItemSettingsForm", () => {
         errorMessage: "Something went wrong.",
       });
 
-      fireEvent.click(qualityOption("NQ"));
-      fireEvent.click(submitButton());
+      fireEvent.click(getQualityOption("NQ"));
+      fireEvent.click(getSubmitButton());
 
       expect(onSubmit).toHaveBeenCalledOnce();
     });
@@ -163,7 +165,7 @@ describe("TrackedItemSettingsForm", () => {
     it("should report the cancellation without submitting anything", () => {
       const { onSubmit, onCancel } = renderForm();
 
-      fireEvent.click(qualityOption("NQ"));
+      fireEvent.click(getQualityOption("NQ"));
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(onCancel).toHaveBeenCalledOnce();

@@ -7,14 +7,8 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { descriptionOf } from "../testing/descriptionOf";
+import { getDescription } from "../testing/getDescription";
 import { Tooltip } from "./Tooltip";
-
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
 
 const SCREEN_WIDTH = 375;
 
@@ -48,6 +42,12 @@ const placeTooltip = (tooltip: HTMLElement, left: number, right: number) => {
 const hover = () => fireEvent.mouseEnter(screen.getByText("gap"));
 
 describe("Tooltip", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("should describe what it wraps, for anything that already reads sensibly", () => {
     render(
       <Tooltip text="Room to undercut">
@@ -59,7 +59,7 @@ describe("Tooltip", () => {
       </Tooltip>,
     );
 
-    expect(descriptionOf(screen.getByText("gap"))).toBe("Room to undercut");
+    expect(getDescription(screen.getByText("gap"))).toBe("Room to undercut");
   });
 
   it("should be able to name a control that has no text of its own", () => {
@@ -88,8 +88,8 @@ describe("Tooltip", () => {
       </>,
     );
 
-    expect(descriptionOf(screen.getByText("one"))).toBe("First");
-    expect(descriptionOf(screen.getByText("two"))).toBe("Second");
+    expect(getDescription(screen.getByText("one"))).toBe("First");
+    expect(getDescription(screen.getByText("two"))).toBe("Second");
   });
 
   it("should mark its text as a tooltip", () => {

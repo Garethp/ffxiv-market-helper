@@ -1,7 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, DisplayRow } from "../types";
-import { profitRow, rowMarketDataQuery } from "./profitRowQuery";
+import { buildProfitRow, buildRowMarketDataQuery } from "./profitRowQuery";
 
 /**
  * Prices every tracked item through every buying region, selling through the
@@ -20,7 +20,7 @@ export const useTrackedItemsAnalysis = (
 
   const queries = useQueries({
     queries: rowDefs.map(({ region, item }) => ({
-      ...rowMarketDataQuery(item.itemId, region, currentCharacter, config),
+      ...buildRowMarketDataQuery(item.itemId, region, currentCharacter, config),
       refetchInterval: params.refreshIntervalMs,
       retry: 1,
       retryDelay: params.retryDelayMs,
@@ -33,13 +33,13 @@ export const useTrackedItemsAnalysis = (
   rowDefs.forEach(({ region, item }, i) => {
     const query = queries[i];
     rowsByRegion[region].push({
-      row: profitRow(query, item, currentCharacter, config),
+      row: buildProfitRow(query, item, currentCharacter, config),
       isRefreshing: query.isFetching,
     });
   });
 
   const lastSuccessAt = Math.max(0, ...queries.map((q) => q.dataUpdatedAt));
-  const lastUpdated = lastSuccessAt > 0 ? new Date(lastSuccessAt) : null;
+  const lastUpdated = lastSuccessAt > 0 ? new Date(lastSuccessAt) : undefined;
 
   return { rowsByRegion, lastUpdated };
 };

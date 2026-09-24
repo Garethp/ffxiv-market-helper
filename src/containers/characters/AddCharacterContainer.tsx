@@ -24,14 +24,14 @@ export const AddCharacterContainer = ({
   onCharactersChanged: () => void;
 }) => {
   const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   const onSubmit = (details: CharacterDetails) => {
     const error = validateCharacter(details, characters, regions);
     // Nothing is attempted while the roster wouldn't accept it.
     if (error) return setErrorMessage(error);
 
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     characterService
       .addCharacter(details)
       .then(() => {

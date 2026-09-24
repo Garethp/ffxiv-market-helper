@@ -2,11 +2,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMarketPageUrl } from "../api/universalis";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import type { DisplayRow } from "../types";
 import { ProfitExpandableRows } from "./ProfitExpandableRows";
-
-afterEach(cleanup);
 
 const undercutRow: DisplayRow = {
   row: {
@@ -48,11 +46,11 @@ const undercutRow: DisplayRow = {
 
 const renderRows = () =>
   render(<ProfitExpandableRows rows={[undercutRow]} sellWorld="Raiden" />, {
-    wrapper: withQueryClient(),
+    wrapper: createQueryClientWrapper(),
   });
 
 /** What an element shows, leaving out the tooltips explaining it, which only show on hover. */
-const shownText = (element: Element) => {
+const getShownText = (element: Element) => {
   const copy = element.cloneNode(true) as Element;
   copy
     .querySelectorAll('[role="tooltip"]')
@@ -61,19 +59,23 @@ const shownText = (element: Element) => {
 };
 
 /** Each figure showing, by what it is, in the order shown. */
-const figuresShown = () =>
+const getFiguresShown = () =>
   Object.fromEntries(
     Array.from(document.querySelectorAll("dt")).map((dt) => [
       dt.textContent,
-      dt.nextElementSibling && shownText(dt.nextElementSibling),
+      dt.nextElementSibling && getShownText(dt.nextElementSibling),
     ]),
   );
 
 describe("ProfitExpandableRows", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should show what an item's worth a stack and a day, and that it's been undercut, until it's expanded", () => {
     renderRows();
 
-    expect(figuresShown()).toEqual({
+    expect(getFiguresShown()).toEqual({
       "Profit / stack": (13_068).toLocaleString(),
       "Profit / day": (500).toLocaleString(),
     });
@@ -89,7 +91,7 @@ describe("ProfitExpandableRows", () => {
       }),
     );
 
-    expect(Object.entries(figuresShown())).toEqual([
+    expect(Object.entries(getFiguresShown())).toEqual([
       ["Buy DC", "Chaos"],
       ["Buy price / unit", (100).toLocaleString()],
       ["Sell price", (250).toLocaleString()],

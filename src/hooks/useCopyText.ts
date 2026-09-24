@@ -10,7 +10,7 @@ const COPIED_DISPLAY_MS = 1500;
  * is marked.
  */
 export const useCopyText = () => {
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string>();
   // Restarted by every copy, so an earlier copy never cuts a later one short.
   const clearTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -20,7 +20,7 @@ export const useCopyText = () => {
       setCopiedKey(key);
       clearTimeout(clearTimer.current);
       clearTimer.current = setTimeout(
-        () => setCopiedKey(null),
+        () => setCopiedKey(undefined),
         COPIED_DISPLAY_MS,
       );
     } catch {

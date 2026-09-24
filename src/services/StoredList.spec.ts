@@ -4,11 +4,11 @@ import { StoredList } from "./StoredList";
 
 const KEY = "test:stored-list";
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
 describe("StoredList", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   describe("reading it for the first time", () => {
     it("should start out as the initial items when nothing is saved", () => {
       expect(new StoredList(KEY, () => ["a", "b"]).read()).toEqual(["a", "b"]);

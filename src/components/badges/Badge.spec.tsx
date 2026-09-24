@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { descriptionOf } from "../../testing/descriptionOf";
+import { getDescription } from "../../testing/getDescription";
 import { Badge } from "./Badge";
 
-afterEach(cleanup);
-
 describe("Badge", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be explained by its tooltip, reachable without a pointer", () => {
     render(
       <Badge className="gap-badge" tooltip="Room to undercut">
@@ -15,7 +17,7 @@ describe("Badge", () => {
     );
 
     const badge = screen.getByText("gap");
-    expect(descriptionOf(badge)).toBe("Room to undercut");
+    expect(getDescription(badge)).toBe("Room to undercut");
     expect(badge.getAttribute("tabindex")).toBe("0");
   });
 

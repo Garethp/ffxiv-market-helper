@@ -10,7 +10,7 @@ import type { Plugin, PluginOption } from "vite";
  * project site from `/<repo>/`, and hands us that prefix without a trailing slash (or as an
  * empty string for a user site served from the root).
  */
-export const asBasePath = (servedFrom: string | undefined): string => {
+export const asBasePath = (servedFrom?: string): string => {
   const trimmed = (servedFrom ?? "").replace(/^\/+/, "").replace(/\/+$/, "");
   return trimmed === "" ? "/" : `/${trimmed}/`;
 };

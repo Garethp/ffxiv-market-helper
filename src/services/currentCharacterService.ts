@@ -5,8 +5,8 @@
  * code.
  */
 export interface CurrentCharacterService {
-  /** The ID of the character last picked, or null if none has been. */
-  getCurrentCharacterId(): Promise<string | null>;
+  /** The ID of the character last picked, or nothing if none has been. */
+  getCurrentCharacterId(): Promise<string | undefined>;
   setCurrentCharacterId(id: string): Promise<void>;
 }
 
@@ -14,8 +14,8 @@ const STORAGE_KEY = "ffxiv-trading:current-character";
 
 /** Remembers the Current Character in this browser's localStorage, shared by every tab. */
 class LocalStorageCurrentCharacterService implements CurrentCharacterService {
-  async getCurrentCharacterId(): Promise<string | null> {
-    return localStorage.getItem(STORAGE_KEY);
+  async getCurrentCharacterId(): Promise<string | undefined> {
+    return localStorage.getItem(STORAGE_KEY) ?? undefined;
   }
 
   async setCurrentCharacterId(id: string): Promise<void> {

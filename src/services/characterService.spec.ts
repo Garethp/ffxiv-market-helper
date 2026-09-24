@@ -35,11 +35,11 @@ const addCharacter = async (
   return roster[roster.length - 1];
 };
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
 describe("characterService", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   describe("starting out", () => {
     it("should start out with the initial characters, each character and retainer given an ID", async () => {
       const service = createService([

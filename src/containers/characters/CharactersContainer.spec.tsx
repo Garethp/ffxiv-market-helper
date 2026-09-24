@@ -63,7 +63,8 @@ const renderPage = async () => {
   await screen.findByRole("heading", { name: "Characters" });
 };
 
-const characterCard = (name: string) => screen.findByRole("region", { name });
+const findCharacterCard = (name: string) =>
+  screen.findByRole("region", { name });
 
 /** Adds Alice with a retainer, Amarana, and returns her as saved. */
 const addAliceWithAmarana = async (): Promise<Character> => {
@@ -77,16 +78,16 @@ const addAliceWithAmarana = async (): Promise<Character> => {
   return saved;
 };
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
-
 describe("CharactersContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   it("should say when there are no characters yet", async () => {
     await renderPage();
 
@@ -99,10 +100,10 @@ describe("CharactersContainer", () => {
     await characterService.addCharacter({ name: "Bob", homeWorld: "Odin" });
     await renderPage();
 
-    const alice = await characterCard("Alice");
+    const alice = await findCharacterCard("Alice");
     expect(within(alice).getByText("Raiden (Europe)")).toBeTruthy();
     expect(within(alice).getByText("Amarana")).toBeTruthy();
-    const bob = await characterCard("Bob");
+    const bob = await findCharacterCard("Bob");
     expect(within(bob).getByText("No retainers yet.")).toBeTruthy();
   });
 
@@ -121,15 +122,15 @@ describe("CharactersContainer", () => {
       const alice = await addAliceWithAmarana();
       const [amarana] = alice.retainers;
       await renderPage();
-      const card = await characterCard("Alice");
+      const card = await findCharacterCard("Alice");
 
-      const hrefOf = (name: string) =>
+      const getHrefOf = (name: string) =>
         within(card).getByRole("link", { name }).getAttribute("href");
-      expect(hrefOf("Edit Alice")).toBe(`/characters/${alice.id}/edit`);
-      expect(hrefOf("Add a retainer for Alice")).toBe(
+      expect(getHrefOf("Edit Alice")).toBe(`/characters/${alice.id}/edit`);
+      expect(getHrefOf("Add a retainer for Alice")).toBe(
         `/characters/${alice.id}/retainers/new`,
       );
-      expect(hrefOf("Edit Amarana")).toBe(
+      expect(getHrefOf("Edit Amarana")).toBe(
         `/characters/${alice.id}/retainers/${amarana.id}/edit`,
       );
     });
@@ -142,7 +143,7 @@ describe("CharactersContainer", () => {
       await renderPage();
 
       fireEvent.click(
-        within(await characterCard("Alice")).getByRole("button", {
+        within(await findCharacterCard("Alice")).getByRole("button", {
           name: "Remove Alice",
         }),
       );
@@ -156,7 +157,7 @@ describe("CharactersContainer", () => {
     it("should remove the retainer", async () => {
       await addAliceWithAmarana();
       await renderPage();
-      const card = await characterCard("Alice");
+      const card = await findCharacterCard("Alice");
 
       fireEvent.click(
         within(card).getByRole("button", { name: "Remove Amarana" }),
@@ -183,7 +184,7 @@ describe("CharactersContainer", () => {
         await renderPage();
 
         fireEvent.click(
-          within(await characterCard("Alice")).getByRole("button", {
+          within(await findCharacterCard("Alice")).getByRole("button", {
             name: removeButtonName,
           }),
         );
@@ -202,7 +203,7 @@ describe("CharactersContainer", () => {
       );
       await addAliceWithAmarana();
       await renderPage();
-      const card = await characterCard("Alice");
+      const card = await findCharacterCard("Alice");
       const remove = () =>
         fireEvent.click(
           within(card).getByRole("button", { name: "Remove Amarana" }),

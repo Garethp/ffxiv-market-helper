@@ -8,23 +8,23 @@ import {
 import { itemService } from "../services/itemService";
 import { scanResultsService } from "../services/scanResultsService";
 import { chunk } from "../utils/chunk";
-import { withOneRetry } from "../utils/withOneRetry";
+import { retryOnce } from "../utils/retryOnce";
 import { useGeneration } from "./useGeneration";
 
 export interface ScannedItem extends ItemSaleVelocity {
-  /** Null when the item's name couldn't be found. */
-  name: string | null;
+  /** Missing when the item's name couldn't be found. */
+  name?: string;
   totalSaleVelocity: number;
 }
 
 /** The items with their names. Items are still worth showing when their names can't be looked up. */
-const withNames = async (items: ItemSaleVelocity[]): Promise<ScannedItem[]> => {
+const addNames = async (items: ItemSaleVelocity[]): Promise<ScannedItem[]> => {
   const names = await itemService
     .getItemNames(items.map((item) => item.itemId))
     .catch(() => new Map<number, string>());
   return items.map((item) => ({
     ...item,
-    name: names.get(item.itemId) ?? null,
+    name: names.get(item.itemId),
     totalSaleVelocity: item.nqSaleVelocity + item.hqSaleVelocity,
   }));
 };
@@ -81,7 +81,7 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
   const [results, setResults] = useState<ScannedItem[]>([]);
   const generationTracker = useGeneration();
   // The most recently started scan, so its remaining requests can be cancelled once it's abandoned.
-  const scanControllerRef = useRef<AbortController | null>(null);
+  const scanControllerRef = useRef<AbortController>(undefined);
 
   // Switching world, or leaving the page, abandons any scan in progress.
   useEffect(() => {
@@ -95,8 +95,8 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
 
     scanResultsService.getLatestScan(worldOrDataCenter).then(
       async (scan) => {
-        if (scan === null) return;
-        const items = await withNames(scan.items);
+        if (!scan) return;
+        const items = await addNames(scan.items);
         // A scan started while this was loading takes precedence over it.
         if (!generationTracker.isCurrent(generation)) return;
         setResults(items);
@@ -143,7 +143,7 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
       // Some Universalis bulk requests fail transiently (e.g. a gateway timeout under load) even
       // at a batch size that normally clears it comfortably.
       const fetchBatchWithRetry = (batch: number[]) =>
-        withOneRetry(
+        retryOnce(
           () =>
             fetchSaleVelocityBatch(worldOrDataCenter, batch, {
               entries: entriesPerItem,
@@ -171,7 +171,7 @@ export const useHighVolumeItemScan = (worldOrDataCenter: string) => {
         batches.map(async (batch) => {
           try {
             const batchResults = await fetchBatchWithRetry(batch);
-            const namedResults = await withNames(batchResults);
+            const namedResults = await addNames(batchResults);
             if (generationTracker.isCurrent(generation)) {
               allResults.push(...batchResults);
               pendingResults.push(...namedResults);

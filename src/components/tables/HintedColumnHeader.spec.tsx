@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { descriptionOf } from "../../testing/descriptionOf";
+import { getDescription } from "../../testing/getDescription";
 import { HintedColumnHeader } from "./HintedColumnHeader";
-
-afterEach(cleanup);
 
 const renderHeader = () =>
   render(
@@ -18,6 +16,10 @@ const renderHeader = () =>
   );
 
 describe("HintedColumnHeader", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be named after the column alone, leaving the hint out", () => {
     renderHeader();
 
@@ -30,7 +32,7 @@ describe("HintedColumnHeader", () => {
     renderHeader();
 
     expect(
-      descriptionOf(
+      getDescription(
         screen.getByRole("button", { name: "About profit / item" }),
       ),
     ).toBe("Profit after tax.");

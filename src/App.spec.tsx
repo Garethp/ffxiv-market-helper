@@ -7,7 +7,7 @@ import type { Character, TrackedItem, TradingParameters } from "./types";
 
 type PageProps = {
   config: TradingConfig;
-  currentCharacter: Character | null;
+  currentCharacter?: Character;
 };
 
 vi.mock("./services/tradingConfig", async (importOriginal) => ({
@@ -95,8 +95,8 @@ vi.mock("./containers/characters/CharactersContainer", () => ({
   ),
 }));
 // Each page for changing the roster names itself on a button that reports a change.
-const { rosterChangingPage } = vi.hoisted(() => ({
-  rosterChangingPage:
+const { createRosterChangingPage } = vi.hoisted(() => ({
+  createRosterChangingPage:
     (name: string) =>
     ({ onCharactersChanged }: { onCharactersChanged: () => void }) => (
       <button type="button" onClick={onCharactersChanged}>
@@ -105,21 +105,21 @@ const { rosterChangingPage } = vi.hoisted(() => ({
     ),
 }));
 vi.mock("./containers/characters/AddCharacterContainer", () => ({
-  AddCharacterContainer: rosterChangingPage("Add a character"),
+  AddCharacterContainer: createRosterChangingPage("Add a character"),
 }));
 vi.mock("./containers/characters/EditCharacterContainer", () => ({
-  EditCharacterContainer: rosterChangingPage("Change this character"),
+  EditCharacterContainer: createRosterChangingPage("Change this character"),
 }));
 vi.mock("./containers/characters/AddRetainerContainer", () => ({
-  AddRetainerContainer: rosterChangingPage("Add a retainer"),
+  AddRetainerContainer: createRosterChangingPage("Add a retainer"),
 }));
 vi.mock("./containers/characters/EditRetainerContainer", () => ({
-  EditRetainerContainer: rosterChangingPage("Change this retainer"),
+  EditRetainerContainer: createRosterChangingPage("Change this retainer"),
 }));
 
 import App from "./App";
 import { useItemDataStatus } from "./hooks/useItemDataStatus";
-import { withQueryClient } from "./testing/withQueryClient";
+import { createQueryClientWrapper } from "./testing/createQueryClientWrapper";
 import { characterService } from "./services/characterService";
 import { currentCharacterService } from "./services/currentCharacterService";
 import { loadConfig } from "./services/tradingConfig";
@@ -160,33 +160,35 @@ const renderApp = (path = "/") =>
     <MemoryRouter initialEntries={[path]}>
       <App />
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
 
-const navLink = (name: string) => screen.getByRole("link", { name });
+const getNavLink = (name: string) => screen.getByRole("link", { name });
 
 const pickCharacter = async (id: string) =>
   fireEvent.change(await screen.findByLabelText("Selling as"), {
     target: { value: id },
   });
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.mocked(useItemDataStatus).mockReturnValue({ state: "ready" });
-  vi.mocked(loadConfig).mockResolvedValue({
-    regions: [],
-    marketBoardCities: [],
-    params: {} as TradingParameters,
-  });
-  mockedGetCharacters.mockResolvedValue([alice, bob]);
-  mockedGetTrackedItems.mockResolvedValue([]);
-  mockedGetCurrentCharacterId.mockResolvedValue(null);
-  mockedSetCurrentCharacterId.mockResolvedValue();
-});
-
-afterEach(cleanup);
-
 describe("App", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useItemDataStatus).mockReturnValue({ state: "ready" });
+    vi.mocked(loadConfig).mockResolvedValue({
+      regions: [],
+      marketBoardCities: [],
+      params: {} as TradingParameters,
+    });
+    mockedGetCharacters.mockResolvedValue([alice, bob]);
+    mockedGetTrackedItems.mockResolvedValue([]);
+    mockedGetCurrentCharacterId.mockResolvedValue(undefined);
+    mockedSetCurrentCharacterId.mockResolvedValue();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("the Current Character", () => {
     it("should start out on the first character in the roster when none has been picked before", async () => {
       renderApp();
@@ -231,7 +233,7 @@ describe("App", () => {
       renderApp();
 
       await pickCharacter("bob");
-      fireEvent.click(navLink("High Volume Items"));
+      fireEvent.click(getNavLink("High Volume Items"));
 
       await screen.findByText("High volume items for Bob");
     });
@@ -309,7 +311,7 @@ describe("App", () => {
         screen.getByRole("button", { name: "Change the roster" }),
       );
       await screen.findByText("WorldA");
-      fireEvent.click(navLink("Tracked Items"));
+      fireEvent.click(getNavLink("Tracked Items"));
 
       await screen.findByText("Tracked items selling as Alice");
     });
@@ -324,7 +326,7 @@ describe("App", () => {
       mockedGetTrackedItems.mockResolvedValue([cordial]);
 
       fireEvent.click(changeButton);
-      fireEvent.click(navLink("Tracked Items"));
+      fireEvent.click(getNavLink("Tracked Items"));
 
       await screen.findByText("Cordial");
     });
@@ -345,7 +347,7 @@ describe("App", () => {
       mockedGetTrackedItems.mockResolvedValue([cordial]);
 
       fireEvent.click(changeButton);
-      fireEvent.click(navLink("Tracked Items"));
+      fireEvent.click(getNavLink("Tracked Items"));
 
       await screen.findByText("Cordial");
     });
@@ -358,7 +360,7 @@ describe("App", () => {
       mockedGetTrackedItems.mockResolvedValue([cordial]);
 
       fireEvent.click(trackButton);
-      fireEvent.click(navLink("Tracked Items"));
+      fireEvent.click(getNavLink("Tracked Items"));
 
       await screen.findByText("Cordial");
     });
@@ -374,7 +376,7 @@ describe("App", () => {
       await screen.findByText("Tracked items selling as Alice");
       expect(screen.getByText(/Loading item data: 500 items/)).not.toBeNull();
 
-      fireEvent.click(navLink("Characters"));
+      fireEvent.click(getNavLink("Characters"));
       await screen.findByRole("button", { name: "Change the roster" });
 
       expect(screen.getByText(/Loading item data: 500 items/)).not.toBeNull();
@@ -386,19 +388,19 @@ describe("App", () => {
       renderApp();
       await screen.findByText("Tracked items selling as Alice");
 
-      fireEvent.click(navLink("High Volume Items"));
+      fireEvent.click(getNavLink("High Volume Items"));
       await screen.findByText("High volume items for Alice");
 
-      fireEvent.click(navLink("Expert Delivery"));
+      fireEvent.click(getNavLink("Expert Delivery"));
       await screen.findByText("Expert delivery items");
 
-      fireEvent.click(navLink("Characters"));
+      fireEvent.click(getNavLink("Characters"));
       await screen.findByRole("button", { name: "Change the roster" });
 
-      fireEvent.click(navLink("Manage Items"));
+      fireEvent.click(getNavLink("Manage Items"));
       await screen.findByRole("button", { name: "Change the tracked items" });
 
-      fireEvent.click(navLink("Tracked Items"));
+      fireEvent.click(getNavLink("Tracked Items"));
       await screen.findByText("Tracked items selling as Alice");
     });
   });

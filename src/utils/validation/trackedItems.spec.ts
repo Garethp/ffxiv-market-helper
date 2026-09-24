@@ -9,7 +9,10 @@ const cordial: PricedItem = {
   targetQuantity: 999,
 };
 
-const tracked = (item: PricedItem, id = "tracked-id"): TrackedItem => ({
+const buildTrackedItem = (
+  item: PricedItem,
+  id = "tracked-id",
+): TrackedItem => ({
   id,
   ...item,
 });
@@ -21,7 +24,7 @@ describe("validateItem", () => {
     });
 
     it("should give no reason when the same item is only tracked at the other quality", () => {
-      const asHq = tracked({ ...cordial, hq: true });
+      const asHq = buildTrackedItem({ ...cordial, hq: true });
 
       expect(validateItem({ ...cordial, hq: false }, [asHq])).toBeUndefined();
     });
@@ -57,7 +60,7 @@ describe("validateItem", () => {
 
   describe("an item already tracked at the same quality", () => {
     it("should name the item and the quality it clashes with", () => {
-      const asHq = tracked({ ...cordial, hq: true });
+      const asHq = buildTrackedItem({ ...cordial, hq: true });
 
       expect(validateItem({ ...cordial, hq: true }, [asHq])).toBe(
         "Cordial is already tracked as HQ.",
@@ -65,7 +68,7 @@ describe("validateItem", () => {
     });
 
     it("should treat no quality given as NQ", () => {
-      const asNq = tracked({ ...cordial, hq: false });
+      const asNq = buildTrackedItem({ ...cordial, hq: false });
 
       expect(validateItem(cordial, [asNq])).toBe(
         "Cordial is already tracked as NQ.",
@@ -73,7 +76,7 @@ describe("validateItem", () => {
     });
 
     it("should not count the item the settings belong to as a duplicate of itself", () => {
-      const existing = tracked({ ...cordial, hq: true }, "cordial-hq");
+      const existing = buildTrackedItem({ ...cordial, hq: true }, "cordial-hq");
 
       expect(
         validateItem({ ...cordial, hq: true }, [existing], "cordial-hq"),
@@ -81,8 +84,11 @@ describe("validateItem", () => {
     });
 
     it("should still give a reason for a quality another tracked item already has", () => {
-      const beingChanged = tracked({ ...cordial, hq: false }, "cordial-nq");
-      const other = tracked({ ...cordial, hq: true }, "cordial-hq");
+      const beingChanged = buildTrackedItem(
+        { ...cordial, hq: false },
+        "cordial-nq",
+      );
+      const other = buildTrackedItem({ ...cordial, hq: true }, "cordial-hq");
 
       expect(
         validateItem(

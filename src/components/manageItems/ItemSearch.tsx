@@ -75,7 +75,7 @@ export const ItemSearch = ({
   // and its results are never shown in place of the latest ones.
   const search = useQuery({
     queryKey: ["itemSearch", searchText],
-    queryFn: ({ signal }) => itemService.searchItems(searchText, { signal }),
+    queryFn: ({ signal }) => itemService.searchItems(searchText, signal),
     enabled: canSearch,
     // Items only change with game patches.
     staleTime: Infinity,

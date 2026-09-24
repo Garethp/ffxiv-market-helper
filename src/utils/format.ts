@@ -1,4 +1,4 @@
-export const formatGil = (value: number | null): string => {
-  if (value === null || Number.isNaN(value)) return "—";
+export const formatGil = (value?: number): string => {
+  if (value === undefined || Number.isNaN(value)) return "—";
   return Math.round(value).toLocaleString();
 };

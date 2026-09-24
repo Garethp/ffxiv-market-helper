@@ -43,7 +43,7 @@ const LOCK_NAME = "item-data";
 export class ItemDataCache {
   private status: ItemDataStatus = { state: "idle" };
   private readonly listeners = new Set<() => void>();
-  private loading: Promise<void> | undefined;
+  private loading?: Promise<void>;
 
   constructor(
     private readonly store: ItemDataStore,
@@ -69,26 +69,26 @@ export class ItemDataCache {
   /** The stored details of whichever of the items are stored, once any load in progress has finished. */
   getItems(
     itemIds: number[],
-    options: { signal?: AbortSignal } = {},
+    signal?: AbortSignal,
   ): Promise<Map<number, ItemDetails>> {
-    return this.readStored((store) => store.getItems(itemIds), options);
+    return this.readStored((store) => store.getItems(itemIds), signal);
   }
 
   /** What whichever of the items are stored are, once any load in progress has finished. */
   getSummaries(
     itemIds: number[],
-    options: { signal?: AbortSignal } = {},
+    signal?: AbortSignal,
   ): Promise<Map<number, ItemSummary>> {
-    return this.readStored((store) => store.getSummaries(itemIds), options);
+    return this.readStored((store) => store.getSummaries(itemIds), signal);
   }
 
   private async readStored<T>(
     read: (store: ItemDataStore) => Promise<T>,
-    options: { signal?: AbortSignal },
+    signal?: AbortSignal,
   ): Promise<T> {
-    const release = await holdLock(this.locks(), LOCK_NAME, {
+    const release = await holdLock(this.getLocks(), LOCK_NAME, {
       mode: "shared",
-      signal: options.signal,
+      signal,
     });
     try {
       return await read(this.store);
@@ -115,7 +115,7 @@ export class ItemDataCache {
   }
 
   private async holdExclusiveLock(): Promise<() => void> {
-    const locks = this.locks();
+    const locks = this.getLocks();
     const release = await tryHoldLock(locks, LOCK_NAME, "exclusive");
     if (release) return release;
     // Another tab is checking or loading; once it's done, there'll be nothing left to load.
@@ -150,7 +150,7 @@ export class ItemDataCache {
     this.listeners.forEach((listener) => listener());
   }
 
-  private locks(): LockRequester {
+  private getLocks(): LockRequester {
     return this.lockRequester ?? navigator.locks;
   }
 }

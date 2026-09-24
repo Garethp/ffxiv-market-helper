@@ -7,14 +7,14 @@ describe("tryHoldLock", () => {
     const locks = new InMemoryLockManager();
     await holdLock(locks, "lock", { mode: "exclusive" });
 
-    expect(await tryHoldLock(locks, "lock", "exclusive")).toBeNull();
+    expect(await tryHoldLock(locks, "lock", "exclusive")).toBeUndefined();
   });
 
   it("should hold the lock until released", async () => {
     const locks = new InMemoryLockManager();
     const release = await tryHoldLock(locks, "lock", "exclusive");
 
-    expect(await tryHoldLock(locks, "lock", "exclusive")).toBeNull();
+    expect(await tryHoldLock(locks, "lock", "exclusive")).toBeUndefined();
     release!();
     // Released once the holder's callback settles, which isn't immediate.
     await vi.waitFor(async () =>

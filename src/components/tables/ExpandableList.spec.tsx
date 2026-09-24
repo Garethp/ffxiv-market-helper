@@ -3,8 +3,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ExpandableList, ExpandableRow } from "./ExpandableList";
 
-afterEach(cleanup);
-
 const renderRow = () =>
   render(
     <ExpandableList>
@@ -22,19 +20,23 @@ const renderRow = () =>
     </ExpandableList>,
   );
 
-const expandButton = () =>
+const getExpandButton = () =>
   screen.getByRole("button", { name: "Show every figure for Wind Cluster" });
 
 const isExpanded = () =>
-  expandButton().getAttribute("aria-expanded") === "true";
+  getExpandButton().getAttribute("aria-expanded") === "true";
 
 describe("ExpandableRow", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should show its summary until it's expanded, then its details in its place", () => {
     renderRow();
     expect(screen.queryByText("Summary")).not.toBeNull();
     expect(screen.queryByText("Details")).toBeNull();
 
-    fireEvent.click(expandButton());
+    fireEvent.click(getExpandButton());
 
     expect(screen.queryByText("Summary")).toBeNull();
     expect(screen.queryByText("Details")).not.toBeNull();
@@ -45,7 +47,7 @@ describe("ExpandableRow", () => {
     expect(screen.queryByText("Wind Cluster")).not.toBeNull();
     expect(screen.queryByText(/Always shown/)).not.toBeNull();
 
-    fireEvent.click(expandButton());
+    fireEvent.click(getExpandButton());
 
     expect(screen.queryByText("Wind Cluster")).not.toBeNull();
     expect(screen.queryByText(/Always shown/)).not.toBeNull();
@@ -64,10 +66,10 @@ describe("ExpandableRow", () => {
   it("should expand and collapse from its button, so it can be without a pointer", () => {
     renderRow();
 
-    fireEvent.click(expandButton());
+    fireEvent.click(getExpandButton());
     expect(isExpanded()).toBe(true);
 
-    fireEvent.click(expandButton());
+    fireEvent.click(getExpandButton());
     expect(isExpanded()).toBe(false);
   });
 

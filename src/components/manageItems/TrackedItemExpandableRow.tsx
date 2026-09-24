@@ -5,7 +5,7 @@ import { ErrorMessage } from "../ErrorMessage";
 import { ItemSummary } from "../ItemSummary";
 import { ExpandableRow } from "../tables/ExpandableList";
 
-const qualityOf = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
+const describeQuality = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
 
 /**
  * One tracked item on a phone: its name and what it's tracked as, opening up into
@@ -25,10 +25,10 @@ export const TrackedItemExpandableRow = ({
   /** Where the page for changing this item's settings lives. */
   editHref: string;
   /** Why the last change to this item wasn't made, if it wasn't. */
-  errorMessage?: string | null;
+  errorMessage?: string;
   onUntrack: () => void;
 }) => {
-  const description = `${item.name} (${qualityOf(item)})`;
+  const description = `${item.name} (${describeQuality(item)})`;
   // Shown collapsed, and kept in view once the row is opened.
   const figures = (
     <dl className="tracked-item-figures">
@@ -51,7 +51,8 @@ export const TrackedItemExpandableRow = ({
     <ExpandableRow
       heading={
         <span>
-          {item.name} <span className="quality-badge">{qualityOf(item)}</span>
+          {item.name}{" "}
+          <span className="quality-badge">{describeQuality(item)}</span>
         </span>
       }
       expandLabel={`Show what ${description} is`}

@@ -4,7 +4,7 @@ import { formatGil } from "./format";
 describe("formatGil", () => {
   describe("when there is no value to show", () => {
     it("should show a dash for a missing value", () => {
-      expect(formatGil(null)).toBe("—");
+      expect(formatGil(undefined)).toBe("—");
     });
 
     it("should show a dash for a value that isn't a number", () => {

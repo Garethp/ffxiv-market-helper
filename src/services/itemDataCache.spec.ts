@@ -9,7 +9,7 @@ import {
 } from "./itemDataCache";
 
 /** A promise whose resolution is controlled from outside. */
-const deferred = <T>() => {
+const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
   const promise = new Promise<T>((res, rej) => {
@@ -29,7 +29,7 @@ const cordial = {
 
 const typeNames = new Map([[44, "Medicine"]]);
 
-const sourceOf = (
+const createSource = (
   latestVersion: string,
   items: MarketBoardItem[] = [cordial],
 ) => ({
@@ -46,7 +46,7 @@ const sourceOf = (
 
 const setUp = ({
   store = new MemoryItemDataStore(),
-  source = sourceOf("7.56x1"),
+  source = createSource("7.56x1"),
   locks = new InMemoryLockManager(),
 } = {}) => {
   const cache = new ItemDataCache(store, source, locks);
@@ -100,7 +100,7 @@ describe("ItemDataCache", () => {
     });
 
     it("should report checking, then how many items have loaded so far, then being ready", async () => {
-      const source = sourceOf("7.56x1");
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockImplementation(async (_, onProgress) => {
         onProgress(500);
         onProgress(900);
@@ -133,7 +133,7 @@ describe("ItemDataCache", () => {
     it("should keep using the stored items when the latest version can't be found out", async () => {
       const store = new MemoryItemDataStore();
       await store.replaceItems("7.55", [cordial], typeNames);
-      const source = sourceOf("7.56x1");
+      const source = createSource("7.56x1");
       source.fetchLatestGameVersion.mockRejectedValue(
         new Error("XIVAPI is down"),
       );
@@ -147,7 +147,7 @@ describe("ItemDataCache", () => {
     });
 
     it("should say why it failed when nothing's stored and the latest version can't be found out", async () => {
-      const source = sourceOf("7.56x1");
+      const source = createSource("7.56x1");
       source.fetchLatestGameVersion.mockRejectedValue(
         new Error("XIVAPI is down"),
       );
@@ -164,7 +164,7 @@ describe("ItemDataCache", () => {
     it("should say why it failed, and leave the stored items alone, when the items can't be loaded", async () => {
       const store = new MemoryItemDataStore();
       await store.replaceItems("7.55", [cordial], typeNames);
-      const source = sourceOf("7.56x1");
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockRejectedValue(
         new Error("XIVAPI market board item search failed (500)"),
       );
@@ -180,7 +180,7 @@ describe("ItemDataCache", () => {
     });
 
     it("should still let items be looked up after failing", async () => {
-      const source = sourceOf("7.56x1");
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockRejectedValue(new Error("Down"));
       const { cache } = setUp({ source });
 
@@ -194,8 +194,8 @@ describe("ItemDataCache", () => {
     it("should wait for another tab that's already loading, then load nothing itself", async () => {
       const store = new MemoryItemDataStore();
       const locks = new InMemoryLockManager();
-      const loading = deferred<MarketBoardItem[]>();
-      const firstSource = sourceOf("7.56x1");
+      const loading = createDeferred<MarketBoardItem[]>();
+      const firstSource = createSource("7.56x1");
       firstSource.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const firstTab = setUp({ store, locks, source: firstSource });
       const secondTab = setUp({ store, locks });
@@ -219,8 +219,8 @@ describe("ItemDataCache", () => {
 
   describe("looking up items", () => {
     it("should wait for a load in progress to finish, rather than reading what's there before it", async () => {
-      const loading = deferred<MarketBoardItem[]>();
-      const source = sourceOf("7.56x1");
+      const loading = createDeferred<MarketBoardItem[]>();
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const { cache } = setUp({ source });
 
@@ -238,8 +238,8 @@ describe("ItemDataCache", () => {
     it("should wait for a load in another tab to finish too", async () => {
       const store = new MemoryItemDataStore();
       const locks = new InMemoryLockManager();
-      const loading = deferred<MarketBoardItem[]>();
-      const source = sourceOf("7.56x1");
+      const loading = createDeferred<MarketBoardItem[]>();
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const loadingTab = setUp({ store, locks, source });
       const otherTab = setUp({ store, locks });
@@ -256,8 +256,8 @@ describe("ItemDataCache", () => {
     });
 
     it("should let a lookup that's waiting be cancelled", async () => {
-      const loading = deferred<MarketBoardItem[]>();
-      const source = sourceOf("7.56x1");
+      const loading = createDeferred<MarketBoardItem[]>();
+      const source = createSource("7.56x1");
       source.fetchMarketBoardItems.mockReturnValue(loading.promise);
       const { cache } = setUp({ source });
       const update = cache.update();
@@ -266,7 +266,7 @@ describe("ItemDataCache", () => {
       );
       const controller = new AbortController();
 
-      const lookup = cache.getItems([6141], { signal: controller.signal });
+      const lookup = cache.getItems([6141], controller.signal);
       controller.abort(new Error("Cancelled"));
 
       await expect(lookup).rejects.toThrow("Cancelled");

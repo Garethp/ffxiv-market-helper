@@ -24,8 +24,8 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 });
 
 import { fetchRowMarketData } from "../services/rowAnalysis";
-import { columnHeaderNames } from "../testing/columnHeaderNames";
-import { withQueryClient } from "../testing/withQueryClient";
+import { getColumnHeaderNames } from "../testing/getColumnHeaderNames";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { TrackedItemsContainer } from "./TrackedItemsContainer";
 
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
@@ -69,7 +69,7 @@ const config: TradingConfig = {
   ownRetainers: [],
 };
 
-const marketData = (
+const buildMarketData = (
   data: Partial<UniversalisMarketData>,
 ): UniversalisMarketData => ({
   itemID: 1,
@@ -81,11 +81,11 @@ const marketData = (
 });
 
 /** Sells for 1,000, and can be bought for the given price on the given data center. */
-const rowMarketData = (
+const buildRowMarketData = (
   dataCenter: string,
   buyPricePerUnit: number,
 ): RowMarketData => ({
-  sell: marketData({
+  sell: buildMarketData({
     recentHistory: [1, 2, 3].map(() => ({
       pricePerUnit: 1000,
       quantity: 1,
@@ -97,7 +97,7 @@ const rowMarketData = (
   buy: [
     {
       dataCenter,
-      data: marketData({
+      data: buildMarketData({
         listings: [
           {
             pricePerUnit: buyPricePerUnit,
@@ -117,7 +117,7 @@ const renderContainer = (currentCharacter: Character = alice) =>
       config={config}
       currentCharacter={currentCharacter}
     />,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
 
 /** Lets fetches settle, and runs whatever is due within the given time. */
@@ -126,41 +126,43 @@ const advance = (ms = 0) =>
     await vi.advanceTimersByTimeAsync(ms);
   });
 
-const regionSection = (headingText: string) =>
+const getRegionSection = (headingText: string) =>
   screen.getByRole("heading", { name: headingText }).closest("section")!;
 
 /** The text of a section's first item row, in the column with the given header. */
-const cellText = (section: HTMLElement, columnHeader: string) => {
-  const headers = columnHeaderNames(section);
+const getCellText = (section: HTMLElement, columnHeader: string) => {
+  const headers = getColumnHeaderNames(section);
   const [, itemRow] = within(section).getAllByRole("row");
   return within(itemRow).getAllByRole("cell")[headers.indexOf(columnHeader)]
     .textContent;
 };
 
-beforeAll(() => {
-  // TanStack Query hands results to React on a zero-delay timer, which fake timers only run once
-  // the clock moves past it. Handing them over straight away lets each test move the clock by
-  // exactly the time it describes.
-  notifyManager.setScheduler(queueMicrotask);
-});
-
-afterAll(() => {
-  notifyManager.setScheduler(defaultScheduler);
-});
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  vi.useFakeTimers();
-  vi.setSystemTime(startTime);
-  mockedFetchRowMarketData.mockResolvedValue(rowMarketData("Light", 400));
-});
-
-afterEach(() => {
-  cleanup();
-  vi.useRealTimers();
-});
-
 describe("TrackedItemsContainer", () => {
+  beforeAll(() => {
+    // TanStack Query hands results to React on a zero-delay timer, which fake timers only run once
+    // the clock moves past it. Handing them over straight away lets each test move the clock by
+    // exactly the time it describes.
+    notifyManager.setScheduler(queueMicrotask);
+  });
+
+  afterAll(() => {
+    notifyManager.setScheduler(defaultScheduler);
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(startTime);
+    mockedFetchRowMarketData.mockResolvedValue(
+      buildRowMarketData("Light", 400),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
   describe("introducing the page", () => {
     it("should say which world it's selling on: the Current Character's home world", () => {
       renderContainer();
@@ -195,21 +197,21 @@ describe("TrackedItemsContainer", () => {
       mockedFetchRowMarketData.mockImplementation(
         async (_client, _itemId, region) =>
           region === "Europe"
-            ? rowMarketData("Light", 400)
-            : rowMarketData("Mana", 700),
+            ? buildRowMarketData("Light", 400)
+            : buildRowMarketData("Mana", 700),
       );
 
       renderContainer();
       await advance();
 
-      const europe = regionSection("Buying via Alice (Europe)");
-      const japan = regionSection("Buying via Bob (Japan)");
-      expect(cellText(europe, "Item")).toContain("Wind Cluster");
-      expect(cellText(europe, "Buy DC")).toBe("Light");
-      expect(cellText(europe, "Profit / item")).toBe("600");
-      expect(cellText(japan, "Item")).toContain("Wind Cluster");
-      expect(cellText(japan, "Buy DC")).toBe("Mana");
-      expect(cellText(japan, "Profit / item")).toBe("300");
+      const europe = getRegionSection("Buying via Alice (Europe)");
+      const japan = getRegionSection("Buying via Bob (Japan)");
+      expect(getCellText(europe, "Item")).toContain("Wind Cluster");
+      expect(getCellText(europe, "Buy DC")).toBe("Light");
+      expect(getCellText(europe, "Profit / item")).toBe("600");
+      expect(getCellText(japan, "Item")).toContain("Wind Cluster");
+      expect(getCellText(japan, "Buy DC")).toBe("Mana");
+      expect(getCellText(japan, "Profit / item")).toBe("300");
     });
 
     it("should link each sell price to its market on the Current Character's home world", async () => {
@@ -217,7 +219,7 @@ describe("TrackedItemsContainer", () => {
       await advance();
 
       const sellPriceLink = within(
-        regionSection("Buying via Alice (Europe)"),
+        getRegionSection("Buying via Alice (Europe)"),
       ).getByRole("link", { name: "1,000" });
       expect(sellPriceLink.getAttribute("href")).toBe(
         buildMarketPageUrl(1, "Raiden"),

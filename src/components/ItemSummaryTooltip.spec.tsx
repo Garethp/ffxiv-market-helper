@@ -7,13 +7,13 @@ vi.mock("../services/itemService", () => ({
 }));
 
 import { itemService } from "../services/itemService";
-import { descriptionOf } from "../testing/descriptionOf";
-import { withQueryClient } from "../testing/withQueryClient";
+import { getDescription } from "../testing/getDescription";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 
 const mockedGetItemSummaries = vi.mocked(itemService.getItemSummaries);
 
-const summaryIs = (type: string | undefined, description: string) =>
+const stubSummary = (type: string | undefined, description: string) =>
   mockedGetItemSummaries.mockResolvedValue(
     new Map([[2212, { type, description }]]),
   );
@@ -22,31 +22,31 @@ const renderTooltip = (props: { note?: string } = {}) =>
   render(
     <ItemSummaryTooltip itemId={2212} name="Deus Ex Gratia" {...props} />,
     {
-      wrapper: withQueryClient(),
+      wrapper: createQueryClientWrapper(),
     },
   );
 
-const icon = () => screen.queryByRole<HTMLImageElement>("presentation");
+const queryIcon = () => screen.queryByRole<HTMLImageElement>("presentation");
 
 const hoverName = () =>
   fireEvent.mouseEnter(screen.getByText("Deus Ex Gratia"));
 
-beforeEach(() => {
-  summaryIs("Scholar's Arm", "A grimoire of the scholarly arts.");
-});
-
-afterEach(() => {
-  cleanup();
-  vi.resetAllMocks();
-});
-
 describe("ItemSummaryTooltip", () => {
+  beforeEach(() => {
+    stubSummary("Scholar's Arm", "A grimoire of the scholarly arts.");
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.resetAllMocks();
+  });
+
   it("should show the item's icon, type and what the game says about it once hovered", async () => {
     renderTooltip();
 
     hoverName();
 
-    expect(icon()!.src).toBe(
+    expect(queryIcon()!.src).toBe(
       "https://universalis-ffxiv.github.io/universalis-assets/icon2x/2212.png",
     );
     await screen.findByText("A grimoire of the scholarly arts.");
@@ -64,7 +64,7 @@ describe("ItemSummaryTooltip", () => {
   it("should look nothing up, and fetch no icon, until it's opened", () => {
     renderTooltip();
 
-    expect(icon()).toBeNull();
+    expect(queryIcon()).toBeNull();
     expect(mockedGetItemSummaries).not.toHaveBeenCalled();
   });
 
@@ -74,13 +74,13 @@ describe("ItemSummaryTooltip", () => {
     hoverName();
 
     await screen.findByText("A grimoire of the scholarly arts.");
-    expect(descriptionOf(screen.getByText("Deus Ex Gratia"))).toContain(
+    expect(getDescription(screen.getByText("Deus Ex Gratia"))).toContain(
       "A grimoire of the scholarly arts.",
     );
   });
 
   it("should leave out the type for an item that has none", async () => {
-    summaryIs(undefined, "A grimoire of the scholarly arts.");
+    stubSummary(undefined, "A grimoire of the scholarly arts.");
     renderTooltip();
 
     hoverName();
@@ -90,7 +90,7 @@ describe("ItemSummaryTooltip", () => {
   });
 
   it("should leave out the description for an item the game says nothing about", async () => {
-    summaryIs("Scholar's Arm", "");
+    stubSummary("Scholar's Arm", "");
     renderTooltip();
 
     hoverName();
@@ -103,9 +103,9 @@ describe("ItemSummaryTooltip", () => {
     renderTooltip();
     hoverName();
 
-    fireEvent.error(icon()!);
+    fireEvent.error(queryIcon()!);
 
-    expect(icon()).toBeNull();
+    expect(queryIcon()).toBeNull();
   });
 
   it("should show a note about the name alongside what the item is", async () => {
@@ -125,13 +125,13 @@ describe("ItemSummaryTooltip", () => {
           </a>
         )}
       </ItemSummaryTooltip>,
-      { wrapper: withQueryClient() },
+      { wrapper: createQueryClientWrapper() },
     );
 
     fireEvent.mouseEnter(screen.getByRole("link"));
 
     await screen.findByText("A grimoire of the scholarly arts.");
-    expect(descriptionOf(screen.getByRole("link"))).toContain(
+    expect(getDescription(screen.getByRole("link"))).toContain(
       "A grimoire of the scholarly arts.",
     );
   });

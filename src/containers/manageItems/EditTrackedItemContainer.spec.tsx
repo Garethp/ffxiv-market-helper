@@ -23,7 +23,7 @@ vi.mock("../../services/trackedItemService", async (importOriginal) => {
 import { useReloadable } from "../../hooks/useReloadable";
 import { trackedItemService } from "../../services/trackedItemService";
 import { buildTradingConfig } from "../../services/tradingConfig";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 import { EditTrackedItemContainer } from "./EditTrackedItemContainer";
 
 const loadedConfig = {
@@ -76,56 +76,56 @@ const renderPage = (itemId: string) =>
         />
       </Routes>
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
 
 /** The page's form, once the item it's for has been read. */
-const editForm = () => screen.findByRole("form");
+const findEditForm = () => screen.findByRole("form");
 
-const fieldValue = (form: HTMLElement, label: string) =>
+const getFieldValue = (form: HTMLElement, label: string) =>
   (within(form).getByLabelText(label) as HTMLInputElement).value;
 
 const setField = (form: HTMLElement, label: string, value: string) =>
   fireEvent.change(within(form).getByLabelText(label), { target: { value } });
 
-const backOnTheList = () => screen.findByText("Tracked items page");
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  onTrackedItemsChanged.mockReset();
-  vi.restoreAllMocks();
-});
+const waitForListPage = () => screen.findByText("Tracked items page");
 
 describe("EditTrackedItemContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    onTrackedItemsChanged.mockReset();
+    vi.restoreAllMocks();
+  });
+
   it("should name the item and start with the settings it's tracked with", async () => {
     const id = await track({ ...cordial, hq: true, sellPriceCeiling: 5000 });
 
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     screen.getByRole("heading", { name: "Edit Cordial (HQ)" });
     expect(
       (within(form).getByLabelText("HQ") as HTMLInputElement).checked,
     ).toBe(true);
-    expect(fieldValue(form, "Target quantity")).toBe("999");
-    expect(fieldValue(form, "Sell price ceiling")).toBe("5k");
+    expect(getFieldValue(form, "Target quantity")).toBe("999");
+    expect(getFieldValue(form, "Sell price ceiling")).toBe("5k");
   });
 
   it("should save the entered settings and go back to the list, reporting the change", async () => {
     const id = await track({ ...cordial, sellPriceCeiling: 5000 });
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fireEvent.click(within(form).getByLabelText("HQ"));
     setField(form, "Target quantity", "60");
     setField(form, "Sell price ceiling", "");
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
 
-    await backOnTheList();
+    await waitForListPage();
     const [changed] = await trackedItemService.getTrackedItems();
     expect(changed).toMatchObject({ hq: true, targetQuantity: 60 });
     expect(changed.sellPriceCeiling).toBeUndefined();
@@ -136,7 +136,7 @@ describe("EditTrackedItemContainer", () => {
     const id = await track();
     await track({ ...cordial, hq: true });
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fireEvent.click(within(form).getByLabelText("HQ"));
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
@@ -156,7 +156,7 @@ describe("EditTrackedItemContainer", () => {
       new Error("storage is full"),
     );
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     setField(form, "Target quantity", "60");
     fireEvent.click(within(form).getByRole("button", { name: "Save" }));
@@ -172,12 +172,12 @@ describe("EditTrackedItemContainer", () => {
     async (control) => {
       const id = await track();
       renderPage(id);
-      const form = await editForm();
+      const form = await findEditForm();
       setField(form, "Target quantity", "60");
 
       fireEvent.click(screen.getByText(control));
 
-      await backOnTheList();
+      await waitForListPage();
       expect(await trackedItemService.getTrackedItems()).toEqual([
         { id, ...cordial },
       ]);
@@ -188,7 +188,7 @@ describe("EditTrackedItemContainer", () => {
   it("should go straight back to the list when the item isn't tracked", async () => {
     renderPage("never-tracked");
 
-    await backOnTheList();
+    await waitForListPage();
     expect(screen.queryByRole("form")).toBeNull();
   });
 });

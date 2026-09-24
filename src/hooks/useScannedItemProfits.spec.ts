@@ -13,13 +13,13 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 });
 
 import { fetchRowMarketData } from "../services/rowAnalysis";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { useScannedItemProfits } from "./useScannedItemProfits";
 
 const mockedFetchRowMarketData = vi.mocked(fetchRowMarketData);
 
 /** A promise whose resolution is controlled from outside, to pin down fetch-ordering races. */
-const deferred = <T>() => {
+const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolve = r;
@@ -28,8 +28,8 @@ const deferred = <T>() => {
 };
 
 /** The items, with no names known. */
-const unnamed = (itemIds: number[]) =>
-  itemIds.map((itemId) => ({ itemId, name: null }));
+const buildUnnamedItems = (itemIds: number[]) =>
+  itemIds.map((itemId) => ({ itemId, name: undefined }));
 
 const alice: Character = {
   id: "alice",
@@ -64,17 +64,17 @@ const config: TradingConfig = {
   ownRetainers: [],
 };
 
-const sales = (pricePerUnit: number, hq: boolean) =>
+const buildSales = (pricePerUnit: number, hq: boolean) =>
   [1, 2, 3].map(() => ({ pricePerUnit, quantity: 1, timestamp: 0, hq }));
 
-const listing = (pricePerUnit: number, hq: boolean) => ({
+const buildListing = (pricePerUnit: number, hq: boolean) => ({
   pricePerUnit,
   quantity: 100,
   hq,
   retainerName: "Someone Else",
 });
 
-const marketData = (
+const buildMarketData = (
   data: Partial<UniversalisMarketData>,
 ): UniversalisMarketData => ({
   itemID: 1,
@@ -89,7 +89,7 @@ const marketData = (
  * Sells at 1,000 NQ / 2,000 HQ, with the given daily sale velocities, and
  * buys at the given NQ and HQ prices from a single data center.
  */
-const regionMarketData = ({
+const buildRegionMarketData = ({
   dataCenter,
   nqBuyPrice,
   hqBuyPrice,
@@ -102,8 +102,8 @@ const regionMarketData = ({
   nqSaleVelocity?: number;
   hqSaleVelocity?: number;
 }): RowMarketData => ({
-  sell: marketData({
-    recentHistory: [...sales(1000, false), ...sales(2000, true)],
+  sell: buildMarketData({
+    recentHistory: [...buildSales(1000, false), ...buildSales(2000, true)],
     nqSaleVelocity,
     hqSaleVelocity,
   }),
@@ -111,15 +111,18 @@ const regionMarketData = ({
   buy: [
     {
       dataCenter,
-      data: marketData({
-        listings: [listing(nqBuyPrice, false), listing(hqBuyPrice, true)],
+      data: buildMarketData({
+        listings: [
+          buildListing(nqBuyPrice, false),
+          buildListing(hqBuyPrice, true),
+        ],
       }),
     },
   ],
 });
 
 /** Answers each buying region's fetch with the market data given for it. */
-const marketDataByRegion = (byRegion: Record<string, RowMarketData>) => {
+const mockMarketDataByRegion = (byRegion: Record<string, RowMarketData>) => {
   mockedFetchRowMarketData.mockImplementation(
     async (_client, _itemId, region) => {
       const data = byRegion[region];
@@ -130,7 +133,7 @@ const marketDataByRegion = (byRegion: Record<string, RowMarketData>) => {
 };
 
 /** The item's row for one buying region, once it's been priced. */
-const rowFor = (
+const getRowFor = (
   result: { current: ReturnType<typeof useScannedItemProfits> },
   itemId: number,
   region = "Europe",
@@ -140,24 +143,27 @@ const rowFor = (
   return profit.rowByRegion[region];
 };
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  marketDataByRegion({
-    Europe: regionMarketData({
-      dataCenter: "Light",
-      nqBuyPrice: 400,
-      hqBuyPrice: 1900,
-    }),
-  });
-});
-
 describe("useScannedItemProfits", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockMarketDataByRegion({
+      Europe: buildRegionMarketData({
+        dataCenter: "Light",
+        nqBuyPrice: 400,
+        hqBuyPrice: 1900,
+      }),
+    });
+  });
+
   describe("which items it prices", () => {
     it("should fetch every item across every buying region, selling through the given character", async () => {
       const itemIds = [1, 2];
-      renderHook(() => useScannedItemProfits(unnamed(itemIds), config, alice), {
-        wrapper: withQueryClient(),
-      });
+      renderHook(
+        () => useScannedItemProfits(buildUnnamedItems(itemIds), config, alice),
+        {
+          wrapper: createQueryClientWrapper(),
+        },
+      );
 
       await waitFor(() =>
         expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4),
@@ -176,10 +182,11 @@ describe("useScannedItemProfits", () => {
 
     it("should stop showing items that are no longer being priced", async () => {
       const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
-        { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
+        ({ itemIds }) =>
+          useScannedItemProfits(buildUnnamedItems(itemIds), config, alice),
+        { initialProps: { itemIds: [1] }, wrapper: createQueryClientWrapper() },
       );
-      await waitFor(() => rowFor(result, 1));
+      await waitFor(() => getRowFor(result, 1));
 
       rerender({ itemIds: [] });
 
@@ -187,18 +194,19 @@ describe("useScannedItemProfits", () => {
     });
 
     it("should not let a fetch for items that are no longer being priced come back and show them", async () => {
-      const fetch = deferred<RowMarketData>();
+      const fetch = createDeferred<RowMarketData>();
       mockedFetchRowMarketData.mockReturnValue(fetch.promise);
       const { result, rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
-        { initialProps: { itemIds: [1] }, wrapper: withQueryClient() },
+        ({ itemIds }) =>
+          useScannedItemProfits(buildUnnamedItems(itemIds), config, alice),
+        { initialProps: { itemIds: [1] }, wrapper: createQueryClientWrapper() },
       );
       await waitFor(() => expect(mockedFetchRowMarketData).toHaveBeenCalled());
 
       rerender({ itemIds: [] });
       await act(async () => {
         fetch.resolve(
-          regionMarketData({
+          buildRegionMarketData({
             dataCenter: "Light",
             nqBuyPrice: 400,
             hqBuyPrice: 1900,
@@ -213,8 +221,11 @@ describe("useScannedItemProfits", () => {
       const itemIds = [1];
       const { rerender } = renderHook(
         ({ character }) =>
-          useScannedItemProfits(unnamed(itemIds), config, character),
-        { initialProps: { character: alice }, wrapper: withQueryClient() },
+          useScannedItemProfits(buildUnnamedItems(itemIds), config, character),
+        {
+          initialProps: { character: alice },
+          wrapper: createQueryClientWrapper(),
+        },
       );
       await waitFor(() =>
         expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(2),
@@ -231,7 +242,7 @@ describe("useScannedItemProfits", () => {
 
   describe("abandoning pricing that's still under way", () => {
     /** The cancellation signal each fetch so far was given. */
-    const fetchSignals = () =>
+    const getFetchSignals = () =>
       mockedFetchRowMarketData.mock.calls.map((call) => call[6]!);
 
     beforeEach(() => {
@@ -240,8 +251,12 @@ describe("useScannedItemProfits", () => {
 
     it("should cancel fetches for items that are no longer being priced", async () => {
       const { rerender } = renderHook(
-        ({ itemIds }) => useScannedItemProfits(unnamed(itemIds), config, alice),
-        { initialProps: { itemIds: [1, 2] }, wrapper: withQueryClient() },
+        ({ itemIds }) =>
+          useScannedItemProfits(buildUnnamedItems(itemIds), config, alice),
+        {
+          initialProps: { itemIds: [1, 2] },
+          wrapper: createQueryClientWrapper(),
+        },
       );
       await waitFor(() =>
         expect(mockedFetchRowMarketData).toHaveBeenCalledTimes(4),
@@ -250,7 +265,7 @@ describe("useScannedItemProfits", () => {
       rerender({ itemIds: [2] });
 
       await waitFor(() =>
-        expect(fetchSignals().map((signal) => signal.aborted)).toEqual([
+        expect(getFetchSignals().map((signal) => signal.aborted)).toEqual([
           true,
           true,
           false,
@@ -263,13 +278,13 @@ describe("useScannedItemProfits", () => {
   describe("while an item is being priced", () => {
     it("should show it as loading", () => {
       mockedFetchRowMarketData.mockReturnValue(
-        deferred<RowMarketData>().promise,
+        createDeferred<RowMarketData>().promise,
       );
 
       const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, alice),
+        () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
         {
-          wrapper: withQueryClient(),
+          wrapper: createQueryClientWrapper(),
         },
       );
 
@@ -279,13 +294,13 @@ describe("useScannedItemProfits", () => {
 
   describe("once an item is priced", () => {
     it("should price it through each buying region separately", async () => {
-      marketDataByRegion({
-        Europe: regionMarketData({
+      mockMarketDataByRegion({
+        Europe: buildRegionMarketData({
           dataCenter: "Light",
           nqBuyPrice: 400,
           hqBuyPrice: 1900,
         }),
-        Japan: regionMarketData({
+        Japan: buildRegionMarketData({
           dataCenter: "Elemental",
           nqBuyPrice: 100,
           hqBuyPrice: 1900,
@@ -293,18 +308,18 @@ describe("useScannedItemProfits", () => {
       });
 
       const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, alice),
+        () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
         {
-          wrapper: withQueryClient(),
+          wrapper: createQueryClientWrapper(),
         },
       );
 
-      await waitFor(() => rowFor(result, 1));
-      expect(rowFor(result, 1, "Europe").analysis).toMatchObject({
+      await waitFor(() => getRowFor(result, 1));
+      expect(getRowFor(result, 1, "Europe").analysis).toMatchObject({
         buyDataCenter: "Light",
         expectedProfitPerDay: 6000,
       });
-      expect(rowFor(result, 1, "Japan").analysis).toMatchObject({
+      expect(getRowFor(result, 1, "Japan").analysis).toMatchObject({
         buyDataCenter: "Elemental",
         expectedProfitPerDay: 9000,
       });
@@ -312,8 +327,8 @@ describe("useScannedItemProfits", () => {
 
     describe("choosing its quality", () => {
       it("should price it at HQ when HQ sells more per day, even if NQ would be more profitable", async () => {
-        marketDataByRegion({
-          Europe: regionMarketData({
+        mockMarketDataByRegion({
+          Europe: buildRegionMarketData({
             dataCenter: "Light",
             nqBuyPrice: 400,
             hqBuyPrice: 1900,
@@ -323,14 +338,14 @@ describe("useScannedItemProfits", () => {
         });
 
         const { result } = renderHook(
-          () => useScannedItemProfits(unnamed([1]), config, alice),
+          () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
           {
-            wrapper: withQueryClient(),
+            wrapper: createQueryClientWrapper(),
           },
         );
 
-        await waitFor(() => rowFor(result, 1));
-        expect(rowFor(result, 1)).toMatchObject({
+        await waitFor(() => getRowFor(result, 1));
+        expect(getRowFor(result, 1)).toMatchObject({
           item: { hq: true },
           analysis: { sellPricePerUnit: 2000 },
         });
@@ -338,28 +353,28 @@ describe("useScannedItemProfits", () => {
 
       it("should price it at NQ when both qualities sell equally", async () => {
         const { result } = renderHook(
-          () => useScannedItemProfits(unnamed([1]), config, alice),
+          () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
           {
-            wrapper: withQueryClient(),
+            wrapper: createQueryClientWrapper(),
           },
         );
 
-        await waitFor(() => rowFor(result, 1));
-        expect(rowFor(result, 1).item.hq).toBe(false);
+        await waitFor(() => getRowFor(result, 1));
+        expect(getRowFor(result, 1).item.hq).toBe(false);
       });
 
       it("should price it at the same quality through every buying region, including one whose fetch failed", async () => {
-        const hqInDemand = (dataCenter: string, hqBuyPrice: number) =>
-          regionMarketData({
+        const buildHqInDemandData = (dataCenter: string, hqBuyPrice: number) =>
+          buildRegionMarketData({
             dataCenter,
             nqBuyPrice: 100,
             hqBuyPrice,
             nqSaleVelocity: 5,
             hqSaleVelocity: 10,
           });
-        marketDataByRegion({
-          Europe: hqInDemand("Light", 1900),
-          Japan: hqInDemand("Elemental", 1000),
+        mockMarketDataByRegion({
+          Europe: buildHqInDemandData("Light", 1900),
+          Japan: buildHqInDemandData("Elemental", 1000),
         });
         const threeRegionConfig: TradingConfig = {
           ...config,
@@ -370,16 +385,21 @@ describe("useScannedItemProfits", () => {
         };
 
         const { result } = renderHook(
-          () => useScannedItemProfits(unnamed([1]), threeRegionConfig, alice),
+          () =>
+            useScannedItemProfits(
+              buildUnnamedItems([1]),
+              threeRegionConfig,
+              alice,
+            ),
           {
-            wrapper: withQueryClient(),
+            wrapper: createQueryClientWrapper(),
           },
         );
 
-        await waitFor(() => rowFor(result, 1));
+        await waitFor(() => getRowFor(result, 1));
         expect(
           ["Europe", "Japan", "Oceania"].map(
-            (region) => rowFor(result, 1, region).item.hq,
+            (region) => getRowFor(result, 1, region).item.hq,
           ),
         ).toEqual([true, true, true]);
       });
@@ -387,31 +407,31 @@ describe("useScannedItemProfits", () => {
 
     it("should price it with the target quantity assumed for untracked items", async () => {
       const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, alice),
+        () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
         {
-          wrapper: withQueryClient(),
+          wrapper: createQueryClientWrapper(),
         },
       );
 
-      await waitFor(() => rowFor(result, 1));
-      expect(rowFor(result, 1).item.targetQuantity).toBe(99);
+      await waitFor(() => getRowFor(result, 1));
+      expect(getRowFor(result, 1).item.targetQuantity).toBe(99);
     });
 
     it("should still price the other buying regions when one's fetch fails", async () => {
       // Only Europe has market data — Japan's fetch fails.
       const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, alice),
+        () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
         {
-          wrapper: withQueryClient(),
+          wrapper: createQueryClientWrapper(),
         },
       );
 
-      await waitFor(() => rowFor(result, 1));
-      expect(rowFor(result, 1, "Europe").analysis).toMatchObject({
+      await waitFor(() => getRowFor(result, 1));
+      expect(getRowFor(result, 1, "Europe").analysis).toMatchObject({
         status: "ready",
         buyDataCenter: "Light",
       });
-      expect(rowFor(result, 1, "Japan").analysis).toEqual({
+      expect(getRowFor(result, 1, "Japan").analysis).toEqual({
         status: "pending",
       });
     });
@@ -422,17 +442,17 @@ describe("useScannedItemProfits", () => {
           useScannedItemProfits(
             [
               { itemId: 1, name: "Wind Cluster" },
-              { itemId: 2, name: null },
+              { itemId: 2, name: undefined },
             ],
             config,
             alice,
           ),
-        { wrapper: withQueryClient() },
+        { wrapper: createQueryClientWrapper() },
       );
 
-      await waitFor(() => rowFor(result, 2));
-      expect(rowFor(result, 1).item.name).toBe("Wind Cluster");
-      expect(rowFor(result, 2).item.name).toBe("#2");
+      await waitFor(() => getRowFor(result, 2));
+      expect(getRowFor(result, 1).item.name).toBe("Wind Cluster");
+      expect(getRowFor(result, 2).item.name).toBe("#2");
     });
   });
 
@@ -441,9 +461,9 @@ describe("useScannedItemProfits", () => {
       mockedFetchRowMarketData.mockRejectedValue(new Error("Gateway timeout"));
 
       const { result } = renderHook(
-        () => useScannedItemProfits(unnamed([1]), config, alice),
+        () => useScannedItemProfits(buildUnnamedItems([1]), config, alice),
         {
-          wrapper: withQueryClient(),
+          wrapper: createQueryClientWrapper(),
         },
       );
 

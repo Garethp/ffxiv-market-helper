@@ -22,8 +22,8 @@ export type MarketBoardItem = ItemSearchResult & {
 
 /** What an item is, for showing alongside its name. */
 export interface ItemSummary {
-  /** E.g. "Scholar's Arm". Undefined when the item's type isn't known. */
-  type: string | undefined;
+  /** E.g. "Scholar's Arm". Missing when the item's type isn't known. */
+  type?: string;
   /** What the game says the item is. Empty for an item with nothing to say about it. */
   description: string;
 }
@@ -199,29 +199,29 @@ export interface ConsistentPrice {
   /** Whether enough listings existed to fill the full target quantity. */
   fullyFilled: boolean;
   /** The world the cheapest listing(s) came from (first listing consumed). */
-  cheapestWorld: string | null;
+  cheapestWorld?: string;
 }
 
 /** The priced-out result of a successful profit analysis. */
 export interface ProfitPricing {
   /** The data center within the buying character's region where the best price was found. */
   buyDataCenter: string;
-  buy: ConsistentPrice | null;
-  sellPricePerUnit: number | null;
+  buy?: ConsistentPrice;
+  sellPricePerUnit?: number;
   /** Whether sellPricePerUnit came from recent sale history or from current listings. */
-  sellPriceSource: "history" | "listings" | null;
+  sellPriceSource?: "history" | "listings";
   /** True when sellPricePerUnit was brought down to the item's sellPriceCeiling because the market price exceeded it. */
   sellPriceCapped: boolean;
   /** True when current listings sit well above recent sale prices — a gap we could undercut into. */
   gapDetected: boolean;
   /** Average units of this item actually sold per day recently, for its tracked quality — how much of it the market can actually absorb. */
   saleVelocityPerDay: number;
-  effectiveBuyPricePerUnit: number | null;
-  effectiveSellPricePerUnit: number | null;
-  profitPerItem: number | null;
-  profitPerStack: number | null;
+  effectiveBuyPricePerUnit?: number;
+  effectiveSellPricePerUnit?: number;
+  profitPerItem?: number;
+  profitPerStack?: number;
   /** Profit per item scaled by actual daily sale velocity, rather than assuming the whole target quantity sells. The realistic "is this worth doing" number for low-throughput items. */
-  expectedProfitPerDay: number | null;
+  expectedProfitPerDay?: number;
   /** Where our own retainer's listing for this item stands against current competition on the sell world. */
   sellListingStatus: SellListingStatus;
 }
@@ -229,7 +229,7 @@ export interface ProfitPricing {
 /**
  * The state of a single item/character row's analysis. `pending` means we
  * haven't fetched yet; `ready` means we successfully fetched (its nested
- * fields can still legitimately be null, e.g. no listings currently exist —
+ * fields can still legitimately be missing, e.g. no listings currently exist —
  * that's a real market state, not a loading state). There's no `error`
  * state here deliberately: a failed fetch never changes what's displayed.
  */

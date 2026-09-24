@@ -4,9 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrackedItem } from "../../types";
 import { TrackedItemRow } from "./TrackedItemRow";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 
-const aTrackedItem = (overrides: Partial<TrackedItem> = {}): TrackedItem => ({
+const buildTrackedItem = (
+  overrides: Partial<TrackedItem> = {},
+): TrackedItem => ({
   id: "cordial",
   itemId: 6141,
   name: "Cordial",
@@ -19,7 +21,7 @@ const renderRow = (
   item: TrackedItem,
   props: Partial<{
     editHref: string;
-    errorMessage: string | null;
+    errorMessage: string;
     onUntrack: () => void;
   }> = {},
 ) => {
@@ -34,41 +36,45 @@ const renderRow = (
         />
       </ul>
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
   return handlers;
 };
 
-const rowText = () => screen.getByRole("listitem").textContent;
-
-afterEach(cleanup);
+const getRowText = () => screen.getByRole("listitem").textContent;
 
 describe("TrackedItemRow", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("showing the item", () => {
     it("should show the item's name, target quantity and sell price ceiling", () => {
-      renderRow(aTrackedItem({ targetQuantity: 60, sellPriceCeiling: 5000 }));
+      renderRow(
+        buildTrackedItem({ targetQuantity: 60, sellPriceCeiling: 5000 }),
+      );
 
-      expect(rowText()).toContain("Cordial");
-      expect(rowText()).toContain("Target quantity 60");
-      expect(rowText()).toContain("Sell price ceiling 5k");
+      expect(getRowText()).toContain("Cordial");
+      expect(getRowText()).toContain("Target quantity 60");
+      expect(getRowText()).toContain("Sell price ceiling 5k");
     });
 
     it("should say when the item has no sell price ceiling", () => {
-      renderRow(aTrackedItem());
+      renderRow(buildTrackedItem());
 
-      expect(rowText()).toContain("No sell price ceiling");
+      expect(getRowText()).toContain("No sell price ceiling");
     });
 
     it("should mark an HQ item as HQ", () => {
-      renderRow(aTrackedItem({ hq: true }));
+      renderRow(buildTrackedItem({ hq: true }));
 
-      expect(rowText()).toContain("HQ");
+      expect(getRowText()).toContain("HQ");
     });
   });
 
   describe("changing the item's settings", () => {
     it("should lead to the page for it, rather than editing in place", () => {
-      renderRow(aTrackedItem(), { editHref: "/manage-items/edit/cordial" });
+      renderRow(buildTrackedItem(), { editHref: "/manage-items/edit/cordial" });
 
       const link = screen.getByRole("link", { name: "Edit Cordial (NQ)" });
 
@@ -79,7 +85,7 @@ describe("TrackedItemRow", () => {
 
   describe("no longer tracking the item", () => {
     it("should report that the item is no longer to be tracked", () => {
-      const { onUntrack } = renderRow(aTrackedItem());
+      const { onUntrack } = renderRow(buildTrackedItem());
 
       fireEvent.click(
         screen.getByRole("button", { name: "Stop tracking Cordial (NQ)" }),
@@ -89,7 +95,7 @@ describe("TrackedItemRow", () => {
     });
 
     it("should show why the last change wasn't made, alongside the item", () => {
-      renderRow(aTrackedItem(), {
+      renderRow(buildTrackedItem(), {
         errorMessage: "Something went wrong. Try again shortly.",
       });
 
@@ -99,7 +105,7 @@ describe("TrackedItemRow", () => {
     });
 
     it("should show nothing when there's no reason to show", () => {
-      renderRow(aTrackedItem());
+      renderRow(buildTrackedItem());
 
       expect(screen.queryByRole("alert")).toBeNull();
     });

@@ -15,8 +15,8 @@ export interface CompletedScan {
  * database/API) without touching any calling code.
  */
 export interface ScanResultsService {
-  /** The most recent completed scan of this world or data center, or null if there isn't one recent enough to show. */
-  getLatestScan(worldOrDataCenter: string): Promise<CompletedScan | null>;
+  /** The most recent completed scan of this world or data center, or nothing if there isn't one recent enough to show. */
+  getLatestScan(worldOrDataCenter: string): Promise<CompletedScan | undefined>;
   /** Replaces the most recent completed scan of the scan's world or data center. */
   saveScan(scan: CompletedScan): Promise<void>;
 }
@@ -36,9 +36,9 @@ const STORAGE_KEY_PREFIX = "ffxiv-trading:latest-scan:v1:";
 class LocalStorageScanResultsService implements ScanResultsService {
   async getLatestScan(
     worldOrDataCenter: string,
-  ): Promise<CompletedScan | null> {
+  ): Promise<CompletedScan | undefined> {
     const scan = this.read(STORAGE_KEY_PREFIX + worldOrDataCenter);
-    return scan !== null && this.isRecent(scan) ? scan : null;
+    return scan && this.isRecent(scan) ? scan : undefined;
   }
 
   async saveScan(scan: CompletedScan): Promise<void> {
@@ -49,13 +49,13 @@ class LocalStorageScanResultsService implements ScanResultsService {
     );
   }
 
-  private read(key: string): CompletedScan | null {
+  private read(key: string): CompletedScan | undefined {
     const stored = localStorage.getItem(key);
-    if (stored === null) return null;
+    if (stored === null) return;
     try {
       return JSON.parse(stored) as CompletedScan;
     } catch {
-      return null;
+      return;
     }
   }
 
@@ -71,7 +71,7 @@ class LocalStorageScanResultsService implements ScanResultsService {
     ).filter((key) => key.startsWith(STORAGE_KEY_PREFIX));
     for (const key of scanKeys) {
       const scan = this.read(key);
-      if (scan === null || !this.isRecent(scan)) localStorage.removeItem(key);
+      if (!scan || !this.isRecent(scan)) localStorage.removeItem(key);
     }
   }
 }

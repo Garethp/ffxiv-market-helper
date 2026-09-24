@@ -24,7 +24,7 @@ vi.mock("../services/rowAnalysis", async (importOriginal) => {
 
 import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
 import { fetchRowMarketData } from "../services/rowAnalysis";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 import { HighVolumeItemsContainer } from "./HighVolumeItemsContainer";
 
 const mockedUseHighVolumeItemScan = vi.mocked(useHighVolumeItemScan);
@@ -45,7 +45,7 @@ const config: TradingConfig = {
   ownRetainers: [],
 };
 
-const statusAt = (scannedItems: number): ScanStatus => {
+const buildRunningStatus = (scannedItems: number): ScanStatus => {
   return {
     state: "running",
     scannedItems,
@@ -53,12 +53,12 @@ const statusAt = (scannedItems: number): ScanStatus => {
   };
 };
 
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
-
 describe("HighVolumeItemsContainer", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
   describe("pricing the top results", () => {
     const alice: Character = {
       id: "alice",
@@ -75,13 +75,13 @@ describe("HighVolumeItemsContainer", () => {
     /** Item 52 sells fastest, down to item 1 selling slowest. */
     const results: ScannedItem[] = Array.from({ length: 52 }, (_, i) => ({
       itemId: i + 1,
-      name: null,
+      name: undefined,
       nqSaleVelocity: i + 1,
       hqSaleVelocity: 0,
       totalSaleVelocity: i + 1,
     }));
     const fastestFifty = Array.from({ length: 50 }, (_, i) => 52 - i);
-    const pricedItemIds = () =>
+    const getPricedItemIds = () =>
       mockedFetchRowMarketData.mock.calls.map(([, itemId]) => itemId);
 
     it("should price the 50 fastest-selling items once the scan finishes, and not while it's still running", async () => {
@@ -89,7 +89,7 @@ describe("HighVolumeItemsContainer", () => {
       let setScanState!: (state: ScanState) => void;
       mockedUseHighVolumeItemScan.mockImplementation(() => {
         const [state, setState] = useState<ScanState>({
-          status: statusAt(500),
+          status: buildRunningStatus(500),
           results,
           startScan: vi.fn(),
         });
@@ -104,7 +104,7 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
-        { wrapper: withQueryClient() },
+        { wrapper: createQueryClientWrapper() },
       );
       expect(mockedFetchRowMarketData).not.toHaveBeenCalled();
 
@@ -121,7 +121,7 @@ describe("HighVolumeItemsContainer", () => {
         });
       });
 
-      expect(pricedItemIds()).toEqual(fastestFifty);
+      expect(getPricedItemIds()).toEqual(fastestFifty);
     });
 
     it("should price a previous scan's fastest-selling items straight away", async () => {
@@ -139,10 +139,10 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
-        { wrapper: withQueryClient() },
+        { wrapper: createQueryClientWrapper() },
       );
 
-      await waitFor(() => expect(pricedItemIds()).toEqual(fastestFifty));
+      await waitFor(() => expect(getPricedItemIds()).toEqual(fastestFifty));
     });
   });
 
@@ -211,7 +211,7 @@ describe("HighVolumeItemsContainer", () => {
         results: [
           {
             itemId: 1,
-            name: null,
+            name: undefined,
             nqSaleVelocity: 10,
             hqSaleVelocity: 0,
             totalSaleVelocity: 10,
@@ -227,20 +227,20 @@ describe("HighVolumeItemsContainer", () => {
             currentCharacter={alice}
           />
         </MemoryRouter>,
-        { wrapper: withQueryClient() },
+        { wrapper: createQueryClientWrapper() },
       );
-      const itemRow = () =>
+      const getItemRow = () =>
         container.querySelector("table")!.querySelector(":scope > tbody > tr")!;
 
       await waitFor(() =>
-        expect(itemRow().classList.contains("row-highlight")).toBe(true),
+        expect(getItemRow().classList.contains("row-highlight")).toBe(true),
       );
 
       fireEvent.change(screen.getByLabelText("Highlight profit / day over"), {
         target: { value: "700k" },
       });
 
-      expect(itemRow().classList.contains("row-highlight")).toBe(false);
+      expect(getItemRow().classList.contains("row-highlight")).toBe(false);
     });
   });
 });

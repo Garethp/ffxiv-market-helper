@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { descriptionOf } from "../testing/descriptionOf";
+import { getDescription } from "../testing/getDescription";
 import { Hint } from "./Hint";
 
-afterEach(cleanup);
-
 describe("Hint", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be named for what it explains", () => {
     render(<Hint about="Target quantity">How many to buy.</Hint>);
 
@@ -19,7 +21,7 @@ describe("Hint", () => {
     render(<Hint about="Target quantity">How many to buy.</Hint>);
 
     expect(
-      descriptionOf(
+      getDescription(
         screen.getByRole("button", { name: "About target quantity" }),
       ),
     ).toBe("How many to buy.");

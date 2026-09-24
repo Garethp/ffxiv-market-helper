@@ -3,12 +3,14 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Profit } from "./Profit";
 
-afterEach(cleanup);
-
-const renderProfit = (amount: number | null) =>
+const renderProfit = (amount?: number) =>
   render(<Profit amount={amount} />).container.firstElementChild!;
 
 describe("Profit", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should show the amount in gil", () => {
     renderProfit(13_068);
 
@@ -28,7 +30,7 @@ describe("Profit", () => {
   });
 
   it("should show a dash, marked neither way, when there's no profit to show", () => {
-    const profit = renderProfit(null);
+    const profit = renderProfit(undefined);
 
     expect(profit.className).toBe("");
     expect(profit.textContent).toBe("—");

@@ -24,7 +24,7 @@ const ProfitExpandableRow = ({
   onCopyName: () => void;
 }) => {
   const { item, analysis } = row;
-  const pricing = analysis.status === "ready" ? analysis : null;
+  const pricing = analysis.status === "ready" ? analysis : undefined;
 
   const rowClasses = [
     pricing?.gapDetected ? "row-gap" : "",
@@ -46,14 +46,14 @@ const ProfitExpandableRow = ({
     ) : (
       "—"
     ),
-    "Buy price / unit": formatGil(pricing?.buy?.pricePerUnit ?? null),
+    "Buy price / unit": formatGil(pricing?.buy?.pricePerUnit),
     "Sell price": (
       <UniversalisLink itemId={item.itemId} worldOrDataCenter={sellWorld}>
-        {formatGil(pricing?.sellPricePerUnit ?? null)}
+        {formatGil(pricing?.sellPricePerUnit)}
       </UniversalisLink>
     ),
-    "Profit / item": <Profit amount={pricing?.profitPerItem ?? null} />,
-    "Profit / stack": <Profit amount={pricing?.profitPerStack ?? null} />,
+    "Profit / item": <Profit amount={pricing?.profitPerItem} />,
+    "Profit / stack": <Profit amount={pricing?.profitPerStack} />,
     // Explained by the sale rate it's worked out from.
     "Expected profit / day": pricing ? (
       <Tooltip
@@ -66,7 +66,7 @@ const ProfitExpandableRow = ({
         )}
       </Tooltip>
     ) : (
-      <Profit amount={null} />
+      <Profit />
     ),
   } satisfies Record<string, ReactNode>;
 

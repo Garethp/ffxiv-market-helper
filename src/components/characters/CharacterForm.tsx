@@ -24,7 +24,7 @@ export const CharacterForm = ({
   initial: CharacterDetails;
   submitLabel: string;
   /** Why the details last submitted weren't taken, if they weren't. */
-  errorMessage?: string | null;
+  errorMessage?: string;
   onSubmit: (details: CharacterDetails) => void;
   onCancel: () => void;
 }) => {

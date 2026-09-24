@@ -71,7 +71,8 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
-const addForm = () => screen.findByRole("form", { name: "Add a character" });
+const findAddForm = () =>
+  screen.findByRole("form", { name: "Add a character" });
 
 const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
   Object.entries(fields).forEach(([label, value]) =>
@@ -80,22 +81,22 @@ const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
     }),
   );
 
-const backOnTheRoster = () => screen.findByText("Characters page");
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  onCharactersChanged.mockReset();
-  vi.restoreAllMocks();
-});
+const waitForRosterPage = () => screen.findByText("Characters page");
 
 describe("AddCharacterContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    onCharactersChanged.mockReset();
+    vi.restoreAllMocks();
+  });
+
   it("should start with an empty form under the page's heading", async () => {
     renderPage();
-    const form = await addForm();
+    const form = await findAddForm();
 
     screen.getByRole("heading", { name: "Add a Character" });
     expect(
@@ -108,14 +109,14 @@ describe("AddCharacterContainer", () => {
 
   it("should add the entered character and go back to the roster, reporting the change", async () => {
     renderPage();
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { Name: "Alice", "Home world": "Raiden", Note: "Main" });
     fireEvent.click(
       within(form).getByRole("button", { name: "Add character" }),
     );
 
-    await backOnTheRoster();
+    await waitForRosterPage();
     expect(await characterService.getCharacters()).toEqual([
       {
         id: expect.any(String),
@@ -131,7 +132,7 @@ describe("AddCharacterContainer", () => {
   it("should stay put explaining a character the roster wouldn't take, adding nothing", async () => {
     await characterService.addCharacter({ name: "Alice", homeWorld: "Raiden" });
     renderPage();
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { Name: "Alice", "Home world": "Raiden" });
     fireEvent.click(
@@ -151,7 +152,7 @@ describe("AddCharacterContainer", () => {
       new Error("storage is full"),
     );
     renderPage();
-    const form = await addForm();
+    const form = await findAddForm();
 
     fillIn(form, { Name: "Alice", "Home world": "Raiden" });
     fireEvent.click(
@@ -168,12 +169,12 @@ describe("AddCharacterContainer", () => {
     "should go back to the roster adding nothing when %s is used",
     async (control) => {
       renderPage();
-      const form = await addForm();
+      const form = await findAddForm();
       fillIn(form, { Name: "Alice", "Home world": "Raiden" });
 
       fireEvent.click(screen.getByText(control));
 
-      await backOnTheRoster();
+      await waitForRosterPage();
       expect(await characterService.getCharacters()).toEqual([]);
       expect(onCharactersChanged).not.toHaveBeenCalled();
     },

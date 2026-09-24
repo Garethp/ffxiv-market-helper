@@ -155,13 +155,13 @@ export const fetchItemTypeNames = async (
 /** Looks up an item by its ID, giving nothing for an ID that isn't a real, named item. */
 export const fetchItem = async (
   itemId: number,
-  options: { signal?: AbortSignal } = {},
-): Promise<ItemDetails | null> => {
+  signal?: AbortSignal,
+): Promise<ItemDetails | undefined> => {
   const response = await client.fetch(
     `${ITEM_SHEET_URL}/${itemId}?fields=Name,StackSize`,
-    { signal: options.signal },
+    { signal },
   );
-  if (response.status === 404) return null;
+  if (response.status === 404) return;
   if (!response.ok) {
     throw new Error(`XIVAPI item request failed (${response.status})`);
   }
@@ -170,7 +170,7 @@ export const fetchItem = async (
     fields: { Name: string; StackSize: number };
   };
   return fields.Name === ""
-    ? null
+    ? undefined
     : { name: fields.Name, stackSize: fields.StackSize };
 };
 
@@ -180,7 +180,7 @@ export const fetchItem = async (
  */
 export const searchItems = async (
   text: string,
-  options: { signal?: AbortSignal } = {},
+  signal?: AbortSignal,
 ): Promise<ItemSearchResult[]> => {
   // A quote or backslash would end or escape the quoted text in XIVAPI's query syntax.
   const searchText = text.replace(/["\\]/g, "").trim();
@@ -192,9 +192,7 @@ export const searchItems = async (
     limit: String(ITEM_SEARCH_RESULT_LIMIT),
   });
 
-  const response = await client.fetch(`${SEARCH_URL}?${params}`, {
-    signal: options.signal,
-  });
+  const response = await client.fetch(`${SEARCH_URL}?${params}`, { signal });
   if (!response.ok) {
     throw new Error(`XIVAPI item search failed (${response.status})`);
   }

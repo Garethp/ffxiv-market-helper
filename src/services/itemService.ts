@@ -31,13 +31,10 @@ export interface ItemService {
   /** An item's details, or nothing for an ID that isn't a real, named item. */
   getItem(
     itemId: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<ItemDetails | null>;
+    signal?: AbortSignal,
+  ): Promise<ItemDetails | undefined>;
   /** Items that can be sold on the market board whose names contain the text, ignoring case, best match first. */
-  searchItems(
-    text: string,
-    options?: { signal?: AbortSignal },
-  ): Promise<ItemSearchResult[]>;
+  searchItems(text: string, signal?: AbortSignal): Promise<ItemSearchResult[]>;
   /**
    * Items on the market board that hand in for at least the given number of
    * seals in an Expert Delivery, fewest seals first.
@@ -60,7 +57,7 @@ export class CachingItemService implements ItemService {
   constructor(private readonly cache: ItemDataCache) {}
 
   async getItemNames(itemIds: number[]): Promise<Map<number, string>> {
-    const cached = await this.cachedItems(itemIds);
+    const cached = await this.readCachedItems(itemIds);
     const names = new Map(
       Array.from(cached, ([itemId, item]) => [itemId, item.name]),
     );
@@ -74,7 +71,7 @@ export class CachingItemService implements ItemService {
   }
 
   async getItemSummaries(itemIds: number[]): Promise<Map<number, ItemSummary>> {
-    const summaries = await this.cachedSummaries(itemIds);
+    const summaries = await this.readCachedSummaries(itemIds);
     const uncached = itemIds.filter((itemId) => !summaries.has(itemId));
     if (uncached.length > 0) {
       (await fetchItemSummaries(uncached)).forEach((summary, itemId) =>
@@ -86,17 +83,14 @@ export class CachingItemService implements ItemService {
 
   async getItem(
     itemId: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<ItemDetails | null> {
-    const cached = (await this.cachedItems([itemId], options)).get(itemId);
-    return cached ?? fetchItem(itemId, options);
+    signal?: AbortSignal,
+  ): Promise<ItemDetails | undefined> {
+    const cached = (await this.readCachedItems([itemId], signal)).get(itemId);
+    return cached ?? fetchItem(itemId, signal);
   }
 
-  searchItems(
-    text: string,
-    options?: { signal?: AbortSignal },
-  ): Promise<ItemSearchResult[]> {
-    return searchItems(text, options);
+  searchItems(text: string, signal?: AbortSignal): Promise<ItemSearchResult[]> {
+    return searchItems(text, signal);
   }
 
   async getExpertDeliveryItems(
@@ -125,7 +119,7 @@ export class CachingItemService implements ItemService {
     return this.cache.subscribe(listener);
   }
 
-  private async cachedSummaries(
+  private async readCachedSummaries(
     itemIds: number[],
   ): Promise<Map<number, ItemSummary>> {
     try {
@@ -135,14 +129,14 @@ export class CachingItemService implements ItemService {
     }
   }
 
-  private async cachedItems(
+  private async readCachedItems(
     itemIds: number[],
-    options?: { signal?: AbortSignal },
+    signal?: AbortSignal,
   ): Promise<Map<number, ItemDetails>> {
     try {
-      return await this.cache.getItems(itemIds, options);
+      return await this.cache.getItems(itemIds, signal);
     } catch (error) {
-      if (options?.signal?.aborted) throw error;
+      if (signal?.aborted) throw error;
       return new Map();
     }
   }

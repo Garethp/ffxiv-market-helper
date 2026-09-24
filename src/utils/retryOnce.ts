@@ -1,5 +1,5 @@
 /** Retries `fn` exactly once on failure, unless the signal has been aborted by then. */
-export const withOneRetry = async <T>(
+export const retryOnce = async <T>(
   fn: () => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> => {

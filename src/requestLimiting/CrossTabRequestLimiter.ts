@@ -114,7 +114,7 @@ export class CrossTabRequestLimiter implements RequestLimiter {
 
   private async acquireSlots(
     locks: LockRequester,
-    signal: AbortSignal | undefined,
+    signal?: AbortSignal,
   ): Promise<ReleasePermit> {
     const releaseConcurrency = await holdAnyLock(
       locks,

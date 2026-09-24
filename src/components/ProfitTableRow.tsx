@@ -21,7 +21,7 @@ export const ProfitTableRow = ({
   onCopyName: () => void;
 }) => {
   const { item, analysis } = row;
-  const pricing = analysis.status === "ready" ? analysis : null;
+  const pricing = analysis.status === "ready" ? analysis : undefined;
 
   const rowClasses = [
     pricing?.gapDetected ? "row-gap" : "",
@@ -53,20 +53,20 @@ export const ProfitTableRow = ({
           "—"
         )}
       </td>
-      <td>{formatGil(pricing?.buy?.pricePerUnit ?? null)}</td>
+      <td>{formatGil(pricing?.buy?.pricePerUnit)}</td>
       <td>
         <UniversalisLink itemId={item.itemId} worldOrDataCenter={sellWorld}>
-          {formatGil(pricing?.sellPricePerUnit ?? null)}
+          {formatGil(pricing?.sellPricePerUnit)}
         </UniversalisLink>
         {pricing?.sellListingStatus.state === "undercut" ? (
           <UndercutBadge status={pricing.sellListingStatus} />
         ) : null}
       </td>
       <td>
-        <Profit amount={pricing?.profitPerItem ?? null} />
+        <Profit amount={pricing?.profitPerItem} />
       </td>
       <td>
-        <Profit amount={pricing?.profitPerStack ?? null} />
+        <Profit amount={pricing?.profitPerStack} />
       </td>
       <td>
         {pricing ? (
@@ -80,7 +80,7 @@ export const ProfitTableRow = ({
             )}
           </Tooltip>
         ) : (
-          <Profit amount={null} />
+          <Profit />
         )}
       </td>
     </tr>

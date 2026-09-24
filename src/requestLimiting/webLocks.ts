@@ -9,18 +9,18 @@ export interface LockRequester {
 
 /**
  * Takes the lock only if it can be granted straight away, resolving with a
- * function that releases it, or with null if it can't.
+ * function that releases it, or with nothing if it can't.
  */
 export const tryHoldLock = (
   locks: LockRequester,
   name: string,
   mode: LockMode,
-): Promise<(() => void) | null> =>
+): Promise<(() => void) | undefined> =>
   new Promise((resolve, reject) => {
     locks
       .request(name, { mode, ifAvailable: true }, (lock) => {
         if (!lock) {
-          resolve(null);
+          resolve(undefined);
           return;
         }
         return new Promise<void>((release) => resolve(release));

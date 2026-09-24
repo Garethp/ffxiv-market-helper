@@ -41,7 +41,9 @@ const App = () => {
   });
   const rememberedCharacterId = useQuery({
     queryKey: ["rememberedCharacterId"],
-    queryFn: () => currentCharacterService.getCurrentCharacterId(),
+    // Query data can't be undefined, so having none remembered is held as null.
+    queryFn: () =>
+      currentCharacterService.getCurrentCharacterId().then((id) => id ?? null),
     staleTime: Infinity,
   });
 
@@ -50,10 +52,8 @@ const App = () => {
   const [trackedItems, reloadTrackedItems] = useReloadable(loadTrackedItems);
   const itemDataStatus = useItemDataStatus();
 
-  // Null until a character is picked during this visit.
-  const [pickedCharacterId, setPickedCharacterId] = useState<string | null>(
-    null,
-  );
+  // Nothing until a character is picked during this visit.
+  const [pickedCharacterId, setPickedCharacterId] = useState<string>();
 
   const setCurrentCharacter = useCallback((character: Character) => {
     setPickedCharacterId(character.id);
@@ -73,15 +73,14 @@ const App = () => {
 
   if (config === undefined || rememberedCharacterId.isPending) return null;
 
-  const findCharacter = (id: string | null | undefined) =>
+  const findCharacter = (id?: string) =>
     config.characters.find((character) => character.id === id);
   // A remembered character that can't be read, or that's since been removed from the roster, falls
   // back to the first character in the roster.
   const currentCharacter =
     findCharacter(pickedCharacterId) ??
-    findCharacter(rememberedCharacterId.data) ??
-    config.characters[0] ??
-    null;
+    findCharacter(rememberedCharacterId.data ?? undefined) ??
+    config.characters[0];
 
   return (
     <>

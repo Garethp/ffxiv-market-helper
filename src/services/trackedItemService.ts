@@ -23,7 +23,7 @@ export interface TrackedItemService {
   untrackItem(id: string): Promise<void>;
 }
 
-const withId = (item: PricedItem): TrackedItem => ({
+const assignId = (item: PricedItem): TrackedItem => ({
   id: crypto.randomUUID(),
   ...item,
 });
@@ -41,7 +41,7 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
 
   constructor(initialItems: PricedItem[]) {
     this.storedItems = new StoredList(STORAGE_KEY, () =>
-      initialItems.map(withId),
+      initialItems.map(assignId),
     );
   }
 
@@ -52,7 +52,7 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
   async trackItem(item: PricedItem): Promise<void> {
     const trackedItems = this.storedItems.read();
     this.throwIfInvalid(validateItem(item, trackedItems));
-    this.storedItems.write([...trackedItems, withId(item)]);
+    this.storedItems.write([...trackedItems, assignId(item)]);
   }
 
   async updateTrackedItem(
@@ -79,7 +79,7 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
   }
 
   /** Backstop for a caller that didn't validate, or a screen that's gone stale. */
-  private throwIfInvalid(reason: string | undefined): void {
+  private throwIfInvalid(reason?: string): void {
     if (reason) throw new Error(reason);
   }
 }

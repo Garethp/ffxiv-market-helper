@@ -19,9 +19,11 @@ const renderRow = ({ onRemove = vi.fn() }: { onRemove?: () => void } = {}) => {
   return { onRemove };
 };
 
-afterEach(cleanup);
-
 describe("RetainerRow", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should show the retainer with the city it's in", () => {
     renderRow();
 

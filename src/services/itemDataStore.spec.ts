@@ -6,7 +6,7 @@ import { IndexedDbItemDataStore } from "./itemDataStore";
 let databaseCount = 0;
 
 /** A store on a database of its own, so nothing carries over between tests. */
-const newStore = () =>
+const createStore = () =>
   new IndexedDbItemDataStore(`item-data-test-${++databaseCount}`);
 
 const cordial = {
@@ -31,7 +31,7 @@ const typeNames = new Map([
 
 describe("IndexedDbItemDataStore", () => {
   it("should leave out items that aren't stored", async () => {
-    const store = newStore();
+    const store = createStore();
     await store.replaceItems("7.56x1", [cordial], typeNames);
 
     expect(await store.getItems([6141, 1])).toEqual(
@@ -40,7 +40,7 @@ describe("IndexedDbItemDataStore", () => {
   });
 
   it("should replace every stored item, not just add to them", async () => {
-    const store = newStore();
+    const store = createStore();
     await store.replaceItems("7.55", [cordial, darkMatter], typeNames);
 
     await store.replaceItems(
@@ -56,7 +56,7 @@ describe("IndexedDbItemDataStore", () => {
   });
 
   it("should give what stored items are, including the items the game says nothing about", async () => {
-    const store = newStore();
+    const store = createStore();
     await store.replaceItems("7.56x1", [cordial, darkMatter], typeNames);
 
     expect(await store.getSummaries([6141, 5594, 1])).toEqual(

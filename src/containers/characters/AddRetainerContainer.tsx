@@ -25,7 +25,7 @@ export const AddRetainerContainer = ({
 }) => {
   const { characterId } = useParams();
   const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   // Removed in another tab, or an address typed by hand. Replaced rather than
   // pushed, so going back doesn't land here again.
@@ -41,7 +41,7 @@ export const AddRetainerContainer = ({
     // Nothing is attempted while the character wouldn't accept it.
     if (error) return setErrorMessage(error);
 
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     characterService
       .addRetainer(character.id, details)
       .then(() => {

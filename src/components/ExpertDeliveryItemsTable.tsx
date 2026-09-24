@@ -1,7 +1,7 @@
 import {
-  averageSealsPerGil,
-  bestListing,
-  sealsPerGil,
+  calculateAverageSealsPerGil,
+  findBestListing,
+  calculateSealsPerGil,
   type ItemToBuy,
 } from "../services/expertDelivery";
 import type { RegionInfo } from "../types";
@@ -22,7 +22,7 @@ const COLUMNS = [
 ];
 
 /** A world and the data center it's in, or just the world when that isn't known. */
-const worldWithDataCenter = (world: string, regions: RegionInfo[]) => {
+const formatWorldWithDataCenter = (world: string, regions: RegionInfo[]) => {
   const dataCenter = findDataCenterForWorld(world, regions);
   return dataCenter === undefined ? world : `${world} - ${dataCenter}`;
 };
@@ -38,7 +38,7 @@ export const ExpertDeliveryItemsTable = ({
   /** Where to look up which data center a listing's world is in. */
   regions: RegionInfo[];
   /** The row whose item name was just copied, if any. */
-  copiedKey: string | null;
+  copiedKey?: string;
   onCopy: (key: string, text: string) => void;
 }) => (
   <table className="item-table fixed-columns">
@@ -46,7 +46,7 @@ export const ExpertDeliveryItemsTable = ({
     <tbody>
       {itemsToBuy.map((itemToBuy) => {
         const { item } = itemToBuy;
-        const best = bestListing(itemToBuy);
+        const best = findBestListing(itemToBuy);
         const key = String(item.itemId);
         return (
           <tr key={key}>
@@ -60,11 +60,11 @@ export const ExpertDeliveryItemsTable = ({
               />
             </td>
             <td>{formatGil(best.pricePerUnit)}</td>
-            <td>{sealsPerGil(item, best).toFixed(2)}</td>
+            <td>{calculateSealsPerGil(item, best).toFixed(2)}</td>
             <td>{item.seals.toLocaleString()}</td>
             <td>{itemToBuy.listings.length.toLocaleString()}</td>
-            <td>{averageSealsPerGil(itemToBuy).toFixed(2)}</td>
-            <td>{worldWithDataCenter(best.worldName, regions)}</td>
+            <td>{calculateAverageSealsPerGil(itemToBuy).toFixed(2)}</td>
+            <td>{formatWorldWithDataCenter(best.worldName, regions)}</td>
           </tr>
         );
       })}

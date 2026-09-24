@@ -32,15 +32,8 @@ const mockedSaveScan = vi.mocked(scanResultsService.saveScan);
 const mockedGetItemNames = vi.mocked(itemService.getItemNames);
 
 /** Names every item after its ID. */
-const namedAfterIds = async (itemIds: number[]) =>
+const nameAfterIds = async (itemIds: number[]) =>
   new Map(itemIds.map((itemId) => [itemId, `Item ${itemId}`]));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockedGetLatestScan.mockResolvedValue(null);
-  mockedSaveScan.mockResolvedValue();
-  mockedGetItemNames.mockImplementation(namedAfterIds);
-});
 
 const previousScan: CompletedScan = {
   worldOrDataCenter: "Chaos",
@@ -49,7 +42,7 @@ const previousScan: CompletedScan = {
 };
 
 /** A promise whose resolution is controlled from outside, to pin down batch-completion ordering. */
-const deferred = <T>() => {
+const createDeferred = <T>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
     resolve = r;
@@ -58,6 +51,13 @@ const deferred = <T>() => {
 };
 
 describe("useHighVolumeItemScan", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetLatestScan.mockResolvedValue(undefined);
+    mockedSaveScan.mockResolvedValue();
+    mockedGetItemNames.mockImplementation(nameAfterIds);
+  });
+
   it("should show results live at the start of a scan, then only periodically once there are enough to make every update costly", async () => {
     // 50 batches (1,000 items) to reach the early-feedback threshold, plus 10 more to exercise
     // batched flushing afterward — 60 batches of 20 items, 1,200 items total.
@@ -66,7 +66,7 @@ describe("useHighVolumeItemScan", () => {
     mockedFetchMarketableItemIds.mockResolvedValue(itemIds);
 
     const batchDeferreds = Array.from({ length: totalBatches }, () =>
-      deferred<void>(),
+      createDeferred<void>(),
     );
     let callIndex = 0;
     mockedFetchSaleVelocityBatch.mockImplementation(async (_world, batch) => {
@@ -143,7 +143,7 @@ describe("useHighVolumeItemScan", () => {
 
     it("should switch to the latest completed scan of a newly selected world, showing nothing if it has none", async () => {
       mockedGetLatestScan.mockImplementation(async (worldOrDataCenter) =>
-        worldOrDataCenter === "Chaos" ? previousScan : null,
+        worldOrDataCenter === "Chaos" ? previousScan : undefined,
       );
 
       const { result, rerender } = renderHook(
@@ -162,7 +162,7 @@ describe("useHighVolumeItemScan", () => {
 
     it("should clear the latest completed scan from view as soon as a new scan starts, but only replace it once the new scan completes", async () => {
       mockedGetLatestScan.mockResolvedValue(previousScan);
-      const itemIdsLookup = deferred<number[]>();
+      const itemIdsLookup = createDeferred<number[]>();
       mockedFetchMarketableItemIds.mockReturnValue(itemIdsLookup.promise);
       mockedFetchSaleVelocityBatch.mockImplementation(async (_world, batch) =>
         batch.map((itemId) => ({
@@ -196,7 +196,7 @@ describe("useHighVolumeItemScan", () => {
     });
 
     it("should not let a completed scan that finishes loading late replace a scan already under way", async () => {
-      const latestScanLookup = deferred<CompletedScan | null>();
+      const latestScanLookup = createDeferred<CompletedScan | undefined>();
       mockedGetLatestScan.mockReturnValue(latestScanLookup.promise);
       mockedFetchMarketableItemIds.mockReturnValue(new Promise(() => {}));
 
@@ -234,7 +234,7 @@ describe("useHighVolumeItemScan", () => {
   });
 
   describe("naming items", () => {
-    const velocity = (itemId: number) => ({
+    const buildVelocity = (itemId: number) => ({
       itemId,
       nqSaleVelocity: 1,
       hqSaleVelocity: 0,
@@ -244,10 +244,10 @@ describe("useHighVolumeItemScan", () => {
       mockedFetchMarketableItemIds.mockResolvedValue(
         Array.from({ length: 21 }, (_, i) => i + 1),
       );
-      const secondBatch = deferred<void>();
+      const secondBatch = createDeferred<void>();
       mockedFetchSaleVelocityBatch.mockImplementation(async (_, batch) => {
         if (batch.includes(21)) await secondBatch.promise;
-        return batch.map(velocity);
+        return batch.map(buildVelocity);
       });
       const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
 
@@ -269,7 +269,7 @@ describe("useHighVolumeItemScan", () => {
 
     it("should still show a batch's items, without names, when their names can't be looked up", async () => {
       mockedFetchMarketableItemIds.mockResolvedValue([1]);
-      mockedFetchSaleVelocityBatch.mockResolvedValue([velocity(1)]);
+      mockedFetchSaleVelocityBatch.mockResolvedValue([buildVelocity(1)]);
       mockedGetItemNames.mockRejectedValue(new Error("XIVAPI is down"));
       const { result } = renderHook(() => useHighVolumeItemScan("Chaos"));
 
@@ -279,7 +279,7 @@ describe("useHighVolumeItemScan", () => {
 
       await waitFor(() => expect(result.current.status.state).toBe("done"));
       expect(result.current.results).toEqual([
-        { ...velocity(1), name: null, totalSaleVelocity: 1 },
+        { ...buildVelocity(1), name: undefined, totalSaleVelocity: 1 },
       ]);
     });
   });

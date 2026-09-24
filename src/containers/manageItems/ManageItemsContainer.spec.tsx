@@ -25,7 +25,7 @@ import { useIsNarrowScreen } from "../../hooks/useIsNarrowScreen";
 import { useReloadable } from "../../hooks/useReloadable";
 import { trackedItemService } from "../../services/trackedItemService";
 import { buildTradingConfig } from "../../services/tradingConfig";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 import { ManageItemsContainer } from "./ManageItemsContainer";
 
 const loadedConfig = {
@@ -58,24 +58,24 @@ const renderPage = async () => {
     <MemoryRouter>
       <ManageItemsPage />
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
   await screen.findByRole("heading", { name: "Manage Items" });
 };
 
 const mockedIsNarrowScreen = vi.mocked(useIsNarrowScreen);
 
-beforeEach(() => {
-  localStorage.clear();
-  mockedIsNarrowScreen.mockReturnValue(false);
-});
-
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
-
 describe("ManageItemsContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockedIsNarrowScreen.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   describe("with nothing tracked", () => {
     it("should say so instead of listing anything", async () => {
       await renderPage();

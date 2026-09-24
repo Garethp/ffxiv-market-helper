@@ -52,7 +52,7 @@ export const validateCharacter = (
   if (isDuplicate) {
     return `There's already a character named ${name} on ${homeWorld}.`;
   }
-  return undefined;
+  return;
 };
 
 /**
@@ -77,5 +77,5 @@ export const validateRetainer = (
   if (isDuplicate) {
     return `This character already has a retainer named ${name}.`;
   }
-  return undefined;
+  return;
 };

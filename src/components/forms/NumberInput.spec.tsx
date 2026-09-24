@@ -4,8 +4,6 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NumberInput } from "./NumberInput";
 
-afterEach(cleanup);
-
 /** Holds the value in state the way a consumer would, reporting every change it's given. */
 const Harness = ({
   initialValue,
@@ -13,10 +11,10 @@ const Harness = ({
   adjust = (value) => value,
   min,
 }: {
-  initialValue: number | undefined;
-  onChange?: (value: number | undefined) => void;
+  initialValue?: number;
+  onChange?: (value?: number) => void;
   /** How the consumer turns a reported value into the one it holds, e.g. defaulting an empty field. */
-  adjust?: (value: number | undefined) => number | undefined;
+  adjust?: (value?: number) => number | undefined;
   min?: number;
 }) => {
   const [value, setValue] = useState(initialValue);
@@ -37,28 +35,32 @@ const Harness = ({
   );
 };
 
-const input = () => screen.getByLabelText<HTMLInputElement>("Amount");
-const heldValue = () => screen.getByRole("status").textContent;
+const getInput = () => screen.getByLabelText<HTMLInputElement>("Amount");
+const getHeldValue = () => screen.getByRole("status").textContent;
 
 /** Focuses the field and types over its contents, as someone editing it would. */
 const type = (text: string) => {
-  fireEvent.focus(input());
-  fireEvent.change(input(), { target: { value: text } });
+  fireEvent.focus(getInput());
+  fireEvent.change(getInput(), { target: { value: text } });
 };
 
 describe("NumberInput", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("showing the value", () => {
     it("should show the value in shorthand where it has one", () => {
       render(<Harness initialValue={500_000} />);
 
-      expect(input().value).toBe("500k");
+      expect(getInput().value).toBe("500k");
     });
 
     it("should show nothing, with any placeholder, when there's no value", () => {
       render(<Harness initialValue={undefined} />);
 
-      expect(input().value).toBe("");
-      expect(input().placeholder).toBe("none");
+      expect(getInput().value).toBe("");
+      expect(getInput().placeholder).toBe("none");
     });
   });
 
@@ -79,7 +81,7 @@ describe("NumberInput", () => {
       type("abc");
 
       expect(onChange).not.toHaveBeenCalled();
-      expect(heldValue()).toBe("500000");
+      expect(getHeldValue()).toBe("500000");
     });
 
     it("should ignore amounts below the minimum", () => {
@@ -89,7 +91,7 @@ describe("NumberInput", () => {
       type("0");
 
       expect(onChange).not.toHaveBeenCalled();
-      expect(heldValue()).toBe("5");
+      expect(getHeldValue()).toBe("5");
     });
   });
 
@@ -99,8 +101,8 @@ describe("NumberInput", () => {
 
       type("1.");
 
-      expect(heldValue()).toBe("1");
-      expect(input().value).toBe("1.");
+      expect(getHeldValue()).toBe("1");
+      expect(getInput().value).toBe("1.");
     });
 
     it("should keep showing what's typed when the consumer holds a different value than was reported", () => {
@@ -110,8 +112,8 @@ describe("NumberInput", () => {
 
       type("");
 
-      expect(heldValue()).toBe("1");
-      expect(input().value).toBe("");
+      expect(getHeldValue()).toBe("1");
+      expect(getInput().value).toBe("");
     });
   });
 
@@ -120,9 +122,9 @@ describe("NumberInput", () => {
       render(<Harness initialValue={undefined} />);
 
       type("500000");
-      fireEvent.blur(input());
+      fireEvent.blur(getInput());
 
-      expect(input().value).toBe("500k");
+      expect(getInput().value).toBe("500k");
     });
   });
 });

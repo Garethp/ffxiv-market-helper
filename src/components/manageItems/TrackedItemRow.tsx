@@ -4,7 +4,7 @@ import { formatAmount } from "../../utils/amount";
 import { ErrorMessage } from "../ErrorMessage";
 import { ItemSummaryTooltip } from "../ItemSummaryTooltip";
 
-const qualityOf = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
+const describeQuality = (item: PricedItem) => (item.hq ? "HQ" : "NQ");
 
 /**
  * One tracked item, with what it's tracked as and the controls for changing it
@@ -21,16 +21,16 @@ export const TrackedItemRow = ({
   /** Where the page for changing this item's settings lives. */
   editHref: string;
   /** Why the last change to this item wasn't made, if it wasn't. */
-  errorMessage?: string | null;
+  errorMessage?: string;
   onUntrack: () => void;
 }) => {
-  const description = `${item.name} (${qualityOf(item)})`;
+  const description = `${item.name} (${describeQuality(item)})`;
 
   return (
     <li className="entry-row">
       <span>
         <ItemSummaryTooltip itemId={item.itemId} name={item.name} />{" "}
-        <span className="quality-badge">{qualityOf(item)}</span>
+        <span className="quality-badge">{describeQuality(item)}</span>
       </span>
       <span className="muted">
         Target quantity {formatAmount(item.targetQuantity)}

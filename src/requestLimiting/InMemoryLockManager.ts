@@ -33,7 +33,7 @@ export class InMemoryLockManager implements LockRequester {
         return;
       }
 
-      const queue = this.queueFor(name);
+      const queue = this.getQueueFor(name);
       // Only available if it would be granted straight away, without waiting behind anything.
       if (
         ifAvailable &&
@@ -77,7 +77,7 @@ export class InMemoryLockManager implements LockRequester {
     });
   }
 
-  private queueFor(name: string): PendingRequest[] {
+  private getQueueFor(name: string): PendingRequest[] {
     let queue = this.queues.get(name);
     if (!queue) {
       queue = [];
@@ -92,7 +92,7 @@ export class InMemoryLockManager implements LockRequester {
   }
 
   private processQueue(name: string): void {
-    const queue = this.queueFor(name);
+    const queue = this.getQueueFor(name);
     while (queue.length > 0 && this.isGrantable(queue[0])) {
       queue.shift()!.grant();
     }

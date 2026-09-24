@@ -13,11 +13,11 @@ const DEFAULT_TARGET_STACKS = 3;
  * publishes this; the rule comes from comparing every marketable item's
  * stack size with the largest listings and sales Universalis has seen.
  */
-export const marketBoardStackSize = (stackSize: number): number =>
+export const calculateMarketBoardStackSize = (stackSize: number): number =>
   stackSize === CRYSTAL_STACK_SIZE
     ? stackSize
     : Math.min(stackSize, MAX_LISTING_QUANTITY);
 
 /** The target quantity a newly tracked item starts with. */
-export const defaultTargetQuantity = (stackSize: number): number =>
-  marketBoardStackSize(stackSize) * DEFAULT_TARGET_STACKS;
+export const calculateDefaultTargetQuantity = (stackSize: number): number =>
+  calculateMarketBoardStackSize(stackSize) * DEFAULT_TARGET_STACKS;

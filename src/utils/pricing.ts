@@ -9,7 +9,7 @@ import type {
   RowAnalysis,
   SellListingStatus,
 } from "../types";
-import { marketBoardStackSize } from "./marketBoardStack";
+import { calculateMarketBoardStackSize } from "./marketBoardStack";
 
 /** A retainer resolved with the world it's actually on — Retainer itself doesn't carry this, since it's always its owning character's home world. */
 export interface WorldRetainer {
@@ -59,15 +59,15 @@ export const resolveSellTaxRate = (
 export const calculateConsistentPrice = (
   listings: UniversalisListing[],
   targetQuantity: number,
-): ConsistentPrice | null => {
-  if (listings.length === 0) return null;
+): ConsistentPrice | undefined => {
+  if (listings.length === 0) return;
 
   const sorted = [...listings].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
 
   let remaining = targetQuantity;
   let totalCost = 0;
   let quantityFilled = 0;
-  const cheapestWorld = sorted[0].worldName ?? null;
+  const cheapestWorld = sorted[0].worldName;
 
   for (const listing of sorted) {
     if (remaining <= 0) break;
@@ -89,8 +89,8 @@ export const calculateConsistentPrice = (
 export const calculateAverageSalePrice = (
   history: UniversalisHistoryEntry[],
   sampleSize: number,
-): number | null => {
-  if (history.length === 0) return null;
+): number | undefined => {
+  if (history.length === 0) return;
 
   const sorted = [...history].sort((a, b) => b.timestamp - a.timestamp);
   const sample = sorted.slice(0, sampleSize);
@@ -103,8 +103,8 @@ export const calculateAverageSalePrice = (
 export const calculateAverageListingPrice = (
   listings: UniversalisListing[],
   sampleSize: number,
-): number | null => {
-  if (listings.length === 0) return null;
+): number | undefined => {
+  if (listings.length === 0) return;
 
   const sorted = [...listings].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
   const sample = sorted.slice(0, sampleSize);
@@ -161,24 +161,24 @@ export const determineSellListingStatus = (
  * we could list into, so we price off the current listings instead.
  */
 const chooseSellPrice = (
-  sellHistory: number | null,
-  sellListings: number | null,
+  sellHistory: number | undefined,
+  sellListings: number | undefined,
   gapThresholdMultiplier: number,
 ): {
-  price: number | null;
-  source: "history" | "listings" | null;
+  price?: number;
+  source?: "history" | "listings";
   gapDetected: boolean;
 } => {
-  if (sellHistory === null) {
+  if (sellHistory === undefined) {
     return {
       price: sellListings,
-      source: sellListings !== null ? "listings" : null,
+      source: sellListings !== undefined ? "listings" : undefined,
       gapDetected: false,
     };
   }
 
   const gapDetected =
-    sellListings !== null &&
+    sellListings !== undefined &&
     sellListings > sellHistory * gapThresholdMultiplier;
 
   return gapDetected
@@ -189,11 +189,11 @@ const chooseSellPrice = (
 /** Builds the "ready" (successfully fetched) state of a row's analysis. */
 export const buildReadyAnalysis = (
   buyDataCenter: string,
-  buy: ConsistentPrice | null,
-  /** The recent sale average, or null without any sale history. */
-  sellHistory: number | null,
-  /** The cheapest listings' average, or null without any listings. */
-  sellListings: number | null,
+  buy: ConsistentPrice | undefined,
+  /** The recent sale average, or nothing without any sale history. */
+  sellHistory: number | undefined,
+  /** The cheapest listings' average, or nothing without any listings. */
+  sellListings: number | undefined,
   stackSize: number,
   sellPriceCeiling: number | undefined,
   saleVelocityPerDay: number,
@@ -211,28 +211,29 @@ export const buildReadyAnalysis = (
   } = chooseSellPrice(sellHistory, sellListings, rates.gapThresholdMultiplier);
 
   const sellPriceCapped =
-    marketPrice !== null &&
+    marketPrice !== undefined &&
     sellPriceCeiling !== undefined &&
     marketPrice > sellPriceCeiling;
   const sellPricePerUnit =
-    marketPrice === null
-      ? null
+    marketPrice === undefined
+      ? undefined
       : sellPriceCapped
         ? sellPriceCeiling!
         : marketPrice;
 
   const effectiveBuyPricePerUnit = buy
     ? buy.pricePerUnit * (1 + rates.buyTaxRate)
-    : null;
+    : undefined;
   const effectiveSellPricePerUnit =
-    sellPricePerUnit !== null
+    sellPricePerUnit !== undefined
       ? sellPricePerUnit * (1 - rates.sellTaxRate)
-      : null;
+      : undefined;
 
   const profitPerItem =
-    effectiveBuyPricePerUnit !== null && effectiveSellPricePerUnit !== null
+    effectiveBuyPricePerUnit !== undefined &&
+    effectiveSellPricePerUnit !== undefined
       ? effectiveSellPricePerUnit - effectiveBuyPricePerUnit
-      : null;
+      : undefined;
 
   return {
     status: "ready",
@@ -248,10 +249,12 @@ export const buildReadyAnalysis = (
     effectiveSellPricePerUnit,
     profitPerItem,
     profitPerStack:
-      profitPerItem !== null
-        ? profitPerItem * marketBoardStackSize(stackSize)
-        : null,
+      profitPerItem !== undefined
+        ? profitPerItem * calculateMarketBoardStackSize(stackSize)
+        : undefined,
     expectedProfitPerDay:
-      profitPerItem !== null ? profitPerItem * saleVelocityPerDay : null,
+      profitPerItem !== undefined
+        ? profitPerItem * saleVelocityPerDay
+        : undefined,
   };
 };

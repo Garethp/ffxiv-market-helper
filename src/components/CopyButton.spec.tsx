@@ -3,8 +3,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CopyButton } from "./CopyButton";
 
-afterEach(cleanup);
-
 const renderButton = ({
   isCopied = false,
   onCopy = () => {},
@@ -14,6 +12,10 @@ const renderButton = ({
   );
 
 describe("CopyButton", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be named after what it copies, since it's only an icon", () => {
     renderButton();
 

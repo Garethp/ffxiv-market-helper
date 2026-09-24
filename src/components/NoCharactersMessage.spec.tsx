@@ -11,9 +11,11 @@ const renderMessage = () =>
     </MemoryRouter>,
   );
 
-afterEach(cleanup);
-
 describe("NoCharactersMessage", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should link to where characters are added", () => {
     renderMessage();
 

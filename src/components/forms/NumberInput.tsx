@@ -24,15 +24,15 @@ export const NumberInput = ({
   className,
   ...inputProps
 }: PassThroughProps & {
-  value: number | undefined;
-  onChange: (value: number | undefined) => void;
+  value?: number;
+  onChange: (value?: number) => void;
   /** Amounts below this are ignored, as if they weren't valid. */
   min?: number;
 }) => {
   // What's being typed, while the field is focused. Kept apart from `value` so
   // text that doesn't read as an amount yet (or that the consumer adjusts)
   // isn't overwritten mid-edit.
-  const [draft, setDraft] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string>();
   const displayed = value === undefined ? "" : formatAmount(value);
 
   return (
@@ -42,7 +42,7 @@ export const NumberInput = ({
       className={["number-input", className].filter(Boolean).join(" ")}
       value={draft ?? displayed}
       onFocus={() => setDraft(displayed)}
-      onBlur={() => setDraft(null)}
+      onBlur={() => setDraft(undefined)}
       onChange={(e) => {
         const text = e.target.value;
         setDraft(text);

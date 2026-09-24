@@ -23,7 +23,7 @@ export const RetainerForm = ({
   initial: RetainerDetails;
   submitLabel: string;
   /** Why the details last submitted weren't taken, if they weren't. */
-  errorMessage?: string | null;
+  errorMessage?: string;
   onSubmit: (details: RetainerDetails) => void;
   onCancel: () => void;
 }) => {

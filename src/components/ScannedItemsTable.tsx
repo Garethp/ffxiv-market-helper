@@ -25,7 +25,7 @@ const TotalSaleVelocity = ({
   gapThresholdMultiplier,
 }: {
   item: ScannedItem;
-  profit: ScannedItemProfit | undefined;
+  profit?: ScannedItemProfit;
   buyingRegions: BuyingRegion[];
   world: string;
   gapThresholdMultiplier: number;
@@ -80,7 +80,7 @@ const exceedsProfitPerDay = (
   Object.values(profit.rowByRegion).some(
     ({ analysis }) =>
       analysis.status === "ready" &&
-      analysis.expectedProfitPerDay !== null &&
+      analysis.expectedProfitPerDay !== undefined &&
       analysis.expectedProfitPerDay > profitPerDay,
   );
 
@@ -103,7 +103,7 @@ export const ScannedItemsTable = memo(
     buyingRegions: BuyingRegion[];
     gapThresholdMultiplier: number;
     /** Items expected to make more than this per day through any buying region are highlighted. Omit to highlight nothing. */
-    highlightProfitPerDay: number | undefined;
+    highlightProfitPerDay?: number;
     world: string;
   }) => {
     return (

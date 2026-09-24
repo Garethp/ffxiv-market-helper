@@ -9,7 +9,7 @@ import {
 } from "../../services/trackedItemService";
 import { validateItem } from "../../utils/validation/trackedItems";
 import type { TradingConfig } from "../../services/tradingConfig";
-import { defaultTargetQuantity } from "../../utils/marketBoardStack";
+import { calculateDefaultTargetQuantity } from "../../utils/marketBoardStack";
 
 /**
  * Where a new item is found and tracked, on a page of its own so it has the
@@ -26,8 +26,8 @@ export const TrackNewItemContainer = ({
 }) => {
   const { trackedItems } = config;
   const navigate = useNavigate();
-  const [picked, setPicked] = useState<ItemSearchResult | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [picked, setPicked] = useState<ItemSearchResult>();
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   const track = (item: ItemSearchResult, settings: TrackedItemSettings) => {
     const tracking = { ...item, ...settings };
@@ -36,7 +36,7 @@ export const TrackNewItemContainer = ({
     // Nothing is attempted while the tracked items wouldn't accept it.
     if (error) return setErrorMessage(error);
 
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     trackedItemService
       .trackItem(tracking)
       .then(() => {
@@ -58,7 +58,7 @@ export const TrackNewItemContainer = ({
         <ItemSearch
           onPick={(item: ItemSearchResult) => {
             setPicked(item);
-            setErrorMessage(null);
+            setErrorMessage(undefined);
           }}
         />
         {picked && (
@@ -67,13 +67,12 @@ export const TrackNewItemContainer = ({
             key={picked.itemId}
             label={`Track ${picked.name}`}
             initial={{
-              quality: null,
-              targetQuantity: defaultTargetQuantity(picked.stackSize),
+              targetQuantity: calculateDefaultTargetQuantity(picked.stackSize),
             }}
             submitLabel="Track item"
             errorMessage={errorMessage}
             onSubmit={(settings) => track(picked, settings)}
-            onCancel={() => setPicked(null)}
+            onCancel={() => setPicked(undefined)}
           />
         )}
       </section>

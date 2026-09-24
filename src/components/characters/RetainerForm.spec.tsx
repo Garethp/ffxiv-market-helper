@@ -13,7 +13,7 @@ const renderForm = ({
   onCancel = vi.fn(),
 }: {
   initial?: RetainerDetails;
-  errorMessage?: string | null;
+  errorMessage?: string;
   onSubmit?: (details: RetainerDetails) => void;
   onCancel?: () => void;
 } = {}) => {
@@ -31,21 +31,23 @@ const renderForm = ({
   return { onSubmit, onCancel };
 };
 
-const nameInput = () =>
+const getNameInput = () =>
   screen.getByLabelText("Retainer name") as HTMLInputElement;
-const citySelect = () => screen.getByLabelText("City") as HTMLSelectElement;
+const getCitySelect = () => screen.getByLabelText("City") as HTMLSelectElement;
 
 const fillIn = ({ name, city }: RetainerDetails) => {
-  fireEvent.change(nameInput(), { target: { value: name } });
-  fireEvent.change(citySelect(), { target: { value: city } });
+  fireEvent.change(getNameInput(), { target: { value: name } });
+  fireEvent.change(getCitySelect(), { target: { value: city } });
 };
 
 const submit = () =>
   fireEvent.click(screen.getByRole("button", { name: "Add retainer" }));
 
-afterEach(cleanup);
-
 describe("RetainerForm", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should be named as given", () => {
     renderForm();
 
@@ -63,8 +65,8 @@ describe("RetainerForm", () => {
   it("should start with the given details filled in", () => {
     renderForm({ initial: { name: "Amarana", city: "Kugane" } });
 
-    expect(nameInput().value).toBe("Amarana");
-    expect(citySelect().value).toBe("Kugane");
+    expect(getNameInput().value).toBe("Amarana");
+    expect(getCitySelect().value).toBe("Kugane");
   });
 
   describe("submitting", () => {
@@ -109,18 +111,15 @@ describe("RetainerForm", () => {
       expect(screen.getByRole("alert").textContent).toBe(
         "This character already has a retainer named Amarana.",
       );
-      expect(nameInput().value).toBe("Amarana");
-      expect(citySelect().value).toBe("Ul'dah");
+      expect(getNameInput().value).toBe("Amarana");
+      expect(getCitySelect().value).toBe("Ul'dah");
     });
 
-    it.each([undefined, null])(
-      "should show no error when given %s",
-      (errorMessage) => {
-        renderForm({ errorMessage });
+    it("should show no error when it's given none", () => {
+      renderForm();
 
-        expect(screen.queryByRole("alert")).toBeNull();
-      },
-    );
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
   });
 
   describe("cancelling", () => {

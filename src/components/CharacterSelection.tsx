@@ -9,7 +9,7 @@ export const CharacterSelection = ({
   onSelect,
 }: {
   characters: Character[];
-  currentCharacter: Character | null;
+  currentCharacter?: Character;
   onSelect: (character: Character) => void;
 }) => {
   const selectId = useId();

@@ -29,5 +29,5 @@ export const validateItem = (
     return `${item.name} is already tracked as ${hq ? "HQ" : "NQ"}.`;
   }
 
-  return undefined;
+  return;
 };

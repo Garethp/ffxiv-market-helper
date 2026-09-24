@@ -22,9 +22,9 @@ export const selectExpertDeliveryItems = (
         ? [{ ...candidate, seals }]
         : [];
     })
-    .sort(bySealsThenName);
+    .sort(compareBySealsThenName);
 
-const bySealsThenName = (a: ExpertDeliveryItem, b: ExpertDeliveryItem) =>
+const compareBySealsThenName = (a: ExpertDeliveryItem, b: ExpertDeliveryItem) =>
   a.seals - b.seals || a.name.localeCompare(b.name);
 
 /** What pricing an item found. An item that hasn't been priced yet has none. */
@@ -38,7 +38,7 @@ export type ExpertDeliveryPrice =
   | { status: "failed" };
 
 /** How many seals each gil spent on the listing buys. */
-export const sealsPerGil = (
+export const calculateSealsPerGil = (
   item: ExpertDeliveryItem,
   listing: RegionListing,
 ): number => item.seals / listing.pricePerUnit;
@@ -55,7 +55,7 @@ const meetsFilters = (
   { minimumSealsPerGil, maximumPricePerUnit }: BuyingFilters,
 ): boolean =>
   (minimumSealsPerGil === undefined ||
-    sealsPerGil(item, listing) >= minimumSealsPerGil) &&
+    calculateSealsPerGil(item, listing) >= minimumSealsPerGil) &&
   (maximumPricePerUnit === undefined ||
     listing.pricePerUnit <= maximumPricePerUnit);
 
@@ -67,13 +67,18 @@ export interface ItemToBuy {
 }
 
 /** The listing of an item worth the most seals per gil. */
-export const bestListing = ({ listings }: ItemToBuy): RegionListing =>
+export const findBestListing = ({ listings }: ItemToBuy): RegionListing =>
   listings[0];
 
 /** The seals per gil of an item's listings, on average. */
-export const averageSealsPerGil = ({ item, listings }: ItemToBuy): number =>
-  listings.reduce((total, listing) => total + sealsPerGil(item, listing), 0) /
-  listings.length;
+export const calculateAverageSealsPerGil = ({
+  item,
+  listings,
+}: ItemToBuy): number =>
+  listings.reduce(
+    (total, listing) => total + calculateSealsPerGil(item, listing),
+    0,
+  ) / listings.length;
 
 /**
  * The items with listings inside the filters, and those listings, in the
@@ -98,9 +103,9 @@ export const selectItemsToBuy = (
     })
     .sort(
       (a, b) =>
-        sealsPerGil(b.item, bestListing(b)) -
-          sealsPerGil(a.item, bestListing(a)) ||
-        bySealsThenName(a.item, b.item),
+        calculateSealsPerGil(b.item, findBestListing(b)) -
+          calculateSealsPerGil(a.item, findBestListing(a)) ||
+        compareBySealsThenName(a.item, b.item),
     );
 
 /** A listing to buy on a world along the route, and the item it's of. */
@@ -118,24 +123,25 @@ export interface RouteStop {
 
 /** The worlds to visit in one data center, in the order to visit them. */
 export interface RouteLeg {
-  /** Undefined for worlds that aren't in the directory. */
-  dataCenter: string | undefined;
+  /** Missing for worlds that aren't in the directory. */
+  dataCenter?: string;
   stops: RouteStop[];
 }
 
 /** How many seals buying everything at a stop would bring in. */
-export const sealsAt = (stop: RouteStop): number =>
+export const countSealsAt = (stop: RouteStop): number =>
   stop.listings.reduce((total, { item }) => total + item.seals, 0);
 
-const sealsAcross = (stops: RouteStop[]): number =>
-  stops.reduce((total, stop) => total + sealsAt(stop), 0);
+const countSealsAcross = (stops: RouteStop[]): number =>
+  stops.reduce((total, stop) => total + countSealsAt(stop), 0);
 
-const byMostSealsThenWorld = (a: RouteStop, b: RouteStop) =>
-  sealsAt(b) - sealsAt(a) || a.world.localeCompare(b.world);
+const compareByMostSealsThenWorld = (a: RouteStop, b: RouteStop) =>
+  countSealsAt(b) - countSealsAt(a) || a.world.localeCompare(b.world);
 
-const byMostSealsPerGil = (a: RouteListing, b: RouteListing) =>
-  sealsPerGil(b.item, b.listing) - sealsPerGil(a.item, a.listing) ||
-  bySealsThenName(a.item, b.item);
+const compareByMostSealsPerGil = (a: RouteListing, b: RouteListing) =>
+  calculateSealsPerGil(b.item, b.listing) -
+    calculateSealsPerGil(a.item, a.listing) ||
+  compareBySealsThenName(a.item, b.item);
 
 /**
  * Splits every listing worth buying up by the world it's on, in the order to
@@ -167,28 +173,28 @@ export const planRoute = (
     const dataCenter = findDataCenterForWorld(world, regions);
     stopsByDataCenter.set(dataCenter, [
       ...(stopsByDataCenter.get(dataCenter) ?? []),
-      { world, listings: worldListings.sort(byMostSealsPerGil) },
+      { world, listings: worldListings.sort(compareByMostSealsPerGil) },
     ]);
   });
 
   const homeDataCenter = findDataCenterForWorld(homeWorld, regions);
-  const homeFirst = (a: RouteStop, b: RouteStop) =>
+  const compareHomeFirst = (a: RouteStop, b: RouteStop) =>
     Number(b.world === homeWorld) - Number(a.world === homeWorld) ||
-    byMostSealsThenWorld(a, b);
+    compareByMostSealsThenWorld(a, b);
   const legs: RouteLeg[] = Array.from(
     stopsByDataCenter,
     ([dataCenter, stops]) => ({
       dataCenter,
-      stops: stops.sort(homeFirst),
+      stops: stops.sort(compareHomeFirst),
     }),
   );
   // Home data center first and unknown worlds last, with the rest most seals first.
-  const rank = ({ dataCenter }: RouteLeg) =>
+  const rankLeg = ({ dataCenter }: RouteLeg) =>
     dataCenter === undefined ? 2 : dataCenter === homeDataCenter ? 0 : 1;
   return legs.sort(
     (a, b) =>
-      rank(a) - rank(b) ||
-      sealsAcross(b.stops) - sealsAcross(a.stops) ||
+      rankLeg(a) - rankLeg(b) ||
+      countSealsAcross(b.stops) - countSealsAcross(a.stops) ||
       (a.dataCenter ?? "").localeCompare(b.dataCenter ?? ""),
   );
 };

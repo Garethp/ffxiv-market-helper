@@ -40,7 +40,9 @@ const cordial = {
 };
 
 /** An item service whose cache holds the given market board items, already loaded. */
-const serviceCaching = async (items: MarketBoardItem[] = [cordial]) => {
+const createServiceWithCachedItems = async (
+  items: MarketBoardItem[] = [cordial],
+) => {
   const store = new MemoryItemDataStore();
   const cache = new ItemDataCache(
     store,
@@ -56,14 +58,14 @@ const serviceCaching = async (items: MarketBoardItem[] = [cordial]) => {
   return { service, store };
 };
 
-afterEach(() => {
-  vi.resetAllMocks();
-});
-
 describe("CachingItemService", () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
   describe("item names", () => {
     it("should ask XIVAPI for only the names that aren't cached", async () => {
-      const { service } = await serviceCaching();
+      const { service } = await createServiceWithCachedItems();
       mockedFetchItemNames.mockResolvedValue(new Map([[1, "Uncached"]]));
 
       expect(await service.getItemNames([6141, 1])).toEqual(
@@ -76,7 +78,7 @@ describe("CachingItemService", () => {
     });
 
     it("should ask XIVAPI for every name when the cache can't be read", async () => {
-      const { service, store } = await serviceCaching();
+      const { service, store } = await createServiceWithCachedItems();
       vi.spyOn(store, "getItems").mockRejectedValue(new Error("Unreadable"));
       mockedFetchItemNames.mockResolvedValue(new Map([[6141, "Cordial"]]));
 
@@ -89,7 +91,7 @@ describe("CachingItemService", () => {
 
   describe("an item's details", () => {
     it("should give a cached item's details without asking XIVAPI", async () => {
-      const { service } = await serviceCaching();
+      const { service } = await createServiceWithCachedItems();
 
       expect(await service.getItem(6141)).toEqual({
         name: "Cordial",
@@ -99,15 +101,15 @@ describe("CachingItemService", () => {
     });
 
     it("should ask XIVAPI for an item that isn't cached, letting the request be cancelled", async () => {
-      const { service } = await serviceCaching();
+      const { service } = await createServiceWithCachedItems();
       mockedFetchItem.mockResolvedValue({ name: "Uncached", stackSize: 1 });
       const { signal } = new AbortController();
 
-      expect(await service.getItem(1, { signal })).toEqual({
+      expect(await service.getItem(1, signal)).toEqual({
         name: "Uncached",
         stackSize: 1,
       });
-      expect(mockedFetchItem).toHaveBeenCalledWith(1, { signal });
+      expect(mockedFetchItem).toHaveBeenCalledWith(1, signal);
     });
 
     it("should give up, rather than ask XIVAPI, when cancelled while waiting for the cache", async () => {
@@ -130,7 +132,7 @@ describe("CachingItemService", () => {
       );
       const controller = new AbortController();
 
-      const lookup = service.getItem(6141, { signal: controller.signal });
+      const lookup = service.getItem(6141, controller.signal);
       controller.abort(new Error("Cancelled"));
 
       await expect(lookup).rejects.toThrow("Cancelled");
@@ -140,7 +142,7 @@ describe("CachingItemService", () => {
 
   describe("Expert Delivery items", () => {
     it("should give the items worth at least the minimum seals, by their item levels' seal values", async () => {
-      const { service } = await serviceCaching();
+      const { service } = await createServiceWithCachedItems();
       mockedFetchCandidates.mockResolvedValue([
         { itemId: 1, name: "Below", itemLevel: 50 },
         { itemId: 8455, name: "Augmented Wolfram Cuirass", itemLevel: 90 },
@@ -170,7 +172,7 @@ describe("CachingItemService", () => {
     };
 
     it("should ask XIVAPI for only the items that aren't cached", async () => {
-      const { service } = await serviceCaching();
+      const { service } = await createServiceWithCachedItems();
       mockedFetchItemSummaries.mockResolvedValue(
         new Map([[5594, { type: "Materia", description: "" }]]),
       );
@@ -185,7 +187,7 @@ describe("CachingItemService", () => {
     });
 
     it("should ask XIVAPI for everything when the cache can't be read", async () => {
-      const { service, store } = await serviceCaching();
+      const { service, store } = await createServiceWithCachedItems();
       store.getSummaries = () => Promise.reject(new Error("No IndexedDB"));
       mockedFetchItemSummaries.mockResolvedValue(
         new Map([[6141, cordialSummary]]),

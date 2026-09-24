@@ -24,14 +24,14 @@ export const TrackedItemSettingsForm = ({
   /** Names the form, e.g. "Track Cordial". */
   label: string;
   initial: {
-    /** Null when NQ or HQ still has to be chosen. */
-    quality: Quality | null;
+    /** Missing when NQ or HQ still has to be chosen. */
+    quality?: Quality;
     targetQuantity: number;
     sellPriceCeiling?: number;
   };
   submitLabel: string;
   /** Why the settings last submitted weren't taken, if they weren't. */
-  errorMessage?: string | null;
+  errorMessage?: string;
   onSubmit: (settings: TrackedItemSettings) => void;
   onCancel: () => void;
 }) => {
@@ -98,7 +98,7 @@ export const TrackedItemSettingsForm = ({
         )}
       </HintedField>
       <div className="entry-form-actions">
-        <button type="submit" disabled={quality === null}>
+        <button type="submit" disabled={quality === undefined}>
           {submitLabel}
         </button>
         <button type="button" onClick={onCancel}>

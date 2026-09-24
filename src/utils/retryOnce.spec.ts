@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { withOneRetry } from "./withOneRetry";
+import { retryOnce } from "./retryOnce";
 
-describe("withOneRetry", () => {
+describe("retryOnce", () => {
   it("should return the result on the first try when it succeeds", async () => {
     const fn = vi.fn().mockResolvedValue("ok");
 
-    await expect(withOneRetry(fn)).resolves.toBe("ok");
+    await expect(retryOnce(fn)).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -15,7 +15,7 @@ describe("withOneRetry", () => {
       .mockRejectedValueOnce(new Error("transient failure"))
       .mockResolvedValueOnce("ok");
 
-    await expect(withOneRetry(fn)).resolves.toBe("ok");
+    await expect(retryOnce(fn)).resolves.toBe("ok");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
@@ -25,7 +25,7 @@ describe("withOneRetry", () => {
       .mockRejectedValueOnce(new Error("first failure"))
       .mockRejectedValueOnce(new Error("retry failure"));
 
-    await expect(withOneRetry(fn)).rejects.toThrow("retry failure");
+    await expect(retryOnce(fn)).rejects.toThrow("retry failure");
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
@@ -36,9 +36,7 @@ describe("withOneRetry", () => {
       throw new Error("cancelled");
     });
 
-    await expect(withOneRetry(fn, controller.signal)).rejects.toThrow(
-      "cancelled",
-    );
+    await expect(retryOnce(fn, controller.signal)).rejects.toThrow("cancelled");
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });

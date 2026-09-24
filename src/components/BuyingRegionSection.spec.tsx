@@ -4,8 +4,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { BuyingRegion } from "../services/tradingConfig";
 import { BuyingRegionSection } from "./BuyingRegionSection";
 
-afterEach(cleanup);
-
 const renderSection = (buyingRegion: BuyingRegion) =>
   render(
     <BuyingRegionSection buyingRegion={buyingRegion}>
@@ -14,6 +12,10 @@ const renderSection = (buyingRegion: BuyingRegion) =>
   );
 
 describe("BuyingRegionSection", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("introducing the region", () => {
     it("should show the note of each character that has one", () => {
       const { container } = renderSection({

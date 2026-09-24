@@ -49,7 +49,7 @@ export const useExpertDeliveryPrices = (
     queries: batches.map((batch) => ({
       queryKey: ["regionListings", region, batch],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
-        fetchRegionListings(region, batch, { signal }),
+        fetchRegionListings(region, batch, signal),
       // Priced once, rather than kept refreshing while the page is open.
       staleTime: Infinity,
     })),

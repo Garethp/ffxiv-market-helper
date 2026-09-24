@@ -37,7 +37,7 @@ interface ItemDataSchema extends DBSchema {
 const SCHEMA_VERSION = 3;
 
 export class IndexedDbItemDataStore implements ItemDataStore {
-  private database: Promise<IDBPDatabase<ItemDataSchema>> | undefined;
+  private database?: Promise<IDBPDatabase<ItemDataSchema>>;
 
   constructor(private readonly databaseName: string) {}
 

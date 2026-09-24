@@ -27,7 +27,7 @@ import { useReloadable } from "../../hooks/useReloadable";
 import { itemService } from "../../services/itemService";
 import { trackedItemService } from "../../services/trackedItemService";
 import { buildTradingConfig } from "../../services/tradingConfig";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 import { TrackNewItemContainer } from "./TrackNewItemContainer";
 
 const mockedSearchItems = vi.mocked(itemService.searchItems);
@@ -71,7 +71,7 @@ const renderPage = async () => {
         <Route path="/manage-items/track" element={<TrackNewItemPage />} />
       </Routes>
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
   await screen.findByRole("heading", { name: "Track a New Item" });
 };
@@ -90,18 +90,18 @@ const setField = (container: HTMLElement, label: string, value: string) =>
     target: { value },
   });
 
-beforeEach(() => {
-  localStorage.clear();
-  mockedSearchItems.mockResolvedValue([cordial]);
-});
-
-afterEach(() => {
-  cleanup();
-  mockedSearchItems.mockReset();
-  onTrackedItemsChanged.mockReset();
-});
-
 describe("TrackNewItemContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    mockedSearchItems.mockResolvedValue([cordial]);
+  });
+
+  afterEach(() => {
+    cleanup();
+    mockedSearchItems.mockReset();
+    onTrackedItemsChanged.mockReset();
+  });
+
   it("should track a found item with the chosen quality, target quantity and sell price ceiling", async () => {
     await renderPage();
     const form = await pickCordial();

@@ -54,7 +54,7 @@ export interface CharacterService {
   removeRetainer(characterId: string, retainerId: string): Promise<void>;
 }
 
-const withIds = (character: NewCharacter): Character => ({
+const assignIds = (character: NewCharacter): Character => ({
   ...character,
   id: crypto.randomUUID(),
   retainers: character.retainers.map((retainer) => ({
@@ -82,7 +82,7 @@ export class LocalStorageCharacterService implements CharacterService {
     >,
   ) {
     this.storedRoster = new StoredList(STORAGE_KEY, () =>
-      initialCharacters.map(withIds),
+      initialCharacters.map(assignIds),
     );
   }
 

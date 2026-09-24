@@ -12,13 +12,13 @@ import type { ScannedItemProfit } from "../hooks/useScannedItemProfits";
 import type { BuyingRegion } from "../services/tradingConfig";
 import type { ProfitRow } from "../types";
 import { ScannedItemsTable } from "./ScannedItemsTable";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 
-afterEach(cleanup);
-
-const scannedItem = (overrides: Partial<ScannedItem> = {}): ScannedItem => ({
+const buildScannedItem = (
+  overrides: Partial<ScannedItem> = {},
+): ScannedItem => ({
   itemId: 1,
-  name: null,
+  name: undefined,
   nqSaleVelocity: 10,
   hqSaleVelocity: 5,
   totalSaleVelocity: 15,
@@ -48,7 +48,7 @@ const renderTable = (
       world={world}
       gapThresholdMultiplier={1.1}
     />,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
 
 const item = {
@@ -58,9 +58,9 @@ const item = {
   targetQuantity: 99,
 };
 
-const pricedRow = (
+const buildPricedRow = (
   buyDataCenter: string,
-  expectedProfitPerDay: number | null = 6000,
+  expectedProfitPerDay?: number,
 ): ProfitRow => ({
   item,
   analysis: {
@@ -89,51 +89,57 @@ const pricedRow = (
 /** A buying region the item has no price through yet. */
 const unpricedRow: ProfitRow = { item, analysis: { status: "pending" } };
 
-const pricedProfit = (
+const buildPricedProfit = (
   rowByRegion: Record<string, ProfitRow> = {
-    Europe: pricedRow("Chaos"),
-    Japan: pricedRow("Elemental"),
+    Europe: buildPricedRow("Chaos", 6000),
+    Japan: buildPricedRow("Elemental", 6000),
   },
 ): ScannedItemProfit => ({ status: "ready", rowByRegion });
 
 /** The scanned items' own rows, not those of any profit table shown within them. */
-const bodyRows = (container: HTMLElement) =>
+const getBodyRows = (container: HTMLElement) =>
   Array.from(
     container.querySelector("table")!.querySelectorAll(":scope > tbody > tr"),
   );
 
-const totalCell = (row: Element) => row.querySelectorAll(":scope > td")[3];
+const getTotalCell = (row: Element) => row.querySelectorAll(":scope > td")[3];
 
 /** The first scanned item's profit tooltip, split into its buying region sections. */
-const tooltipSections = (container: HTMLElement) =>
+const getTooltipSections = (container: HTMLElement) =>
   Array.from(
-    totalCell(bodyRows(container)[0]).querySelectorAll(
+    getTotalCell(getBodyRows(container)[0]).querySelectorAll(
       ".profit-tooltip section",
     ),
   ) as HTMLElement[];
 
 describe("ScannedItemsTable", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("listing items", () => {
     it("should render one row per scanned item", () => {
       const { container } = renderTable([
-        scannedItem({ itemId: 1 }),
-        scannedItem({ itemId: 2 }),
-        scannedItem({ itemId: 3 }),
+        buildScannedItem({ itemId: 1 }),
+        buildScannedItem({ itemId: 2 }),
+        buildScannedItem({ itemId: 3 }),
       ]);
 
-      expect(bodyRows(container)).toHaveLength(3);
+      expect(getBodyRows(container)).toHaveLength(3);
     });
   });
 
   describe("naming items", () => {
     it("should show the item's name when it's known", () => {
-      renderTable([scannedItem({ itemId: 42, name: "Grade 8 Dark Matter" })]);
+      renderTable([
+        buildScannedItem({ itemId: 42, name: "Grade 8 Dark Matter" }),
+      ]);
 
       expect(screen.queryByText("Grade 8 Dark Matter")).not.toBeNull();
     });
 
     it("should fall back to the item ID when its name isn't known", () => {
-      renderTable([scannedItem({ itemId: 42, name: null })]);
+      renderTable([buildScannedItem({ itemId: 42, name: undefined })]);
 
       expect(screen.queryByText("#42")).not.toBeNull();
     });
@@ -141,7 +147,7 @@ describe("ScannedItemsTable", () => {
 
   describe("linking out", () => {
     it("should link to the item's Universalis market page for the selected world, opening in a new tab without exposing this page", () => {
-      renderTable([scannedItem({ itemId: 42 })], "Raiden");
+      renderTable([buildScannedItem({ itemId: 42 })], "Raiden");
 
       const link = screen.getByRole("link", { name: "View on Universalis" });
       expect(link.getAttribute("href")).toBe(buildMarketPageUrl(42, "Raiden"));
@@ -153,14 +159,16 @@ describe("ScannedItemsTable", () => {
   describe("showing sale velocity", () => {
     it("should show NQ, HQ and total units sold per day, rounded and with thousands separators", () => {
       const { container } = renderTable([
-        scannedItem({
+        buildScannedItem({
           nqSaleVelocity: 1234.4,
           hqSaleVelocity: 5678.6,
           totalSaleVelocity: 6913,
         }),
       ]);
 
-      const cells = Array.from(bodyRows(container)[0].querySelectorAll("td"));
+      const cells = Array.from(
+        getBodyRows(container)[0].querySelectorAll("td"),
+      );
       expect(cells.slice(1).map((cell) => cell.textContent)).toEqual([
         (1234).toLocaleString(),
         (5679).toLocaleString(),
@@ -172,24 +180,24 @@ describe("ScannedItemsTable", () => {
   describe("showing profit", () => {
     it("should keep showing a priced item's sale velocity", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1, totalSaleVelocity: 1234 })],
+        [buildScannedItem({ itemId: 1, totalSaleVelocity: 1234 })],
         "Raiden",
-        { 1: pricedProfit() },
+        { 1: buildPricedProfit() },
       );
 
-      const row = bodyRows(container)[0];
+      const row = getBodyRows(container)[0];
       expect(row.querySelectorAll(":scope > td")).toHaveLength(4);
-      expect(totalCell(row).textContent).toContain((1234).toLocaleString());
+      expect(getTotalCell(row).textContent).toContain((1234).toLocaleString());
     });
 
     it("should show a priced item's profit through each buying region in a tooltip on its total per day", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
-        { 1: pricedProfit() },
+        { 1: buildPricedProfit() },
       );
 
-      const sections = tooltipSections(container);
+      const sections = getTooltipSections(container);
       expect(
         sections.map((section) => section.querySelector("h2")?.textContent),
       ).toEqual(["Buying via Alice (Europe)", "Buying via Bob (Japan)"]);
@@ -203,12 +211,12 @@ describe("ScannedItemsTable", () => {
 
     it("should link the profit tables' sell prices to the selected world's market page", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
-        { 1: pricedProfit() },
+        { 1: buildPricedProfit() },
       );
 
-      const linkTargets = tooltipSections(container).flatMap((section) =>
+      const linkTargets = getTooltipSections(container).flatMap((section) =>
         within(section)
           .getAllByRole("link")
           .map((link) => link.getAttribute("href")),
@@ -218,22 +226,22 @@ describe("ScannedItemsTable", () => {
 
     it("should mark an item's total per day while it's being priced, without a tooltip yet", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
         {
           1: { status: "loading" },
         },
       );
 
-      const total = totalCell(bodyRows(container)[0]);
+      const total = getTotalCell(getBodyRows(container)[0]);
       expect(total.querySelector(".row-refreshing")).not.toBeNull();
       expect(total.querySelector(".profit-tooltip")).toBeNull();
     });
 
     it("should offer no tooltip or marking for an item that isn't priced", () => {
-      const { container } = renderTable([scannedItem({ itemId: 1 })]);
+      const { container } = renderTable([buildScannedItem({ itemId: 1 })]);
 
-      const total = totalCell(bodyRows(container)[0]);
+      const total = getTotalCell(getBodyRows(container)[0]);
       expect(total.querySelector(".row-refreshing")).toBeNull();
       expect(total.querySelector(".profit-tooltip")).toBeNull();
     });
@@ -245,71 +253,71 @@ describe("ScannedItemsTable", () => {
 
     it("should highlight an item expected to make more than the highlight amount per day through any buying region", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 }), scannedItem({ itemId: 2 })],
+        [buildScannedItem({ itemId: 1 }), buildScannedItem({ itemId: 2 })],
         "Raiden",
         {
-          1: pricedProfit({
-            Europe: pricedRow("Chaos", 100_000),
-            Japan: pricedRow("Elemental", 600_000),
+          1: buildPricedProfit({
+            Europe: buildPricedRow("Chaos", 100_000),
+            Japan: buildPricedRow("Elemental", 600_000),
           }),
-          2: pricedProfit({
-            Europe: pricedRow("Chaos", 100_000),
-            Japan: pricedRow("Elemental", 200_000),
+          2: buildPricedProfit({
+            Europe: buildPricedRow("Chaos", 100_000),
+            Japan: buildPricedRow("Elemental", 200_000),
           }),
         },
         500_000,
       );
 
-      expect(bodyRows(container).map(isHighlighted)).toEqual([true, false]);
+      expect(getBodyRows(container).map(isHighlighted)).toEqual([true, false]);
     });
 
     it("should not highlight an item expected to make exactly the highlight amount per day", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
-        { 1: pricedProfit({ Europe: pricedRow("Chaos", 500_000) }) },
+        { 1: buildPricedProfit({ Europe: buildPricedRow("Chaos", 500_000) }) },
         500_000,
       );
 
-      expect(isHighlighted(bodyRows(container)[0])).toBe(false);
+      expect(isHighlighted(getBodyRows(container)[0])).toBe(false);
     });
 
     it("should not highlight an item with no expected profit through any buying region", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
         {
-          1: pricedProfit({
-            Europe: pricedRow("Chaos", null),
+          1: buildPricedProfit({
+            Europe: buildPricedRow("Chaos"),
             Japan: unpricedRow,
           }),
         },
         0,
       );
 
-      expect(isHighlighted(bodyRows(container)[0])).toBe(false);
+      expect(isHighlighted(getBodyRows(container)[0])).toBe(false);
     });
 
     it("should not highlight an item that's still being priced or isn't priced", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 }), scannedItem({ itemId: 2 })],
+        [buildScannedItem({ itemId: 1 }), buildScannedItem({ itemId: 2 })],
         "Raiden",
         { 1: { status: "loading" } },
         0,
       );
 
-      expect(bodyRows(container).map(isHighlighted)).toEqual([false, false]);
+      expect(getBodyRows(container).map(isHighlighted)).toEqual([false, false]);
     });
 
     it("should highlight nothing when there's no highlight amount", () => {
       const { container } = renderTable(
-        [scannedItem({ itemId: 1 })],
+        [buildScannedItem({ itemId: 1 })],
         "Raiden",
-        { 1: pricedProfit({ Europe: pricedRow("Chaos", 600_000) }) },
+        { 1: buildPricedProfit({ Europe: buildPricedRow("Chaos", 600_000) }) },
         undefined,
       );
 
-      expect(isHighlighted(bodyRows(container)[0])).toBe(false);
+      expect(isHighlighted(getBodyRows(container)[0])).toBe(false);
     });
   });
 });

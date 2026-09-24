@@ -26,11 +26,11 @@ const trackItem = async (
   return trackedItems[trackedItems.length - 1];
 };
 
-beforeEach(() => {
-  localStorage.clear();
-});
-
 describe("trackedItemService", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   describe("starting out", () => {
     it("should start out tracking the initial items, in order, each given an ID", async () => {
       const materia = { ...cordial, itemId: 41771, name: "Materia" };

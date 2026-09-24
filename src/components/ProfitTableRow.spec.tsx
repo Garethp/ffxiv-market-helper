@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { descriptionOf } from "../testing/descriptionOf";
+import { getDescription } from "../testing/getDescription";
 import type { ProfitPricing, ProfitRow, PricedItem } from "../types";
 import { ProfitTableRow } from "./ProfitTableRow";
-import { withQueryClient } from "../testing/withQueryClient";
+import { createQueryClientWrapper } from "../testing/createQueryClientWrapper";
 
 const item: PricedItem = {
   itemId: 42,
@@ -13,7 +13,7 @@ const item: PricedItem = {
   targetQuantity: 297,
 };
 
-const readyRow = (
+const buildReadyRow = (
   pricingOverrides: Partial<ProfitPricing> = {},
   rowOverrides: Partial<ProfitRow> = {},
 ): ProfitRow => ({
@@ -43,17 +43,17 @@ const readyRow = (
   ...rowOverrides,
 });
 
-const pendingRow = (): ProfitRow => ({
+const buildPendingRow = (): ProfitRow => ({
   item,
   analysis: { status: "pending" },
 });
 
 /** The element showing a cell's figure, which carries the tooltip explaining it. */
-const figureElementIn = (cell: HTMLTableCellElement) =>
+const getFigureElementIn = (cell: HTMLTableCellElement) =>
   cell.querySelector("[aria-describedby]");
 
-const figureIn = (cell: HTMLTableCellElement) =>
-  figureElementIn(cell)?.textContent ?? cell.textContent;
+const getFigureIn = (cell: HTMLTableCellElement) =>
+  getFigureElementIn(cell)?.textContent ?? cell.textContent;
 
 const renderRow = (
   row: ProfitRow,
@@ -80,7 +80,7 @@ const renderRow = (
         />
       </tbody>
     </table>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
   const tr = container.querySelector("tbody > tr") as HTMLTableRowElement;
   const cells = Array.from(tr.children) as HTMLTableCellElement[];
@@ -96,13 +96,15 @@ const renderRow = (
   };
 };
 
-afterEach(cleanup);
-
 describe("ProfitTableRow", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("identifying the item", () => {
     it("should ask to copy the item's name when the copy button is clicked", () => {
       const onCopyName = vi.fn();
-      const { itemCell } = renderRow(readyRow(), { onCopyName });
+      const { itemCell } = renderRow(buildReadyRow(), { onCopyName });
 
       fireEvent.click(itemCell.querySelector("button")!);
 
@@ -111,14 +113,14 @@ describe("ProfitTableRow", () => {
 
     it("should label an item priced as high quality", () => {
       const { itemCell } = renderRow(
-        readyRow({}, { item: { ...item, hq: true } }),
+        buildReadyRow({}, { item: { ...item, hq: true } }),
       );
 
       expect(itemCell.querySelector(".quality-badge")?.textContent).toBe("HQ");
     });
 
     it("should not label an item priced as normal quality", () => {
-      const { itemCell } = renderRow(readyRow());
+      const { itemCell } = renderRow(buildReadyRow());
 
       expect(itemCell.querySelector(".quality-badge")).toBeNull();
     });
@@ -126,27 +128,27 @@ describe("ProfitTableRow", () => {
 
   describe("highlighting the row", () => {
     it("should flag a supply gap on both the item and the row", () => {
-      const { tr, itemCell } = renderRow(readyRow({ gapDetected: true }));
+      const { tr, itemCell } = renderRow(buildReadyRow({ gapDetected: true }));
 
       expect(itemCell.querySelector(".gap-badge")?.textContent).toBe("gap");
       expect(tr.classList.contains("row-gap")).toBe(true);
     });
 
     it("should not flag a supply gap when none was detected", () => {
-      const { tr, itemCell } = renderRow(readyRow({ gapDetected: false }));
+      const { tr, itemCell } = renderRow(buildReadyRow({ gapDetected: false }));
 
       expect(itemCell.querySelector(".gap-badge")).toBeNull();
       expect(tr.classList.contains("row-gap")).toBe(false);
     });
 
     it("should mark the row while it's refreshing", () => {
-      const { tr } = renderRow(readyRow(), { isRefreshing: true });
+      const { tr } = renderRow(buildReadyRow(), { isRefreshing: true });
 
       expect(tr.classList.contains("row-refreshing")).toBe(true);
     });
 
     it("should flag a supply gap and mark the row as refreshing at the same time", () => {
-      const { tr } = renderRow(readyRow({ gapDetected: true }), {
+      const { tr } = renderRow(buildReadyRow({ gapDetected: true }), {
         isRefreshing: true,
       });
 
@@ -158,7 +160,7 @@ describe("ProfitTableRow", () => {
   describe("showing where and for how much to buy", () => {
     it("should link the buy data center to its market page", () => {
       const { buyDataCenterCell } = renderRow(
-        readyRow({ buyDataCenter: "Chaos" }),
+        buildReadyRow({ buyDataCenter: "Chaos" }),
       );
 
       const link = buyDataCenterCell.querySelector("a");
@@ -169,7 +171,9 @@ describe("ProfitTableRow", () => {
     });
 
     it("should show a dash for the data center when there's nothing to buy", () => {
-      const { buyDataCenterCell } = renderRow(readyRow({ buy: null }));
+      const { buyDataCenterCell } = renderRow(
+        buildReadyRow({ buy: undefined }),
+      );
 
       expect(buyDataCenterCell.querySelector("a")).toBeNull();
       expect(buyDataCenterCell.textContent).toBe("—");
@@ -177,7 +181,7 @@ describe("ProfitTableRow", () => {
 
     it("should show the buy price per unit, rounded", () => {
       const { buyPriceCell } = renderRow(
-        readyRow({
+        buildReadyRow({
           buy: {
             pricePerUnit: 1234.4,
             quantityFilled: 297,
@@ -193,9 +197,12 @@ describe("ProfitTableRow", () => {
 
   describe("showing the sell price", () => {
     it("should link the sell price to the sell world's market page", () => {
-      const { sellPriceCell } = renderRow(readyRow({ sellPricePerUnit: 250 }), {
-        sellWorld: "Raiden",
-      });
+      const { sellPriceCell } = renderRow(
+        buildReadyRow({ sellPricePerUnit: 250 }),
+        {
+          sellWorld: "Raiden",
+        },
+      );
 
       const link = sellPriceCell.querySelector("a");
       expect(link?.textContent).toBe((250).toLocaleString());
@@ -206,7 +213,7 @@ describe("ProfitTableRow", () => {
 
     it("should flag our listing as undercut when it has been", () => {
       const { sellPriceCell } = renderRow(
-        readyRow({
+        buildReadyRow({
           sellListingStatus: {
             state: "undercut",
             ourPricePerUnit: 300,
@@ -229,7 +236,9 @@ describe("ProfitTableRow", () => {
     it.each([{ state: "not-listed" as const }])(
       "should not flag our listing as undercut when it is $state",
       (sellListingStatus) => {
-        const { sellPriceCell } = renderRow(readyRow({ sellListingStatus }));
+        const { sellPriceCell } = renderRow(
+          buildReadyRow({ sellListingStatus }),
+        );
 
         expect(sellPriceCell.querySelector(".undercut-badge")).toBeNull();
       },
@@ -243,7 +252,7 @@ describe("ProfitTableRow", () => {
         profitPerStackCell,
         expectedProfitPerDayCell,
       } = renderRow(
-        readyRow({
+        buildReadyRow({
           profitPerItem: 132,
           profitPerStack: -495,
           expectedProfitPerDay: -60,
@@ -263,7 +272,7 @@ describe("ProfitTableRow", () => {
         profitPerStackCell,
         expectedProfitPerDayCell,
       } = renderRow(
-        readyRow({
+        buildReadyRow({
           profitPerItem: 132,
           profitPerStack: 13_068,
           expectedProfitPerDay: 500,
@@ -272,15 +281,17 @@ describe("ProfitTableRow", () => {
 
       expect(profitPerItemCell.textContent).toBe((132).toLocaleString());
       expect(profitPerStackCell.textContent).toBe((13_068).toLocaleString());
-      expect(figureIn(expectedProfitPerDayCell)).toBe((500).toLocaleString());
+      expect(getFigureIn(expectedProfitPerDayCell)).toBe(
+        (500).toLocaleString(),
+      );
     });
 
     it("should explain the daily sale velocity behind expected daily profit", () => {
       const { expectedProfitPerDayCell } = renderRow(
-        readyRow({ saleVelocityPerDay: 12.34 }),
+        buildReadyRow({ saleVelocityPerDay: 12.34 }),
       );
 
-      expect(descriptionOf(figureElementIn(expectedProfitPerDayCell))).toBe(
+      expect(getDescription(getFigureElementIn(expectedProfitPerDayCell))).toBe(
         "Based on 12.3 sold in the last day",
       );
     });
@@ -295,7 +306,7 @@ describe("ProfitTableRow", () => {
         profitPerItemCell,
         profitPerStackCell,
         expectedProfitPerDayCell,
-      } = renderRow(pendingRow());
+      } = renderRow(buildPendingRow());
 
       expect(buyDataCenterCell.textContent).toBe("—");
       expect(buyPriceCell.textContent).toBe("—");

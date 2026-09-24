@@ -29,7 +29,7 @@ const renderNavBar = ({
 }: {
   path?: string;
   characters?: Character[];
-  currentCharacter?: Character | null;
+  currentCharacter?: Character;
   onSelectCharacter?: (character: Character) => void;
 } = {}) =>
   render(
@@ -43,15 +43,17 @@ const renderNavBar = ({
     </MemoryRouter>,
   );
 
-const pagesMarkedCurrent = () =>
+const getPagesMarkedCurrent = () =>
   screen
     .getAllByRole("link")
     .filter((link) => link.getAttribute("aria-current") === "page")
     .map((link) => link.textContent);
 
-afterEach(cleanup);
-
 describe("NavBar", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("moving between pages", () => {
     it.each([
       ["/", "Tracked Items"],
@@ -61,28 +63,28 @@ describe("NavBar", () => {
       (path: string, linkName: string) => {
         renderNavBar({ path });
 
-        expect(pagesMarkedCurrent()).toEqual([linkName]);
+        expect(getPagesMarkedCurrent()).toEqual([linkName]);
       },
     );
   });
 
   describe("tucking the page links into a menu on a narrow screen", () => {
-    const menuButton = () => screen.getByRole("button", { name: "Menu" });
+    const getMenuButton = () => screen.getByRole("button", { name: "Menu" });
     const isMenuOpen = () => {
       const menu = document.getElementById(
-        menuButton().getAttribute("aria-controls")!,
+        getMenuButton().getAttribute("aria-controls")!,
       )!;
-      const expanded = menuButton().getAttribute("aria-expanded") === "true";
+      const expanded = getMenuButton().getAttribute("aria-expanded") === "true";
       expect(menu.classList.contains("navbar-links-open")).toBe(expanded);
       return expanded;
     };
-    const openMenu = () => fireEvent.click(menuButton());
+    const openMenu = () => fireEvent.click(getMenuButton());
 
     it("should put the link to the source in the menu along with the page links", () => {
       renderNavBar();
 
       const menu = document.getElementById(
-        menuButton().getAttribute("aria-controls")!,
+        getMenuButton().getAttribute("aria-controls")!,
       )!;
       expect(
         menu.contains(screen.getByRole("link", { name: "Source on GitHub" })),
@@ -101,7 +103,7 @@ describe("NavBar", () => {
       renderNavBar();
       openMenu();
 
-      fireEvent.click(menuButton());
+      fireEvent.click(getMenuButton());
 
       expect(isMenuOpen()).toBe(false);
     });
@@ -133,7 +135,7 @@ describe("NavBar", () => {
       fireEvent.keyDown(document, { key: "Escape" });
 
       expect(isMenuOpen()).toBe(false);
-      expect(document.activeElement).toBe(menuButton());
+      expect(document.activeElement).toBe(getMenuButton());
     });
 
     it("should leave focus where it is on Escape while the menu is closed", () => {
@@ -149,7 +151,7 @@ describe("NavBar", () => {
     it("should leave the page behind uncovered while the menu is closed", () => {
       const { container } = renderNavBar();
       openMenu();
-      fireEvent.click(menuButton());
+      fireEvent.click(getMenuButton());
 
       expect(container.querySelector(".navbar-backdrop")).toBeNull();
     });

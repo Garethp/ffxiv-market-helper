@@ -21,12 +21,12 @@ export const CharactersContainer = ({
   /** Called after every change made to the roster, so it can be read again. */
   onCharactersChanged: () => void;
 }) => {
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>();
 
   // The change was just asked for, so the message doesn't need to say which
   // character or retainer it was about.
   const makeChange = (change: () => Promise<void>) => {
-    setErrorMessage(null);
+    setErrorMessage(undefined);
     change()
       .then(onCharactersChanged)
       .catch(() => setErrorMessage("Something went wrong. Try again shortly."));

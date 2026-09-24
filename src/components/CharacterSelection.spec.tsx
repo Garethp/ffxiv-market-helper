@@ -24,7 +24,7 @@ const renderSelection = ({
   onSelect = () => {},
 }: {
   characters: Character[];
-  currentCharacter: Character | null;
+  currentCharacter?: Character;
   onSelect?: (character: Character) => void;
 }) =>
   render(
@@ -45,11 +45,13 @@ const renderSelection = ({
     </MemoryRouter>,
   );
 
-const picker = () => screen.getByLabelText("Selling as");
-
-afterEach(cleanup);
+const getPicker = () => screen.getByLabelText("Selling as");
 
 describe("CharacterSelection", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   describe("with characters in the roster", () => {
     it("should offer every character in the roster, in order", () => {
       renderSelection({ characters: [alice, bob], currentCharacter: alice });
@@ -75,7 +77,7 @@ describe("CharacterSelection", () => {
     });
 
     it("should show no home world when there is no Current Character", () => {
-      renderSelection({ characters: [alice, bob], currentCharacter: null });
+      renderSelection({ characters: [alice, bob] });
 
       expect(screen.queryByText(/World/)).toBe(null);
     });
@@ -88,7 +90,7 @@ describe("CharacterSelection", () => {
         onSelect,
       });
 
-      fireEvent.change(picker(), { target: { value: "bob" } });
+      fireEvent.change(getPicker(), { target: { value: "bob" } });
 
       expect(onSelect).toHaveBeenCalledExactlyOnceWith(bob);
     });
@@ -96,7 +98,7 @@ describe("CharacterSelection", () => {
 
   describe("with an empty roster", () => {
     it("should link to the characters page to add one", () => {
-      renderSelection({ characters: [], currentCharacter: null });
+      renderSelection({ characters: [] });
 
       fireEvent.click(screen.getByRole("link", { name: "Add a character" }));
 

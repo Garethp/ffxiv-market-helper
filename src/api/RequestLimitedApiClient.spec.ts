@@ -4,14 +4,14 @@ import { CrossTabRequestLimiter } from "../requestLimiting/CrossTabRequestLimite
 import { InMemoryLockManager } from "../requestLimiting/InMemoryLockManager";
 import type { RequestLimits } from "../requestLimiting/RequestLimiter";
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
 const createLimiter = (limits: RequestLimits) =>
   new CrossTabRequestLimiter("test-api", limits, new InMemoryLockManager());
 
 describe("RequestLimitedApiClient", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("should hold requests back until the limiter has room for them", async () => {
     let active = 0;
     let maxActive = 0;

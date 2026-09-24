@@ -9,7 +9,7 @@ vi.mock("../../services/itemService", () => ({
 }));
 
 import { itemService } from "../../services/itemService";
-import { withQueryClient } from "../../testing/withQueryClient";
+import { createQueryClientWrapper } from "../../testing/createQueryClientWrapper";
 import { TrackedItemExpandableRow } from "./TrackedItemExpandableRow";
 
 const mockedGetItemSummaries = vi.mocked(itemService.getItemSummaries);
@@ -19,7 +19,9 @@ const cordialSummary: ItemSummary = {
   description: "Restores GP.",
 };
 
-const aTrackedItem = (overrides: Partial<TrackedItem> = {}): TrackedItem => ({
+const buildTrackedItem = (
+  overrides: Partial<TrackedItem> = {},
+): TrackedItem => ({
   id: "cordial",
   itemId: 6141,
   name: "Cordial",
@@ -32,7 +34,7 @@ const renderRow = (
   item: TrackedItem,
   props: Partial<{
     editHref: string;
-    errorMessage: string | null;
+    errorMessage: string;
     onUntrack: () => void;
   }> = {},
 ) => {
@@ -47,15 +49,15 @@ const renderRow = (
         />
       </ul>
     </MemoryRouter>,
-    { wrapper: withQueryClient() },
+    { wrapper: createQueryClientWrapper() },
   );
   return handlers;
 };
 
-const rowText = () => screen.getByRole("listitem").textContent;
+const getRowText = () => screen.getByRole("listitem").textContent;
 
 /** The value shown against one of the row's labelled figures. */
-const figure = (label: string) =>
+const getFigure = (label: string) =>
   screen.getByText(label).nextElementSibling?.textContent;
 
 const expand = (description = "Cordial (NQ)") =>
@@ -63,24 +65,24 @@ const expand = (description = "Cordial (NQ)") =>
     screen.getByRole("button", { name: `Show what ${description} is` }),
   );
 
-beforeEach(() => {
-  mockedGetItemSummaries.mockResolvedValue(new Map([[6141, cordialSummary]]));
-});
-
-afterEach(() => {
-  cleanup();
-  mockedGetItemSummaries.mockReset();
-});
-
 describe("TrackedItemExpandableRow", () => {
+  beforeEach(() => {
+    mockedGetItemSummaries.mockResolvedValue(new Map([[6141, cordialSummary]]));
+  });
+
+  afterEach(() => {
+    cleanup();
+    mockedGetItemSummaries.mockReset();
+  });
+
   describe("collapsed", () => {
     it("should show what the item is tracked as, and none of the ways to change it", () => {
-      renderRow(aTrackedItem({ hq: true, sellPriceCeiling: 5000 }));
+      renderRow(buildTrackedItem({ hq: true, sellPriceCeiling: 5000 }));
 
-      expect(rowText()).toContain("Cordial");
-      expect(rowText()).toContain("HQ");
-      expect(figure("Target quantity")).toBe("999");
-      expect(figure("Sell price ceiling")).toBe("5k");
+      expect(getRowText()).toContain("Cordial");
+      expect(getRowText()).toContain("HQ");
+      expect(getFigure("Target quantity")).toBe("999");
+      expect(getFigure("Sell price ceiling")).toBe("5k");
       expect(screen.queryByRole("link")).toBeNull();
       expect(
         screen.queryByRole("button", { name: "Stop tracking Cordial (HQ)" }),
@@ -88,14 +90,14 @@ describe("TrackedItemExpandableRow", () => {
     });
 
     it("should show an item with no sell price ceiling as having none", () => {
-      renderRow(aTrackedItem());
+      renderRow(buildTrackedItem());
 
-      expect(figure("Sell price ceiling")).toBe("none");
+      expect(getFigure("Sell price ceiling")).toBe("none");
     });
   });
 
   it("should look the item up only once the row is opened, so a long list doesn't fetch every item", async () => {
-    renderRow(aTrackedItem());
+    renderRow(buildTrackedItem());
     expect(mockedGetItemSummaries).not.toHaveBeenCalled();
 
     expand();
@@ -106,7 +108,7 @@ describe("TrackedItemExpandableRow", () => {
 
   describe("expanded", () => {
     it("should show what the item is, in place of the tooltip a phone can't hover, keeping what it's tracked as", async () => {
-      renderRow(aTrackedItem({ sellPriceCeiling: 5000 }));
+      renderRow(buildTrackedItem({ sellPriceCeiling: 5000 }));
 
       expand();
 
@@ -115,12 +117,12 @@ describe("TrackedItemExpandableRow", () => {
       expect(screen.getByRole("presentation").getAttribute("src")).toContain(
         "6141",
       );
-      expect(figure("Target quantity")).toBe("999");
-      expect(figure("Sell price ceiling")).toBe("5k");
+      expect(getFigure("Target quantity")).toBe("999");
+      expect(getFigure("Sell price ceiling")).toBe("5k");
     });
 
     it("should offer the ways to change the item", () => {
-      const { onUntrack } = renderRow(aTrackedItem(), {
+      const { onUntrack } = renderRow(buildTrackedItem(), {
         editHref: "/manage-items/edit/cordial",
       });
 
@@ -139,7 +141,7 @@ describe("TrackedItemExpandableRow", () => {
   });
 
   it("should show why the last change wasn't made, whether opened or not", () => {
-    renderRow(aTrackedItem(), {
+    renderRow(buildTrackedItem(), {
       errorMessage: "Something went wrong. Try again shortly.",
     });
 

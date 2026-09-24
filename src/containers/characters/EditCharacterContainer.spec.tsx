@@ -87,9 +87,9 @@ const renderPage = (characterId: string) =>
   );
 
 /** The page's form, once the character it's for has been read. */
-const editForm = () => screen.findByRole("form");
+const findEditForm = () => screen.findByRole("form");
 
-const fieldValue = (form: HTMLElement, label: string) =>
+const getFieldValue = (form: HTMLElement, label: string) =>
   (within(form).getByLabelText(label) as HTMLInputElement).value;
 
 const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
@@ -99,43 +99,43 @@ const fillIn = (form: HTMLElement, fields: Record<string, string>) =>
     }),
   );
 
-const backOnTheRoster = () => screen.findByText("Characters page");
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(() => {
-  cleanup();
-  onCharactersChanged.mockReset();
-  vi.restoreAllMocks();
-});
+const waitForRosterPage = () => screen.findByText("Characters page");
 
 describe("EditCharacterContainer", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    onCharactersChanged.mockReset();
+    vi.restoreAllMocks();
+  });
+
   it("should name the character and start with its current details", async () => {
     const id = await add({ ...alice, note: "Main" });
 
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     screen.getByRole("heading", { name: "Edit Alice" });
-    expect(fieldValue(form, "Name")).toBe("Alice");
-    expect(fieldValue(form, "Home world")).toBe("Raiden");
-    expect(fieldValue(form, "Note")).toBe("Main");
+    expect(getFieldValue(form, "Name")).toBe("Alice");
+    expect(getFieldValue(form, "Home world")).toBe("Raiden");
+    expect(getFieldValue(form, "Note")).toBe("Main");
   });
 
   it("should save the entered details and go back to the roster, reporting the change", async () => {
     const id = await add();
     await characterService.addRetainer(id, { name: "Amarana", city: "Ul'dah" });
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { Name: "Alicia", "Home world": "Odin", Note: "Moved" });
     fireEvent.click(
       within(form).getByRole("button", { name: "Save character" }),
     );
 
-    await backOnTheRoster();
+    await waitForRosterPage();
     const [changed] = await characterService.getCharacters();
     expect(changed).toMatchObject({
       id,
@@ -150,14 +150,14 @@ describe("EditCharacterContainer", () => {
   it("should let the character keep its own name and world", async () => {
     const id = await add();
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { Note: "Crafter" });
     fireEvent.click(
       within(form).getByRole("button", { name: "Save character" }),
     );
 
-    await backOnTheRoster();
+    await waitForRosterPage();
     const [changed] = await characterService.getCharacters();
     expect(changed.note).toBe("Crafter");
   });
@@ -166,7 +166,7 @@ describe("EditCharacterContainer", () => {
     await add();
     const bobId = await add({ name: "Bob", homeWorld: "Raiden" });
     renderPage(bobId);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { Name: "Alice" });
     fireEvent.click(
@@ -188,7 +188,7 @@ describe("EditCharacterContainer", () => {
       new Error("storage is full"),
     );
     renderPage(id);
-    const form = await editForm();
+    const form = await findEditForm();
 
     fillIn(form, { Note: "Crafter" });
     fireEvent.click(
@@ -206,12 +206,12 @@ describe("EditCharacterContainer", () => {
     async (control) => {
       const id = await add();
       renderPage(id);
-      const form = await editForm();
+      const form = await findEditForm();
       fillIn(form, { Name: "Alicia" });
 
       fireEvent.click(screen.getByText(control));
 
-      await backOnTheRoster();
+      await waitForRosterPage();
       const [unchanged] = await characterService.getCharacters();
       expect(unchanged.name).toBe("Alice");
       expect(onCharactersChanged).not.toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe("EditCharacterContainer", () => {
   it("should go straight back to the roster when the character isn't in it", async () => {
     renderPage("never-added");
 
-    await backOnTheRoster();
+    await waitForRosterPage();
     expect(screen.queryByRole("form")).toBeNull();
   });
 });

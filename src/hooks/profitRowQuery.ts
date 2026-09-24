@@ -8,7 +8,7 @@ import type { TradingConfig } from "../services/tradingConfig";
 import type { Character, ProfitRow, PricedItem } from "../types";
 
 /** The market data for one item bought via one region, sold through the given character. */
-export const rowMarketDataQuery = (
+export const buildRowMarketDataQuery = (
   itemId: number,
   region: string,
   sellingCharacter: Character,
@@ -35,7 +35,7 @@ export const rowMarketDataQuery = (
  * Prices the item from however far its market data query has got. A failed
  * fetch never replaces the last good data: it keeps showing.
  */
-export const profitRow = (
+export const buildProfitRow = (
   query: Pick<QueryObserverResult<RowMarketData>, "data">,
   item: PricedItem,
   sellingCharacter: Character,

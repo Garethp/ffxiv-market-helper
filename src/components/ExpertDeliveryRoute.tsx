@@ -1,6 +1,6 @@
 import {
-  sealsAt,
-  sealsPerGil,
+  countSealsAt,
+  calculateSealsPerGil,
   type RouteLeg,
   type RouteStop,
 } from "../services/expertDelivery";
@@ -22,7 +22,7 @@ const StopTable = ({
   onCopy,
 }: {
   stop: RouteStop;
-  copiedKey: string | null;
+  copiedKey?: string;
   onCopy: (key: string, text: string) => void;
 }) => (
   <table className="item-table fixed-columns">
@@ -43,7 +43,7 @@ const StopTable = ({
               />
             </td>
             <td>{formatGil(listing.pricePerUnit)}</td>
-            <td>{sealsPerGil(item, listing).toFixed(2)}</td>
+            <td>{calculateSealsPerGil(item, listing).toFixed(2)}</td>
             <td>{item.seals.toLocaleString()}</td>
           </tr>
         );
@@ -62,7 +62,7 @@ export const ExpertDeliveryRoute = ({
   legs: RouteLeg[];
   homeWorld: string;
   /** The row whose item name was just copied, if any. */
-  copiedKey: string | null;
+  copiedKey?: string;
   onCopy: (key: string, text: string) => void;
 }) => (
   <>
@@ -85,7 +85,7 @@ export const ExpertDeliveryRoute = ({
               <span className="muted">
                 {stop.listings.length} listing
                 {stop.listings.length === 1 ? "" : "s"},{" "}
-                {sealsAt(stop).toLocaleString()} seals
+                {countSealsAt(stop).toLocaleString()} seals
               </span>
             </h3>
             <StopTable stop={stop} copiedKey={copiedKey} onCopy={onCopy} />

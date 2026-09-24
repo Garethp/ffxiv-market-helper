@@ -3,7 +3,7 @@ import type { ItemDetails, ItemSummary, MarketBoardItem } from "../types";
 
 /** Holds its items in memory, standing in for IndexedDB. Caches sharing one behave like tabs sharing a database. */
 export class MemoryItemDataStore implements ItemDataStore {
-  version: string | undefined;
+  version?: string;
   items = new Map<number, MarketBoardItem>();
   typeNames = new Map<number, string>();
 

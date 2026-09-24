@@ -4,9 +4,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildMarketPageUrl } from "../api/universalis";
 import { UniversalisLink } from "./UniversalisLink";
 
-afterEach(cleanup);
-
 describe("UniversalisLink", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should link to the item's market page on the given world or data center", () => {
     render(
       <UniversalisLink itemId={42} worldOrDataCenter="Chaos">

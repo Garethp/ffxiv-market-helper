@@ -7,9 +7,11 @@ import { ItemDataStatusBar } from "./ItemDataStatusBar";
 const renderBar = (status: ItemDataStatus) =>
   render(<ItemDataStatusBar status={status} />);
 
-afterEach(cleanup);
-
 describe("ItemDataStatusBar", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it.each([{ state: "idle" } as const])(
     "should show nothing while $state",
     (status) => {

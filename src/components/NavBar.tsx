@@ -15,7 +15,7 @@ export const NavBar = ({
   onSelectCharacter,
 }: {
   characters: Character[];
-  currentCharacter: Character | null;
+  currentCharacter?: Character;
   onSelectCharacter: (character: Character) => void;
 }) => {
   const menuId = useId();

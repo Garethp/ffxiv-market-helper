@@ -2,12 +2,12 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SellListingStatus } from "../../types";
-import { descriptionOf } from "../../testing/descriptionOf";
+import { getDescription } from "../../testing/getDescription";
 import { UndercutBadge } from "./UndercutBadge";
 
 type UndercutStatus = Extract<SellListingStatus, { state: "undercut" }>;
 
-const undercutStatus = (
+const buildUndercutStatus = (
   overrides: Partial<UndercutStatus> = {},
 ): UndercutStatus => ({
   state: "undercut",
@@ -19,27 +19,29 @@ const undercutStatus = (
   ...overrides,
 });
 
-const listingRows = () => screen.getAllByRole("row").slice(1);
-
-afterEach(cleanup);
+const getListingRows = () => screen.getAllByRole("row").slice(1);
 
 describe("UndercutBadge", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("should describe the competition it's been undercut by, reachable without a pointer", () => {
     render(
       <UndercutBadge
-        status={undercutStatus({ ourPricePerUnit: 500, rank: 3 })}
+        status={buildUndercutStatus({ ourPricePerUnit: 500, rank: 3 })}
       />,
     );
 
     const badge = screen.getByText("undercut");
-    expect(descriptionOf(badge)).toContain("Your listing:");
+    expect(getDescription(badge)).toContain("Your listing:");
     expect(badge.getAttribute("tabindex")).toBe("0");
   });
 
   it("should show our own listing's price and where it ranks", () => {
     render(
       <UndercutBadge
-        status={undercutStatus({ ourPricePerUnit: 12345, rank: 7 })}
+        status={buildUndercutStatus({ ourPricePerUnit: 12345, rank: 7 })}
       />,
     );
 
@@ -51,7 +53,7 @@ describe("UndercutBadge", () => {
   it("should list who posted each of the cheapest listings, at what price and quantity, in order", () => {
     render(
       <UndercutBadge
-        status={undercutStatus({
+        status={buildUndercutStatus({
           cheapestListings: [
             {
               pricePerUnit: 1000,
@@ -70,7 +72,7 @@ describe("UndercutBadge", () => {
       />,
     );
 
-    const cells = listingRows().map((row) =>
+    const cells = getListingRows().map((row) =>
       Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent),
     );
     expect(cells).toEqual([
@@ -82,7 +84,7 @@ describe("UndercutBadge", () => {
   it("should single out our own listings among them", () => {
     render(
       <UndercutBadge
-        status={undercutStatus({
+        status={buildUndercutStatus({
           cheapestListings: [
             {
               pricePerUnit: 1000,
@@ -102,7 +104,7 @@ describe("UndercutBadge", () => {
     );
 
     expect(
-      listingRows().map((row) => row.classList.contains("own-listing")),
+      getListingRows().map((row) => row.classList.contains("own-listing")),
     ).toEqual([false, true]);
   });
 });
