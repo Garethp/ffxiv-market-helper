@@ -1,0 +1,234 @@
+/* Trial theme, after the game's default "Dark" UI windows (market board, item search):
+   - windows are neutral charcoal, rounded, framed by a thin gold hairline;
+   - a window's title is a condensed sans, with an engraved rule beneath it;
+   - section headings are a Trajan-style serif in pale gold;
+   - panels inside a window are inset, darker boxes with a grey edge;
+   - list headers are a bevelled bar with gold text, and rows have no borders;
+   - the selected row is a gold-brown bar fading out to the right;
+   - buttons are grey pills, and whatever is active glows gold. */
+:root[data-theme="ff-dark"] {
+  --bg: #0d0d0d;
+  --surface: #2b2b2b;
+  --surface-control: #3b3b3b;
+  --surface-popover: #262626;
+  --surface-raised: #262626;
+  --border: #3e3e3e;
+  --border-control: #1a1a1a;
+  --border-strong: #8a8a8a;
+  --text: #eeeeee;
+  --text-soft: #cfcfcf;
+  --text-muted: #a8a8a8;
+  --accent: #e3c27a;
+  --accent-hover: #f2d898;
+  --accent-subtle: #4a3c20;
+  --accent-contrast: #1c1405;
+  --positive: #8fe08f;
+  --negative: #ff7b6b;
+
+  --ff-heading: #dcc28c;
+  --ff-frame: #85703f;
+  --ff-glow: 0 0 0 1px #c9a24d, 0 0 8px rgba(230, 190, 90, 0.55);
+  --ff-window:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 120px),
+    #2b2b2b;
+  --ff-window-shadow:
+    0 0 0 1px #0a0a0a, 0 0 0 2px var(--ff-frame),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 6px 18px rgba(0, 0, 0, 0.7);
+  --ff-panel-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.05);
+  --ff-header-bar: linear-gradient(180deg, #4d4d4d 0%, #353535 100%);
+  --ff-selected-bar: linear-gradient(
+    90deg,
+    rgba(170, 128, 62, 0.55) 0%,
+    rgba(150, 110, 50, 0.3) 55%,
+    transparent 100%
+  );
+  --ff-section-font: "Cinzel", serif;
+}
+
+:root[data-theme="ff-dark"] body {
+  background:
+    radial-gradient(ellipse at top, #1f1f1f 0%, transparent 70%), var(--bg);
+  background-attachment: fixed;
+}
+
+/* The page's heading is its window title: plain, light, with an engraved rule beneath. */
+:root[data-theme="ff-dark"] h1 {
+  font-weight: 400;
+  font-size: 2.1rem;
+  color: #e4e4e4;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #000;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Section headings, like "Search" and "Category Search" in the item search window. */
+:root[data-theme="ff-dark"] h2 {
+  font-family: var(--ff-section-font);
+  font-weight: 400;
+  color: var(--ff-heading);
+}
+
+/* Sub-labels within a window ("Armor", "Main Arm/Off Arm") are plain grey. */
+:root[data-theme="ff-dark"] h3 {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+:root[data-theme="ff-dark"] .navbar {
+  background: linear-gradient(180deg, #333 0%, #222 100%);
+  border-bottom: 1px solid #000;
+  box-shadow:
+    0 1px 0 var(--ff-frame),
+    0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* The current page is in the headings' gold, underlined by a gold rule that fades out at both
+   ends. */
+:root[data-theme="ff-dark"] .navbar-link.active {
+  color: var(--ff-heading);
+  border-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--accent) 25%,
+      var(--accent) 75%,
+      transparent
+    )
+    1;
+}
+
+@media (max-width: 640px) {
+  :root[data-theme="ff-dark"] .navbar-links {
+    background: var(--ff-window);
+    box-shadow: var(--ff-window-shadow);
+    border-left: none;
+  }
+
+  /* Down the menu, the current page is underlined as it is along the bar, rather than marked
+     along its side. */
+  :root[data-theme="ff-dark"] .navbar-link {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+  }
+}
+
+/* Windows. */
+:root[data-theme="ff-dark"] .card,
+:root[data-theme="ff-dark"] .empty-state,
+:root[data-theme="ff-dark"] .profit-tooltip-content,
+:root[data-theme="ff-dark"] .tooltip {
+  background: var(--ff-window);
+  border: none;
+  border-radius: 0.6rem;
+  box-shadow: var(--ff-window-shadow);
+}
+
+/* Tables and lists that stand on the page are inset panels, as the item list is in its window. */
+:root[data-theme="ff-dark"] .item-table,
+:root[data-theme="ff-dark"] .expandable-list {
+  background: #232323;
+  border: 1px solid #484848;
+  box-shadow: var(--ff-panel-shadow);
+}
+
+:root[data-theme="ff-dark"] .expandable-list {
+  border-radius: 0.6rem;
+}
+
+:root[data-theme="ff-dark"] .item-table th {
+  background: var(--ff-header-bar);
+  color: var(--ff-heading);
+  font-weight: 400;
+  border-bottom: 1px solid #111;
+}
+
+:root[data-theme="ff-dark"] .item-table td,
+:root[data-theme="ff-dark"] .expandable-list-row,
+:root[data-theme="ff-dark"] .entry-row {
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="ff-dark"] .item-table tbody tr:hover,
+:root[data-theme="ff-dark"] .expandable-list-row:hover,
+:root[data-theme="ff-dark"] .entry-row:hover {
+  background: var(--ff-selected-bar);
+}
+
+:root[data-theme="ff-dark"] .item-table a,
+:root[data-theme="ff-dark"] .profit-row-details a {
+  color: var(--accent);
+  text-decoration-color: rgba(227, 194, 122, 0.4);
+}
+
+/* Fields are flat, rounded and sunk into the window. */
+:root[data-theme="ff-dark"] input,
+:root[data-theme="ff-dark"] select {
+  border-color: #1a1a1a;
+  border-radius: 0.4rem;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* Buttons are grey pills. */
+:root[data-theme="ff-dark"] .card button,
+:root[data-theme="ff-dark"] .toolbar button,
+:root[data-theme="ff-dark"] .page-action,
+:root[data-theme="ff-dark"] .entry-row a,
+:root[data-theme="ff-dark"] .tracked-item-actions a,
+:root[data-theme="ff-dark"] .tracked-item-actions button,
+:root[data-theme="ff-dark"] .navbar-menu-button {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border: 1px solid #151515;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 50%, #2e2e2e 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color: #f0f0f0;
+}
+
+:root[data-theme="ff-dark"] .card button:not(:disabled):hover,
+:root[data-theme="ff-dark"] .toolbar button:not(:disabled):hover,
+:root[data-theme="ff-dark"] .page-action:hover,
+:root[data-theme="ff-dark"] .entry-row a:hover,
+:root[data-theme="ff-dark"] .tracked-item-actions a:hover,
+:root[data-theme="ff-dark"] .tracked-item-actions button:hover,
+:root[data-theme="ff-dark"] .navbar-menu-button:hover,
+:root[data-theme="ff-dark"] input:focus,
+:root[data-theme="ff-dark"] select:focus {
+  border-color: #151515;
+  box-shadow: var(--ff-glow);
+  outline: none;
+}
+
+/* The chosen option glows gold, as the chosen category does in the item search. */
+:root[data-theme="ff-dark"] .toolbar .view-toggle button[aria-pressed="true"] {
+  border-color: #151515;
+  box-shadow: var(--ff-glow);
+  color: var(--ff-heading);
+}
+
+/* A joined toggle's pills only round their outer ends. */
+:root[data-theme="ff-dark"] .view-toggle button:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+:root[data-theme="ff-dark"] .view-toggle button:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+:root[data-theme="ff-dark"] .empty-state-action {
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 50%, #2e2e2e 100%);
+  color: #f0f0f0;
+  box-shadow: var(--ff-glow);
+}
+
+/* Kept round and plain, over the button styles above. */
+:root[data-theme="ff-dark"] .tooltip-anchor button.hint-icon {
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+}

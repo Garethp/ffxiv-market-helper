@@ -1,14 +1,48 @@
 :root {
-  color-scheme: light dark;
+  /* Every theme is dark, so the browser's own parts (dropdown lists, scrollbars) are drawn dark
+     too, whatever the system's preference. */
+  color-scheme: dark;
   font-family: system-ui, sans-serif;
   /* Shared by every page and the navbar, so they line up. */
   --page-width: 1300px;
+
+  /* The palette. Every colour a theme might change is named here, so a theme only has to redefine
+     these. */
+  --bg: #12141a;
+  --surface: #181b22;
+  --surface-control: #1c1f27;
+  --surface-popover: #1c1f27;
+  --surface-raised: #2a2d36;
+  --border: #2a2d36;
+  --border-control: #3a3e4a;
+  --border-strong: #5a5f6b;
+  --text: #e8e8e8;
+  --text-soft: #b8bcc6;
+  --text-muted: #9aa0aa;
+  --accent: #8ab4f8;
+  --accent-hover: #aecbfa;
+  --accent-subtle: #2a3550;
+  --accent-contrast: #12141a;
+  --positive: #4caf50;
+  --negative: #f44336;
+}
+
+/* A dropdown's list takes its colours from here rather than from its select, so without these the
+   chosen option can be drawn in the system's colours, unreadable against the page's. */
+option {
+  background: var(--surface-control);
+  color: var(--text);
+}
+
+option:checked {
+  background: var(--accent-subtle);
+  color: var(--text);
 }
 
 body {
   margin: 0;
-  background: #12141a;
-  color: #e8e8e8;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .app {
@@ -18,8 +52,8 @@ body {
 }
 
 .navbar {
-  background: #181b22;
-  border-bottom: 1px solid #2a2d36;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .navbar-inner {
@@ -38,11 +72,11 @@ body {
   gap: 0.25rem;
   padding: 0.75rem 1.5rem 0.75rem 0;
   margin-right: 1.5rem;
-  border-right: 1px solid #2a2d36;
+  border-right: 1px solid var(--border);
 }
 
 .character-switcher-label {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -56,9 +90,9 @@ body {
 }
 
 .character-switcher select {
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #3a3e4a;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border-control);
   border-radius: 0.3rem;
   padding: 0.35rem 0.6rem;
   font-family: inherit;
@@ -67,11 +101,11 @@ body {
 }
 
 .character-switcher select:not(:disabled):hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 .character-switcher-world {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -88,18 +122,18 @@ body {
   display: flex;
   align-items: center;
   padding: 0.6rem 0;
-  color: #9aa0aa;
+  color: var(--text-muted);
   text-decoration: none;
   border-bottom: 2px solid transparent;
 }
 
 .navbar-link:hover {
-  color: #e8e8e8;
+  color: var(--text);
 }
 
 .navbar-link.active {
-  color: #e8e8e8;
-  border-bottom-color: #8ab4f8;
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 /* Pushed past the page links, to the far end of the bar. */
@@ -113,12 +147,12 @@ body {
 .navbar-github-link {
   display: flex;
   align-items: center;
-  color: #9aa0aa;
+  color: var(--text-muted);
 }
 
 .navbar-github-link:hover,
 .navbar-github-link:focus-visible {
-  color: #e8e8e8;
+  color: var(--text);
 }
 
 /* The bar sits at the top of the page, so this tooltip opens downwards, and inwards from the right. */
@@ -160,10 +194,10 @@ body {
     z-index: 12;
     margin-left: auto;
     padding: 0.25rem 0.5rem;
-    border: 1px solid #3a3e4a;
+    border: 1px solid var(--border-control);
     border-radius: 0.3rem;
-    background: #1c1f27;
-    color: #e8e8e8;
+    background: var(--surface-control);
+    color: var(--text);
     font-size: 1.2rem;
     line-height: 1;
     cursor: pointer;
@@ -190,8 +224,8 @@ body {
     flex-wrap: nowrap;
     width: min(16rem, 80vw);
     padding: 4rem 1.5rem 1.5rem;
-    background: #181b22;
-    border-left: 1px solid #2a2d36;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
     transform: translateX(100%);
     visibility: hidden;
@@ -213,7 +247,7 @@ body {
   }
 
   .navbar-link.active {
-    border-left-color: #8ab4f8;
+    border-left-color: var(--accent);
   }
 
   /* Tucked into the menu's bottom corner, out of the way of the page links. */
@@ -237,7 +271,7 @@ header h1 {
 }
 
 .subtitle {
-  color: #9aa0aa;
+  color: var(--text-muted);
   margin-top: 0;
 }
 
@@ -246,16 +280,16 @@ header h1 {
   display: inline-block;
   margin-bottom: 1rem;
   padding: 0.5rem 1rem;
-  border: 1px solid #3a3e4a;
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
-  background: #1c1f27;
-  color: #e8e8e8;
+  background: var(--surface-control);
+  color: var(--text);
   font-size: 0.9rem;
   text-decoration: none;
 }
 
 .page-action:hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 /* A section of the page that stands on its own rather than inside a card, for content that draws
@@ -274,7 +308,7 @@ header h1 {
   max-width: 50rem;
   margin-bottom: 1.25rem;
   /* The page's own text colour: muted grey reads as small print worth skipping. */
-  color: #e8e8e8;
+  color: var(--text);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -291,14 +325,14 @@ header h1 {
 }
 
 .last-updated {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
 .toolbar button {
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #2a2d36;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 0.25rem;
   padding: 0.35rem 0.75rem;
   font-size: 0.9rem;
@@ -311,7 +345,7 @@ header h1 {
 }
 
 .toolbar button:not(:disabled):hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 /* Buttons joined into one control, the pressed one standing out. */
@@ -338,8 +372,8 @@ header h1 {
 
 .toolbar .view-toggle button[aria-pressed="true"] {
   z-index: 1;
-  background: #2a3550;
-  border-color: #8ab4f8;
+  background: var(--accent-subtle);
+  border-color: var(--accent);
 }
 
 .toolbar .view-toggle button:not(:disabled):hover {
@@ -373,15 +407,15 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
 .character-select select,
 .character-select .number-input {
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #2a2d36;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 0.25rem;
   padding: 0.3rem 0.5rem;
   font-size: 0.9rem;
@@ -398,18 +432,18 @@ header h1 {
 }
 
 .character-note {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: 0;
   margin-bottom: 0.75rem;
 }
 
 .muted {
-  color: #9aa0aa;
+  color: var(--text-muted);
 }
 
 .character-switcher-empty {
-  color: #8ab4f8;
+  color: var(--accent);
   font-size: 0.95rem;
 }
 
@@ -417,9 +451,9 @@ header h1 {
   max-width: 36rem;
   margin: 3rem auto;
   padding: 2rem;
-  border: 1px solid #2a2d36;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  background: #181b22;
+  background: var(--surface);
   text-align: center;
 }
 
@@ -428,7 +462,7 @@ header h1 {
 }
 
 .empty-state p {
-  color: #9aa0aa;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -437,22 +471,22 @@ header h1 {
   margin-top: 0.75rem;
   padding: 0.6rem 1.2rem;
   border-radius: 0.3rem;
-  background: #8ab4f8;
-  color: #12141a;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-weight: 600;
   text-decoration: none;
 }
 
 .empty-state-action:hover {
-  background: #aecbfa;
+  background: var(--accent-hover);
 }
 
 .card {
   margin-bottom: 1.5rem;
   padding: 1rem 1.25rem;
-  border: 1px solid #2a2d36;
+  border: 1px solid var(--border);
   border-radius: 0.4rem;
-  background: #181b22;
+  background: var(--surface);
 }
 
 .card h2 {
@@ -492,7 +526,7 @@ header h1 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0;
-  border-bottom: 1px solid #2a2d36;
+  border-bottom: 1px solid var(--border);
 }
 
 /* The first part names the entry, and pushes everything after it to the end of the row. */
@@ -503,16 +537,16 @@ header h1 {
 /* An action that leads to a page of its own, sitting alongside the row's buttons. */
 .entry-row a {
   padding: 0.35rem 0.75rem;
-  border: 1px solid #3a3e4a;
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
-  background: #1c1f27;
-  color: #e8e8e8;
+  background: var(--surface-control);
+  color: var(--text);
   font-size: 0.85rem;
   text-decoration: none;
 }
 
 .entry-row a:hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 .entry-form {
@@ -526,7 +560,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -544,9 +578,9 @@ header h1 {
 
 .entry-form input,
 .entry-form select {
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #3a3e4a;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
   padding: 0.35rem 0.5rem;
   font-family: inherit;
@@ -562,7 +596,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -582,10 +616,10 @@ header h1 {
   width: 1.1rem;
   height: 1.1rem;
   padding: 0;
-  border: 1px solid #5a5f6b;
+  border: 1px solid var(--border-strong);
   border-radius: 50%;
   background: transparent;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1;
@@ -594,8 +628,8 @@ header h1 {
 
 .tooltip-anchor button.hint-icon:hover,
 .tooltip-anchor button.hint-icon:focus-visible {
-  border-color: #8ab4f8;
-  color: #e8e8e8;
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .tooltip {
@@ -610,9 +644,9 @@ header h1 {
   max-width: 16rem;
   padding: 0.5rem 0.6rem;
   border-radius: 0.25rem;
-  background: #2a2d36;
+  background: var(--surface-raised);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  color: #e8e8e8;
+  color: var(--text);
   font-size: 0.8rem;
   font-weight: 400;
   line-height: 1.4;
@@ -653,7 +687,7 @@ header h1 {
 }
 
 .tooltip-anchor [tabindex]:focus-visible {
-  outline: 2px solid #8ab4f8;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -668,14 +702,14 @@ header h1 {
 .quality-choice legend {
   margin-bottom: 0.25rem;
   padding: 0;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .entry-form .quality-choice label {
   flex-direction: row;
   align-items: center;
-  color: #e8e8e8;
+  color: var(--text);
   font-size: 0.9rem;
 }
 
@@ -690,15 +724,15 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
 .item-search input {
   max-width: 24rem;
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #3a3e4a;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
   padding: 0.4rem 0.6rem;
   font-family: inherit;
@@ -719,9 +753,9 @@ header h1 {
 }
 
 .card button {
-  background: #1c1f27;
-  color: #e8e8e8;
-  border: 1px solid #3a3e4a;
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
   padding: 0.35rem 0.75rem;
   font-family: inherit;
@@ -730,7 +764,7 @@ header h1 {
 }
 
 .card button:not(:disabled):hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 .card button:disabled {
@@ -741,7 +775,7 @@ header h1 {
 .form-error {
   flex-basis: 100%;
   margin: 0;
-  color: #f44336;
+  color: var(--negative);
   font-size: 0.85rem;
 }
 
@@ -754,7 +788,7 @@ header h1 {
 .item-table td {
   padding: 0.5rem 0.75rem;
   text-align: right;
-  border-bottom: 1px solid #2a2d36;
+  border-bottom: 1px solid var(--border);
 }
 
 .item-table th:first-child,
@@ -763,11 +797,11 @@ header h1 {
 }
 
 .item-table a {
-  color: #8ab4f8;
+  color: var(--accent);
 }
 
 .item-table a:hover {
-  color: #aecbfa;
+  color: var(--accent-hover);
 }
 
 .external-link {
@@ -830,7 +864,7 @@ header h1 {
   margin-left: 0.5rem;
   padding: 0.1rem 0.4rem;
   border-radius: 0.75rem;
-  background: #f44336;
+  background: var(--negative);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 600;
@@ -903,7 +937,7 @@ header h1 {
   display: block;
   padding: 0.75rem;
   border-radius: 0.25rem;
-  background: #1c1f27;
+  background: var(--surface-popover);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
@@ -947,8 +981,8 @@ header h1 {
   margin-bottom: 0.3rem;
   padding: 0.15rem 0.45rem;
   border-radius: 0.25rem;
-  background: #2a2d36;
-  color: #e8e8e8;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 0.7rem;
   font-weight: 400;
   text-transform: none;
@@ -957,11 +991,11 @@ header h1 {
 }
 
 .positive {
-  color: #4caf50;
+  color: var(--positive);
 }
 
 .negative {
-  color: #f44336;
+  color: var(--negative);
 }
 
 /* Along the bottom of every page while item data loads, over whatever page is open. */
@@ -970,10 +1004,10 @@ header h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #181b22;
-  border-top: 1px solid #2a2d36;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
   font-size: 0.85rem;
-  color: #b8bcc6;
+  color: var(--text-soft);
 }
 
 .item-data-status p {
@@ -983,7 +1017,7 @@ header h1 {
 }
 
 .item-data-status-failed {
-  color: #f44336;
+  color: var(--negative);
 }
 
 /* No total is known up front, so the bar sweeps rather than filling. */
@@ -992,7 +1026,7 @@ header h1 {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    #8ab4f8 50%,
+    var(--accent) 50%,
     transparent 100%
   );
   background-size: 50% 100%;
@@ -1055,7 +1089,7 @@ header h1 {
 
 .item-summary-note {
   margin-top: 0.35rem;
-  color: #9aa0aa;
+  color: var(--text-muted);
 }
 
 /* A phone's width, as the page's layout switches to at `narrowScreenMaxWidthPx`: media queries
@@ -1100,13 +1134,13 @@ header h1 {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid #2a2d36;
+  border: 1px solid var(--border);
   border-radius: 0.4rem;
 }
 
 .expandable-list-row {
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #2a2d36;
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
 
@@ -1127,7 +1161,7 @@ header h1 {
   padding: 0;
   border: none;
   background: none;
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.9rem;
   cursor: pointer;
 }
@@ -1160,7 +1194,7 @@ header h1 {
 
 .profit-row-summary dt,
 .profit-row-details dt {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -1188,7 +1222,7 @@ header h1 {
 }
 
 .profit-row-details a {
-  color: #8ab4f8;
+  color: var(--accent);
 }
 
 /* Tracked items being managed on a phone: what each is tracked as, opening up into what the item
@@ -1208,7 +1242,7 @@ header h1 {
 }
 
 .tracked-item-figures dt {
-  color: #9aa0aa;
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 
@@ -1239,10 +1273,10 @@ header h1 {
 .tracked-item-actions a,
 .tracked-item-actions button {
   padding: 0.35rem 0.75rem;
-  border: 1px solid #3a3e4a;
+  border: 1px solid var(--border-control);
   border-radius: 0.25rem;
-  background: #1c1f27;
-  color: #e8e8e8;
+  background: var(--surface-control);
+  color: var(--text);
   font-family: inherit;
   font-size: 0.85rem;
   text-decoration: none;
@@ -1251,7 +1285,7 @@ header h1 {
 
 .tracked-item-actions a:hover,
 .tracked-item-actions button:hover {
-  border-color: #8ab4f8;
+  border-color: var(--accent);
 }
 
 /* The badges and summary start at the row's left edge, the details end at its right, so their
@@ -1267,4 +1301,28 @@ header h1 {
   left: auto;
   right: 0;
   transform: none;
+}
+
+/* Temporary, while the FFXIV-styled themes are compared. Above the item data status bar. */
+.theme-trial-switcher {
+  position: fixed;
+  right: 1rem;
+  bottom: 3rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-control);
+  border-radius: 0.3rem;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.theme-trial-switcher select {
+  background: var(--surface-control);
+  color: var(--text);
+  border: 1px solid var(--border-control);
+  font-family: inherit;
 }

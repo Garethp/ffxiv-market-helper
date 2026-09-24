@@ -1,5 +1,8 @@
 # Working conventions
 
+`Development.md` holds the architecture rules — how containers, components, services and validation
+are split, and how failure is handled. Read it before adding a page or a component, and follow it.
+
 ## Tooling
 
 - Yarn, not npm.
