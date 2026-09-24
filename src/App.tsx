@@ -4,7 +4,11 @@ import { Route, Routes } from "react-router-dom";
 import { ItemDataStatusBar } from "./components/ItemDataStatusBar";
 import { NavBar } from "./components/NavBar";
 import { NoCharactersMessage } from "./components/NoCharactersMessage";
-import { CharactersContainer } from "./containers/CharactersContainer";
+import { CharactersContainer } from "./containers/characters/CharactersContainer";
+import { AddCharacterContainer } from "./containers/characters/AddCharacterContainer";
+import { EditCharacterContainer } from "./containers/characters/EditCharacterContainer";
+import { AddRetainerContainer } from "./containers/characters/AddRetainerContainer";
+import { EditRetainerContainer } from "./containers/characters/EditRetainerContainer";
 import { ExpertDeliveryContainer } from "./containers/ExpertDeliveryContainer";
 import { TrackedItemsContainer } from "./containers/TrackedItemsContainer";
 import { HighVolumeItemsContainer } from "./containers/HighVolumeItemsContainer";
@@ -126,7 +130,48 @@ const App = () => {
           path="/characters"
           element={
             <CharactersContainer
-              config={config}
+              characters={config.characters}
+              regions={config.regions}
+              onCharactersChanged={reloadCharacters}
+            />
+          }
+        />
+        <Route
+          path="/characters/new"
+          element={
+            <AddCharacterContainer
+              characters={config.characters}
+              regions={config.regions}
+              onCharactersChanged={reloadCharacters}
+            />
+          }
+        />
+        <Route
+          path="/characters/:characterId/edit"
+          element={
+            <EditCharacterContainer
+              characters={config.characters}
+              regions={config.regions}
+              onCharactersChanged={reloadCharacters}
+            />
+          }
+        />
+        <Route
+          path="/characters/:characterId/retainers/new"
+          element={
+            <AddRetainerContainer
+              characters={config.characters}
+              marketBoardCities={config.marketBoardCities}
+              onCharactersChanged={reloadCharacters}
+            />
+          }
+        />
+        <Route
+          path="/characters/:characterId/retainers/:retainerId/edit"
+          element={
+            <EditRetainerContainer
+              characters={config.characters}
+              marketBoardCities={config.marketBoardCities}
               onCharactersChanged={reloadCharacters}
             />
           }

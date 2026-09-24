@@ -37,12 +37,6 @@
   --ff-panel-shadow:
     inset 0 1px 3px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.05);
   --ff-header-bar: linear-gradient(180deg, #4d4d4d 0%, #353535 100%);
-  --ff-selected-bar: linear-gradient(
-    90deg,
-    rgba(170, 128, 62, 0.55) 0%,
-    rgba(150, 110, 50, 0.3) 55%,
-    transparent 100%
-  );
   --ff-section-font: "Cinzel", serif;
 }
 
@@ -148,12 +142,6 @@
   border-bottom-color: rgba(255, 255, 255, 0.04);
 }
 
-:root[data-theme="ff-dark"] .item-table tbody tr:hover,
-:root[data-theme="ff-dark"] .expandable-list-row:hover,
-:root[data-theme="ff-dark"] .entry-row:hover {
-  background: var(--ff-selected-bar);
-}
-
 :root[data-theme="ff-dark"] .item-table a,
 :root[data-theme="ff-dark"] .profit-row-details a {
   color: var(--accent);
@@ -173,6 +161,7 @@
 :root[data-theme="ff-dark"] .toolbar button,
 :root[data-theme="ff-dark"] .page-action,
 :root[data-theme="ff-dark"] .entry-row a,
+:root[data-theme="ff-dark"] .character-card-header a,
 :root[data-theme="ff-dark"] .tracked-item-actions a,
 :root[data-theme="ff-dark"] .tracked-item-actions button,
 :root[data-theme="ff-dark"] .navbar-menu-button {
@@ -189,6 +178,7 @@
 :root[data-theme="ff-dark"] .toolbar button:not(:disabled):hover,
 :root[data-theme="ff-dark"] .page-action:hover,
 :root[data-theme="ff-dark"] .entry-row a:hover,
+:root[data-theme="ff-dark"] .character-card-header a:hover,
 :root[data-theme="ff-dark"] .tracked-item-actions a:hover,
 :root[data-theme="ff-dark"] .tracked-item-actions button:hover,
 :root[data-theme="ff-dark"] .navbar-menu-button:hover,

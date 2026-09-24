@@ -6,20 +6,6 @@ import type {
   RetainerDetails,
 } from "../../services/characterService";
 
-/** What's wrong with a change to the character roster. */
-export type RosterValidationError =
-  | { reason: "missing-name" }
-  | { reason: "unknown-world"; world: string }
-  | { reason: "unknown-city"; city: string }
-  | { reason: "duplicate-character"; name: string; world: string }
-  | { reason: "duplicate-retainer"; name: string };
-
-/** The reference data a change to the roster is checked against. */
-export interface ReferenceData {
-  regions: RegionInfo[];
-  marketBoardCities: string[];
-}
-
 export const tidyCharacterDetails = ({
   name,
   homeWorld,
@@ -39,21 +25,22 @@ export const tidyRetainerDetails = ({
 });
 
 /**
- * Why the character can't be in the roster as it is, if there's a reason.
- * `excludingId` is the character the details belong to, which isn't a duplicate
- * of itself. Details are tidied first, so a caller gets the same answer whether
- * or not it has tidied them already.
+ * Why the character can't be in the roster as it is, worded for the user to
+ * read, or nothing if there's no reason. `excludingId` is the character the
+ * details belong to, which isn't a duplicate of itself. Details are tidied
+ * first, so a caller gets the same answer whether or not it has tidied them
+ * already.
  */
 export const validateCharacter = (
   details: CharacterDetails,
   roster: Character[],
-  { regions }: ReferenceData,
-  { excludingId }: { excludingId?: string } = {},
-): RosterValidationError | undefined => {
+  regions: RegionInfo[],
+  excludingId?: string,
+): string | undefined => {
   const { name, homeWorld } = tidyCharacterDetails(details);
-  if (name === "") return { reason: "missing-name" };
+  if (name === "") return "A name is needed.";
   if (findRegionNameForWorld(homeWorld, regions) === undefined) {
-    return { reason: "unknown-world", world: homeWorld };
+    return `${homeWorld || "That"} isn't a known world.`;
   }
   // Names are only unique within a world in-game, so the same name on two worlds is two characters.
   const isDuplicate = roster.some(
@@ -62,30 +49,33 @@ export const validateCharacter = (
       other.name === name &&
       other.homeWorld === homeWorld,
   );
-  if (isDuplicate)
-    return { reason: "duplicate-character", name, world: homeWorld };
+  if (isDuplicate) {
+    return `There's already a character named ${name} on ${homeWorld}.`;
+  }
   return undefined;
 };
 
 /**
- * Why the retainer can't be one of its character's retainers as it is, if
- * there's a reason. `excludingId` is the retainer the details belong to, which
- * isn't a duplicate of itself.
+ * Why the retainer can't be one of its character's retainers as it is, worded
+ * for the user to read, or nothing if there's no reason. `excludingId` is the
+ * retainer the details belong to, which isn't a duplicate of itself.
  */
 export const validateRetainer = (
   details: RetainerDetails,
   retainers: Retainer[],
-  { marketBoardCities }: ReferenceData,
-  { excludingId }: { excludingId?: string } = {},
-): RosterValidationError | undefined => {
+  marketBoardCities: string[],
+  excludingId?: string,
+): string | undefined => {
   const { name, city } = tidyRetainerDetails(details);
-  if (name === "") return { reason: "missing-name" };
+  if (name === "") return "A name is needed.";
   if (!marketBoardCities.includes(city)) {
-    return { reason: "unknown-city", city };
+    return `${city || "That"} isn't a market board city.`;
   }
   const isDuplicate = retainers.some(
     (other) => other.id !== excludingId && other.name === name,
   );
-  if (isDuplicate) return { reason: "duplicate-retainer", name };
+  if (isDuplicate) {
+    return `This character already has a retainer named ${name}.`;
+  }
   return undefined;
 };

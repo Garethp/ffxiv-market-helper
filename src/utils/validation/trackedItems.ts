@@ -8,7 +8,7 @@ import type { PricedItem, TrackedItem } from "../../types";
 export const validateItem = (
   item: PricedItem,
   trackedItems: TrackedItem[],
-  { excludingId }: { excludingId?: string } = {},
+  excludingId?: string,
 ): string | undefined => {
   if (!Number.isInteger(item.targetQuantity) || item.targetQuantity < 1) {
     return "Target quantity needs to be a whole number of at least 1.";

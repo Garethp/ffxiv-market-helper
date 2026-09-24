@@ -10,18 +10,6 @@ export type TrackedItemSettings = Pick<
 >;
 
 /**
- * A change to the tracked items that couldn't be made, carrying why in words the
- * user can read. Callers validate first, so this reaching the UI means something
- * the user can't act on — a stale screen, or a caller that skipped its checks.
- */
-export class TrackedItemChangeError extends Error {
-  constructor(reason: string) {
-    super(reason);
-    this.name = "TrackedItemChangeError";
-  }
-}
-
-/**
  * Source of the items we track, and where changes to them are made. Every
  * change either resolves, having been made, or rejects. Implementations can be
  * swapped out (e.g. for one backed by a real database/API) without touching any
@@ -73,13 +61,10 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
   ): Promise<void> {
     const trackedItems = this.storedItems.read();
     const existing = trackedItems.find((item) => item.id === id);
-    if (!existing)
-      throw new TrackedItemChangeError("This item is no longer tracked.");
+    if (!existing) throw new Error("This item is no longer tracked.");
 
     const changed = { ...existing, hq, targetQuantity, sellPriceCeiling };
-    this.throwIfInvalid(
-      validateItem(changed, trackedItems, { excludingId: id }),
-    );
+    this.throwIfInvalid(validateItem(changed, trackedItems, id));
     this.storedItems.write(
       trackedItems.map((item) => (item.id === id ? changed : item)),
     );
@@ -88,14 +73,14 @@ export class LocalStorageTrackedItemService implements TrackedItemService {
   async untrackItem(id: string): Promise<void> {
     const trackedItems = this.storedItems.read();
     if (!trackedItems.some((item) => item.id === id)) {
-      throw new TrackedItemChangeError("This item is no longer tracked.");
+      throw new Error("This item is no longer tracked.");
     }
     this.storedItems.write(trackedItems.filter((item) => item.id !== id));
   }
 
   /** Backstop for a caller that didn't validate, or a screen that's gone stale. */
   private throwIfInvalid(reason: string | undefined): void {
-    if (reason) throw new TrackedItemChangeError(reason);
+    if (reason) throw new Error(reason);
   }
 }
 

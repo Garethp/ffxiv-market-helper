@@ -76,9 +76,7 @@ describe("validateItem", () => {
       const existing = tracked({ ...cordial, hq: true }, "cordial-hq");
 
       expect(
-        validateItem({ ...cordial, hq: true }, [existing], {
-          excludingId: "cordial-hq",
-        }),
+        validateItem({ ...cordial, hq: true }, [existing], "cordial-hq"),
       ).toBeUndefined();
     });
 
@@ -87,9 +85,11 @@ describe("validateItem", () => {
       const other = tracked({ ...cordial, hq: true }, "cordial-hq");
 
       expect(
-        validateItem({ ...cordial, hq: true }, [beingChanged, other], {
-          excludingId: "cordial-nq",
-        }),
+        validateItem(
+          { ...cordial, hq: true },
+          [beingChanged, other],
+          "cordial-nq",
+        ),
       ).toBe("Cordial is already tracked as HQ.");
     });
   });

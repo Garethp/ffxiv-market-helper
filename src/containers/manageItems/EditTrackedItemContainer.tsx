@@ -32,9 +32,7 @@ export const EditTrackedItemContainer = ({
   if (!item) return <Navigate to="/manage-items" replace />;
 
   const onSubmit = (settings: TrackedItemSettings) => {
-    const error = validateItem({ ...item, ...settings }, trackedItems, {
-      excludingId: item.id,
-    });
+    const error = validateItem({ ...item, ...settings }, trackedItems, item.id);
     // Nothing is attempted while the tracked items wouldn't accept it.
     if (error) return setErrorMessage(error);
 
@@ -50,18 +48,22 @@ export const EditTrackedItemContainer = ({
   };
 
   const itemQuality = item.hq ? "HQ" : "NQ";
-  const heading = `Edit ${item.name} (${itemQuality})`;
 
   return (
     <div className="app">
-      <title>{heading}</title>
+      <title>{`Edit ${item.name} (${itemQuality})`}</title>
       <header>
-        <h1>{heading}</h1>
+        <h1>
+          Edit {item.name} ({itemQuality})
+        </h1>
       </header>
 
-      <section className="card" aria-label={heading}>
+      <section
+        className="card"
+        aria-label={`Edit ${item.name} (${itemQuality})`}
+      >
         <TrackedItemSettingsForm
-          label={heading}
+          label={`Edit ${item.name} (${itemQuality})`}
           initial={{ ...item, quality: itemQuality }}
           submitLabel="Save"
           errorMessage={errorMessage}

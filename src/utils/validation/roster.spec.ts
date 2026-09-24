@@ -5,7 +5,6 @@ import {
   validateRetainer,
   tidyCharacterDetails,
   tidyRetainerDetails,
-  type ReferenceData,
 } from "./roster";
 
 const regions: RegionInfo[] = [
@@ -15,10 +14,7 @@ const regions: RegionInfo[] = [
   },
 ];
 
-const reference: ReferenceData = {
-  regions,
-  marketBoardCities: ["Ul'dah", "Kugane"],
-};
+const marketBoardCities = ["Ul'dah", "Kugane"];
 
 const alice: Character = {
   id: "alice",
@@ -52,11 +48,7 @@ describe("validateCharacter", () => {
   describe("a character nothing is wrong with", () => {
     it("should give no reason at all", () => {
       expect(
-        validateCharacter(
-          { name: "Zoe", homeWorld: "Odin" },
-          [alice],
-          reference,
-        ),
+        validateCharacter({ name: "Zoe", homeWorld: "Odin" }, [alice], regions),
       ).toBeUndefined();
     });
 
@@ -65,7 +57,7 @@ describe("validateCharacter", () => {
         validateCharacter(
           { name: "Alice", homeWorld: "Odin" },
           [alice],
-          reference,
+          regions,
         ),
       ).toBeUndefined();
     });
@@ -76,8 +68,8 @@ describe("validateCharacter", () => {
       "should give a reason for %o, which is no name at all",
       (name) => {
         expect(
-          validateCharacter({ name, homeWorld: "Raiden" }, [], reference),
-        ).toEqual({ reason: "missing-name" });
+          validateCharacter({ name, homeWorld: "Raiden" }, [], regions),
+        ).toBe("A name is needed.");
       },
     );
   });
@@ -85,8 +77,14 @@ describe("validateCharacter", () => {
   describe("the home world", () => {
     it("should name a world that isn't in the region directory", () => {
       expect(
-        validateCharacter({ name: "Zoe", homeWorld: "Nowhere" }, [], reference),
-      ).toEqual({ reason: "unknown-world", world: "Nowhere" });
+        validateCharacter({ name: "Zoe", homeWorld: "Nowhere" }, [], regions),
+      ).toBe("Nowhere isn't a known world.");
+    });
+
+    it("should still read sensibly when no world was given", () => {
+      expect(
+        validateCharacter({ name: "Zoe", homeWorld: "" }, [], regions),
+      ).toBe("That isn't a known world.");
     });
   });
 
@@ -96,13 +94,9 @@ describe("validateCharacter", () => {
         validateCharacter(
           { name: "Alice", homeWorld: "Raiden" },
           [alice],
-          reference,
+          regions,
         ),
-      ).toEqual({
-        reason: "duplicate-character",
-        name: "Alice",
-        world: "Raiden",
-      });
+      ).toBe("There's already a character named Alice on Raiden.");
     });
 
     it("should still say so when the name is only the same once trimmed", () => {
@@ -110,9 +104,9 @@ describe("validateCharacter", () => {
         validateCharacter(
           { name: "  Alice  ", homeWorld: "Raiden" },
           [alice],
-          reference,
+          regions,
         ),
-      ).toMatchObject({ reason: "duplicate-character" });
+      ).toBe("There's already a character named Alice on Raiden.");
     });
 
     it("should let the character the details belong to keep its own name and world", () => {
@@ -120,8 +114,8 @@ describe("validateCharacter", () => {
         validateCharacter(
           { name: "Alice", homeWorld: "Raiden" },
           [alice],
-          reference,
-          { excludingId: "alice" },
+          regions,
+          "alice",
         ),
       ).toBeUndefined();
     });
@@ -132,7 +126,11 @@ describe("validateRetainer", () => {
   describe("a retainer nothing is wrong with", () => {
     it("should give no reason at all", () => {
       expect(
-        validateRetainer({ name: "Cleo", city: "Kugane" }, [bella], reference),
+        validateRetainer(
+          { name: "Cleo", city: "Kugane" },
+          [bella],
+          marketBoardCities,
+        ),
       ).toBeUndefined();
     });
   });
@@ -142,10 +140,8 @@ describe("validateRetainer", () => {
       "should give a reason for %o, which is no name at all",
       (name) => {
         expect(
-          validateRetainer({ name, city: "Ul'dah" }, [], reference),
-        ).toEqual({
-          reason: "missing-name",
-        });
+          validateRetainer({ name, city: "Ul'dah" }, [], marketBoardCities),
+        ).toBe("A name is needed.");
       },
     );
   });
@@ -153,16 +149,30 @@ describe("validateRetainer", () => {
   describe("the city", () => {
     it("should name a city that has no market board", () => {
       expect(
-        validateRetainer({ name: "Cleo", city: "Nowhere" }, [], reference),
-      ).toEqual({ reason: "unknown-city", city: "Nowhere" });
+        validateRetainer(
+          { name: "Cleo", city: "Nowhere" },
+          [],
+          marketBoardCities,
+        ),
+      ).toBe("Nowhere isn't a market board city.");
+    });
+
+    it("should still read sensibly when no city was given", () => {
+      expect(
+        validateRetainer({ name: "Cleo", city: "" }, [], marketBoardCities),
+      ).toBe("That isn't a market board city.");
     });
   });
 
   describe("a name another of the character's retainers already has", () => {
     it("should name the retainer it clashes with", () => {
       expect(
-        validateRetainer({ name: "Bella", city: "Kugane" }, [bella], reference),
-      ).toEqual({ reason: "duplicate-retainer", name: "Bella" });
+        validateRetainer(
+          { name: "Bella", city: "Kugane" },
+          [bella],
+          marketBoardCities,
+        ),
+      ).toBe("This character already has a retainer named Bella.");
     });
 
     it("should let the retainer the details belong to keep its own name", () => {
@@ -170,10 +180,8 @@ describe("validateRetainer", () => {
         validateRetainer(
           { name: "Bella", city: "Kugane" },
           [bella],
-          reference,
-          {
-            excludingId: "bella",
-          },
+          marketBoardCities,
+          "bella",
         ),
       ).toBeUndefined();
     });

@@ -534,8 +534,9 @@ header h1 {
   margin-right: auto;
 }
 
-/* An action that leads to a page of its own, sitting alongside the row's buttons. */
-.entry-row a {
+/* An action that leads to a page of its own, sitting alongside the buttons around it. */
+.entry-row a,
+.character-card-header a {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--border-control);
   border-radius: 0.25rem;
@@ -545,7 +546,8 @@ header h1 {
   text-decoration: none;
 }
 
-.entry-row a:hover {
+.entry-row a:hover,
+.character-card-header a:hover {
   border-color: var(--accent);
 }
 

@@ -83,7 +83,7 @@ vi.mock("./containers/manageItems/EditTrackedItemContainer", () => ({
     </button>
   ),
 }));
-vi.mock("./containers/CharactersContainer", () => ({
+vi.mock("./containers/characters/CharactersContainer", () => ({
   CharactersContainer: ({
     onCharactersChanged,
   }: {
@@ -93,6 +93,28 @@ vi.mock("./containers/CharactersContainer", () => ({
       Change the roster
     </button>
   ),
+}));
+// Each page for changing the roster names itself on a button that reports a change.
+const { rosterChangingPage } = vi.hoisted(() => ({
+  rosterChangingPage:
+    (name: string) =>
+    ({ onCharactersChanged }: { onCharactersChanged: () => void }) => (
+      <button type="button" onClick={onCharactersChanged}>
+        {name}
+      </button>
+    ),
+}));
+vi.mock("./containers/characters/AddCharacterContainer", () => ({
+  AddCharacterContainer: rosterChangingPage("Add a character"),
+}));
+vi.mock("./containers/characters/EditCharacterContainer", () => ({
+  EditCharacterContainer: rosterChangingPage("Change this character"),
+}));
+vi.mock("./containers/characters/AddRetainerContainer", () => ({
+  AddRetainerContainer: rosterChangingPage("Add a retainer"),
+}));
+vi.mock("./containers/characters/EditRetainerContainer", () => ({
+  EditRetainerContainer: rosterChangingPage("Change this retainer"),
 }));
 
 import App from "./App";
@@ -251,6 +273,32 @@ describe("App", () => {
 
       await screen.findByRole("option", { name: "Carol" });
     });
+
+    it.each([
+      ["/characters/new", "Add a character"],
+      ["/characters/alice/edit", "Change this character"],
+      ["/characters/alice/retainers/new", "Add a retainer"],
+      ["/characters/alice/retainers/amarana/edit", "Change this retainer"],
+    ])(
+      "should read the roster again after it's changed on %s",
+      async (path, changeButtonName) => {
+        const carol: Character = {
+          id: "carol",
+          name: "Carol",
+          homeWorld: "WorldC",
+          retainers: [],
+        };
+        renderApp(path);
+        const changeButton = await screen.findByRole("button", {
+          name: changeButtonName,
+        });
+        mockedGetCharacters.mockResolvedValue([alice, bob, carol]);
+
+        fireEvent.click(changeButton);
+
+        await screen.findByRole("option", { name: "Carol" });
+      },
+    );
 
     it("should move to another character when the Current Character is removed", async () => {
       renderApp("/characters");

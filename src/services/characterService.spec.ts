@@ -93,9 +93,7 @@ describe("characterService", () => {
 
       await expect(
         service.addCharacter({ name: " ", homeWorld: "Raiden" }),
-      ).rejects.toMatchObject({
-        failure: { reason: "missing-name" },
-      });
+      ).rejects.toThrow("A name is needed.");
       expect(await service.getCharacters()).toEqual([]);
     });
 
@@ -104,9 +102,7 @@ describe("characterService", () => {
 
       await expect(
         service.addCharacter({ name: "Alice", homeWorld: "Nowhere" }),
-      ).rejects.toMatchObject({
-        failure: { reason: "unknown-world", world: "Nowhere" },
-      });
+      ).rejects.toThrow("Nowhere isn't a known world.");
       expect(await service.getCharacters()).toEqual([]);
     });
 
@@ -114,13 +110,9 @@ describe("characterService", () => {
       const service = createService();
       await addCharacter(service);
 
-      await expect(service.addCharacter(alice)).rejects.toMatchObject({
-        failure: {
-          reason: "duplicate-character",
-          name: "Alice",
-          world: "Raiden",
-        },
-      });
+      await expect(service.addCharacter(alice)).rejects.toThrow(
+        "There's already a character named Alice on Raiden.",
+      );
       expect(await service.getCharacters()).toHaveLength(1);
     });
 
@@ -183,24 +175,16 @@ describe("characterService", () => {
       await addCharacter(service, alice);
       const bob = await addCharacter(service, { ...alice, name: "Bob" });
 
-      await expect(
-        service.updateCharacter(bob.id, alice),
-      ).rejects.toMatchObject({
-        failure: {
-          reason: "duplicate-character",
-          name: "Alice",
-          world: "Raiden",
-        },
-      });
+      await expect(service.updateCharacter(bob.id, alice)).rejects.toThrow(
+        "There's already a character named Alice on Raiden.",
+      );
       expect((await service.getCharacters())[1].name).toBe("Bob");
     });
 
     it("should fail to change a character that isn't in the roster", async () => {
       await expect(
         createService().updateCharacter("missing", alice),
-      ).rejects.toMatchObject({
-        failure: { reason: "character-not-found" },
-      });
+      ).rejects.toThrow("This character is no longer in the roster.");
     });
   });
 
@@ -216,11 +200,9 @@ describe("characterService", () => {
     });
 
     it("should fail to remove a character that isn't in the roster", async () => {
-      await expect(
-        createService().removeCharacter("missing"),
-      ).rejects.toMatchObject({
-        failure: { reason: "character-not-found" },
-      });
+      await expect(createService().removeCharacter("missing")).rejects.toThrow(
+        "This character is no longer in the roster.",
+      );
     });
   });
 
@@ -246,9 +228,7 @@ describe("characterService", () => {
 
       await expect(
         service.addRetainer(character.id, { name: "", city: "Ul'dah" }),
-      ).rejects.toMatchObject({
-        failure: { reason: "missing-name" },
-      });
+      ).rejects.toThrow("A name is needed.");
     });
 
     it("should not add a city that isn't a market board city", async () => {
@@ -257,9 +237,7 @@ describe("characterService", () => {
 
       await expect(
         service.addRetainer(character.id, { name: "Amarana", city: "Nowhere" }),
-      ).rejects.toMatchObject({
-        failure: { reason: "unknown-city", city: "Nowhere" },
-      });
+      ).rejects.toThrow("Nowhere isn't a market board city.");
     });
 
     it("should not add a second retainer with the same name on the same character", async () => {
@@ -268,11 +246,9 @@ describe("characterService", () => {
       const retainer = { name: "Amarana", city: "Ul'dah" };
       await service.addRetainer(character.id, retainer);
 
-      await expect(
-        service.addRetainer(character.id, retainer),
-      ).rejects.toMatchObject({
-        failure: { reason: "duplicate-retainer", name: "Amarana" },
-      });
+      await expect(service.addRetainer(character.id, retainer)).rejects.toThrow(
+        "This character already has a retainer named Amarana.",
+      );
     });
 
     it("should allow retainers with the same name on different characters", async () => {
@@ -291,9 +267,7 @@ describe("characterService", () => {
           name: "Amarana",
           city: "Ul'dah",
         }),
-      ).rejects.toMatchObject({
-        failure: { reason: "character-not-found" },
-      });
+      ).rejects.toThrow("This character is no longer in the roster.");
     });
   });
 
@@ -351,9 +325,7 @@ describe("characterService", () => {
           name: "Amarana",
           city: "Ul'dah",
         }),
-      ).rejects.toMatchObject({
-        failure: { reason: "duplicate-retainer", name: "Amarana" },
-      });
+      ).rejects.toThrow("This character already has a retainer named Amarana.");
     });
 
     it("should fail to change a retainer the character doesn't have", async () => {
@@ -365,9 +337,7 @@ describe("characterService", () => {
           name: "Amarana",
           city: "Ul'dah",
         }),
-      ).rejects.toMatchObject({
-        failure: { reason: "retainer-not-found" },
-      });
+      ).rejects.toThrow("This retainer is no longer one of the character's.");
     });
   });
 
@@ -396,9 +366,7 @@ describe("characterService", () => {
 
       await expect(
         service.removeRetainer(character.id, "missing"),
-      ).rejects.toMatchObject({
-        failure: { reason: "retainer-not-found" },
-      });
+      ).rejects.toThrow("This retainer is no longer one of the character's.");
     });
   });
 });
