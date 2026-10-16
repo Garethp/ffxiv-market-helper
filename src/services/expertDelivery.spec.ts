@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { RegionListing } from "../api/universalis";
 import type { RegionInfo } from "../types";
 import {
-  calculateAverageSealsPerGil,
+  calculateExpectedSealsPerGil,
+  calculateMaximumPriceWithinFilters,
+  groupRouteByItem,
   planRoute,
   countSealsAt,
   calculateSealsPerGil,
@@ -270,17 +272,6 @@ describe("Expert Delivery planning", () => {
     });
   });
 
-  describe("calculateAverageSealsPerGil", () => {
-    it("should average the seals per gil of the item's listings", () => {
-      expect(
-        calculateAverageSealsPerGil({
-          item: buildItem(1, 600),
-          listings: [buildListing(100), buildListing(300)],
-        }),
-      ).toBeCloseTo(4);
-    });
-  });
-
   describe("planRoute", () => {
     const regions: RegionInfo[] = [
       {
@@ -446,6 +437,205 @@ describe("Expert Delivery planning", () => {
           ],
         },
       ]);
+    });
+  });
+
+  describe("groupRouteByItem", () => {
+    const regions: RegionInfo[] = [
+      {
+        name: "Europe",
+        dataCenters: [
+          { name: "Light", worlds: ["Zodiark", "Lich", "Odin"] },
+          { name: "Chaos", worlds: ["Omega"] },
+        ],
+      },
+    ];
+
+    /** Each leg's data center, and each of its stops' world with each item's name and the prices of its listings. */
+    const summarizeGroupedRoute = (itemsToBuy: ItemToBuy[]) =>
+      groupRouteByItem(planRoute(itemsToBuy, "Zodiark", regions)).map(
+        (leg) => ({
+          dataCenter: leg.dataCenter,
+          stops: leg.stops.map((stop) => ({
+            world: stop.world,
+            items: stop.itemsToBuy.map(
+              ({ item, listings }) =>
+                `${item.name} @ ${listings.map((listing) => listing.pricePerUnit).join(", ")}`,
+            ),
+          })),
+        }),
+      );
+
+    const buildItemToBuy = (
+      item: ExpertDeliveryItem,
+      ...listings: RegionListing[]
+    ): ItemToBuy => ({ item, listings });
+
+    it("should visit the same worlds in the same order as the route", () => {
+      const itemsToBuy = [
+        buildItemToBuy(
+          buildItem(1, 500, "Sword"),
+          buildListing(10, "Omega"),
+          buildListing(10, "Lich"),
+        ),
+        buildItemToBuy(buildItem(2, 900, "Shield"), buildListing(10, "Odin")),
+      ];
+
+      expect(
+        groupRouteByItem(planRoute(itemsToBuy, "Zodiark", regions)).map(
+          (leg) => [leg.dataCenter, leg.stops.map((stop) => stop.world)],
+        ),
+      ).toEqual(
+        planRoute(itemsToBuy, "Zodiark", regions).map((leg) => [
+          leg.dataCenter,
+          leg.stops.map((stop) => stop.world),
+        ]),
+      );
+    });
+
+    it("should put each item's listings on a world together, cheapest first", () => {
+      // Listing by listing, these would go Sword, Sword, Shield, Shield, Helm, Sword.
+      expect(
+        summarizeGroupedRoute([
+          buildItemToBuy(
+            buildItem(1, 900, "Sword"),
+            buildListing(600, "Lich"),
+            buildListing(100, "Lich"),
+            buildListing(300, "Lich"),
+          ),
+          buildItemToBuy(
+            buildItem(2, 500, "Shield"),
+            buildListing(250, "Lich"),
+            buildListing(200, "Lich"),
+          ),
+          buildItemToBuy(buildItem(3, 400, "Helm"), buildListing(250, "Lich")),
+        ])[0].stops[0].items,
+      ).toEqual(["Sword @ 100, 300, 600", "Shield @ 200, 250", "Helm @ 250"]);
+    });
+
+    it("should list the items on a world most seals per gil for buying all of their listings there first", () => {
+      // Sword's 2,000 seals cost 1,100 gil, under 2 seals per gil, though its listings average 5.5.
+      expect(
+        summarizeGroupedRoute([
+          buildItemToBuy(
+            buildItem(1, 1000, "Sword"),
+            buildListing(100, "Lich"),
+            buildListing(1000, "Lich"),
+          ),
+          buildItemToBuy(
+            buildItem(2, 300, "Shield"),
+            buildListing(100, "Lich"),
+          ),
+        ])[0].stops[0].items,
+      ).toEqual(["Shield @ 100", "Sword @ 100, 1000"]);
+    });
+
+    it("should count only an item's listings on that world when ordering it there", () => {
+      const [light] = summarizeGroupedRoute([
+        buildItemToBuy(
+          buildItem(1, 900, "Sword"),
+          buildListing(100, "Lich"),
+          buildListing(900, "Odin"),
+        ),
+        buildItemToBuy(
+          buildItem(2, 500, "Shield"),
+          buildListing(100, "Lich"),
+          buildListing(100, "Odin"),
+        ),
+      ]);
+
+      expect(light.stops).toEqual([
+        { world: "Lich", items: ["Sword @ 100", "Shield @ 100"] },
+        { world: "Odin", items: ["Shield @ 100", "Sword @ 900"] },
+      ]);
+    });
+
+    it("should list items worth the same seals per gil fewest seals first, then by name", () => {
+      expect(
+        summarizeGroupedRoute([
+          buildItemToBuy(
+            buildItem(1, 400, "Pricier"),
+            buildListing(200, "Lich"),
+          ),
+          buildItemToBuy(buildItem(2, 200, "Beta"), buildListing(100, "Lich")),
+          buildItemToBuy(buildItem(3, 200, "Alpha"), buildListing(100, "Lich")),
+        ])[0].stops[0].items,
+      ).toEqual(["Alpha @ 100", "Beta @ 100", "Pricier @ 200"]);
+    });
+  });
+
+  describe("calculateExpectedSealsPerGil", () => {
+    it("should divide the seals of every listing by their total price", () => {
+      expect(
+        calculateExpectedSealsPerGil({
+          item: buildItem(1, 1000),
+          listings: [buildListing(100), buildListing(1000)],
+        }),
+      ).toBeCloseTo(2000 / 1100);
+    });
+  });
+
+  describe("calculateMaximumPriceWithinFilters", () => {
+    const sword = buildItem(1, 1812);
+
+    it("should be the price at which the item is worth exactly the minimum seals per gil, rounded down to whole gil", () => {
+      expect(
+        calculateMaximumPriceWithinFilters(sword, { minimumSealsPerGil: 4 }),
+      ).toBe(453);
+      expect(
+        calculateMaximumPriceWithinFilters(sword, { minimumSealsPerGil: 5 }),
+      ).toBe(362);
+    });
+
+    it("should be a price the filters would let through, even for a minimum that doesn't divide exactly", () => {
+      // 110 / 1.1 works out a hair under 100, though 100 gil is exactly 1.1 seals per gil.
+      expect(
+        calculateMaximumPriceWithinFilters(buildItem(1, 110), {
+          minimumSealsPerGil: 1.1,
+        }),
+      ).toBe(100);
+    });
+
+    it("should be the maximum price when that's lower", () => {
+      expect(
+        calculateMaximumPriceWithinFilters(sword, {
+          minimumSealsPerGil: 4,
+          maximumPricePerUnit: 400,
+        }),
+      ).toBe(400);
+      expect(
+        calculateMaximumPriceWithinFilters(sword, {
+          minimumSealsPerGil: 4,
+          maximumPricePerUnit: 500,
+        }),
+      ).toBe(453);
+    });
+
+    it("should round a maximum price that isn't whole gil down", () => {
+      expect(
+        calculateMaximumPriceWithinFilters(sword, {
+          maximumPricePerUnit: 500.5,
+        }),
+      ).toBe(500);
+    });
+
+    it("should be the maximum price alone when there's no minimum above 0 seals per gil", () => {
+      expect(
+        calculateMaximumPriceWithinFilters(sword, { maximumPricePerUnit: 500 }),
+      ).toBe(500);
+      expect(
+        calculateMaximumPriceWithinFilters(sword, {
+          minimumSealsPerGil: 0,
+          maximumPricePerUnit: 500,
+        }),
+      ).toBe(500);
+    });
+
+    it("should be undefined when nothing limits the price", () => {
+      expect(calculateMaximumPriceWithinFilters(sword, {})).toBeUndefined();
+      expect(
+        calculateMaximumPriceWithinFilters(sword, { minimumSealsPerGil: 0 }),
+      ).toBeUndefined();
     });
   });
 

@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ExpertDeliveryItemsTable } from "../components/ExpertDeliveryItemsTable";
+import { ExpertDeliveryFilters } from "../components/ExpertDeliveryFilters";
+import { ExpertDeliveryGroupedRoute } from "../components/ExpertDeliveryGroupedRoute";
 import { ExpertDeliveryRoute } from "../components/ExpertDeliveryRoute";
-import { NumberInput } from "../components/forms/NumberInput";
 import { useCopyText } from "../hooks/useCopyText";
 import { useExpertDeliveryPrices } from "../hooks/useExpertDeliveryPrices";
 import {
+  groupRouteByItem,
   planRoute,
   selectItemsToBuy,
   type ExpertDeliveryItem,
@@ -14,6 +15,7 @@ import { itemService } from "../services/itemService";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
 import { findRegionNameForWorld } from "../utils/worldDirectory";
+import { formatNumber } from "../utils/format";
 
 /** Items worth fewer seals than this are left off the list. */
 const MINIMUM_SEALS = 150;
@@ -24,8 +26,8 @@ const DEFAULT_MINIMUM_SEALS_PER_GIL = 4;
 /** The most a listing can cost to be shown — until changed on the page. */
 const DEFAULT_MAXIMUM_PRICE_PER_UNIT = 1000;
 
-/** How the items are laid out: one list, or split up by the world to buy them on. */
-type View = "list" | "route";
+/** How the route is laid out: a row per listing, or a row per item on each world. */
+type View = "route" | "groupedRoute";
 
 const NO_ITEMS: ExpertDeliveryItem[] = [];
 
@@ -65,20 +67,22 @@ export const ExpertDeliveryContainer = ({
   const [maximumPricePerUnit, setMaximumPricePerUnit] = useState<
     number | undefined
   >(DEFAULT_MAXIMUM_PRICE_PER_UNIT);
+  // Changed only once typing in a filter pauses, so the items aren't laid out again for every key.
+  const filters = useMemo(
+    () => ({ minimumSealsPerGil, maximumPricePerUnit }),
+    [minimumSealsPerGil, maximumPricePerUnit],
+  );
   const itemsToBuy = useMemo(
-    () =>
-      selectItemsToBuy(items ?? NO_ITEMS, prices, {
-        minimumSealsPerGil,
-        maximumPricePerUnit,
-      }),
-    [items, prices, minimumSealsPerGil, maximumPricePerUnit],
+    () => selectItemsToBuy(items ?? NO_ITEMS, prices, filters),
+    [items, prices, filters],
   );
 
-  const [view, setView] = useState<View>("list");
+  const [view, setView] = useState<View>("route");
   const route = useMemo(
     () => planRoute(itemsToBuy, currentCharacter.homeWorld, config.regions),
     [itemsToBuy, currentCharacter.homeWorld, config.regions],
   );
+  const groupedRoute = useMemo(() => groupRouteByItem(route), [route]);
 
   // Pricing everything is quick, so nothing's shown until it's done.
   const isPriced = itemIds.every((itemId) => prices[itemId] !== undefined);
@@ -105,9 +109,14 @@ export const ExpertDeliveryContainer = ({
           and the maximum sale price.
         </p>
         <p>
-          The list shows all items matching the filters, ordered by the best
-          seal/gil ratio of each item. The route view shows the route and items
-          to buy to reduce world hopping and data-center hopping.
+          The route shows the worlds to visit and the listings to buy on each,
+          to reduce world hopping and data-center hopping.
+        </p>
+        <p>
+          The grouped route visits the same worlds, with a row per item on each
+          world rather than a row per listing, so an item can be bought in one
+          go. It shows the most a listing can cost and still meet the filters,
+          for listings that weren't there when prices were fetched.
         </p>
       </div>
 
@@ -115,37 +124,25 @@ export const ExpertDeliveryContainer = ({
         <div className="view-toggle" role="group" aria-label="View">
           <button
             type="button"
-            aria-pressed={view === "list"}
-            onClick={() => setView("list")}
-          >
-            List
-          </button>
-          <button
-            type="button"
             aria-pressed={view === "route"}
             onClick={() => setView("route")}
           >
             Route
           </button>
+          <button
+            type="button"
+            aria-pressed={view === "groupedRoute"}
+            onClick={() => setView("groupedRoute")}
+          >
+            Route (Grouped)
+          </button>
         </div>
-        <label className="character-select">
-          Minimum seals / gil
-          <NumberInput
-            min={0}
-            placeholder="none"
-            value={minimumSealsPerGil}
-            onChange={setMinimumSealsPerGil}
-          />
-        </label>
-        <label className="character-select">
-          Maximum price
-          <NumberInput
-            min={0}
-            placeholder="none"
-            value={maximumPricePerUnit}
-            onChange={setMaximumPricePerUnit}
-          />
-        </label>
+        <ExpertDeliveryFilters
+          minimumSealsPerGil={minimumSealsPerGil}
+          onMinimumSealsPerGilChange={setMinimumSealsPerGil}
+          maximumPricePerUnit={maximumPricePerUnit}
+          onMaximumPricePerUnitChange={setMaximumPricePerUnit}
+        />
       </div>
 
       {region === undefined ? (
@@ -161,23 +158,24 @@ export const ExpertDeliveryContainer = ({
         <>
           {failedCount > 0 && (
             <p className="muted">
-              Couldn't fetch prices for {failedCount.toLocaleString()} item
+              Couldn't fetch prices for {formatNumber(failedCount)} item
               {failedCount === 1 ? "" : "s"}.
             </p>
           )}
           {itemsToBuy.length === 0 ? (
             <p className="muted">No listings meet the filters.</p>
-          ) : view === "list" ? (
-            <ExpertDeliveryItemsTable
-              itemsToBuy={itemsToBuy}
-              regions={config.regions}
+          ) : view === "route" ? (
+            <ExpertDeliveryRoute
+              legs={route}
+              homeWorld={currentCharacter.homeWorld}
               copiedKey={copiedKey}
               onCopy={copyText}
             />
           ) : (
-            <ExpertDeliveryRoute
-              legs={route}
+            <ExpertDeliveryGroupedRoute
+              legs={groupedRoute}
               homeWorld={currentCharacter.homeWorld}
+              filters={filters}
               copiedKey={copiedKey}
               onCopy={copyText}
             />

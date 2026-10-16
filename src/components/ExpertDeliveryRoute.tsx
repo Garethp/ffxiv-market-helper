@@ -4,7 +4,7 @@ import {
   type RouteLeg,
   type RouteStop,
 } from "../services/expertDelivery";
-import { formatGil } from "../utils/format";
+import { formatGil, formatNumber } from "../utils/format";
 import { FixedWidthColumns } from "./tables/FixedWidthColumns";
 import { ItemNameWithCopy } from "./ItemNameWithCopy";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
@@ -44,7 +44,7 @@ const StopTable = ({
             </td>
             <td>{formatGil(listing.pricePerUnit)}</td>
             <td>{calculateSealsPerGil(item, listing).toFixed(2)}</td>
-            <td>{item.seals.toLocaleString()}</td>
+            <td>{formatNumber(item.seals)}</td>
           </tr>
         );
       })}
@@ -85,7 +85,7 @@ export const ExpertDeliveryRoute = ({
               <span className="muted">
                 {stop.listings.length} listing
                 {stop.listings.length === 1 ? "" : "s"},{" "}
-                {countSealsAt(stop).toLocaleString()} seals
+                {formatNumber(countSealsAt(stop))} seals
               </span>
             </h3>
             <StopTable stop={stop} copiedKey={copiedKey} onCopy={onCopy} />

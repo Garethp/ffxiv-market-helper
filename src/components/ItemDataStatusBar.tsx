@@ -1,4 +1,5 @@
 import type { ItemDataStatus } from "../services/itemDataCache";
+import { formatNumber } from "../utils/format";
 
 /**
  * A bar along the bottom of every page while the item data is being loaded,
@@ -22,9 +23,9 @@ export const ItemDataStatusBar = ({ status }: { status: ItemDataStatus }) => {
         <div className="item-data-status" role="status">
           <div className="item-data-status-bar" />
           <p>
-            Loading item data: {status.itemsSoFar.toLocaleString()} items so
-            far. This only happens once per game update, and makes item names
-            quick to look up from then on.
+            Loading item data: {formatNumber(status.itemsSoFar)} items so far.
+            This only happens once per game update, and makes item names quick
+            to look up from then on.
           </p>
         </div>
       );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatGil } from "./format";
+import { formatGil, formatNumber } from "./format";
 
 describe("formatGil", () => {
   describe("when there is no value to show", () => {
@@ -26,4 +26,13 @@ describe("formatGil", () => {
       expect(formatGil(1234567)).toBe((1234567).toLocaleString());
     });
   });
+});
+
+describe("formatNumber", () => {
+  it.each([0, 7, 1234567, 0.5, 12.3456])(
+    "should show %s the way the viewer's locale writes it",
+    (value) => {
+      expect(formatNumber(value)).toBe(value.toLocaleString());
+    },
+  );
 });

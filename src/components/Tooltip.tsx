@@ -51,20 +51,57 @@ export const Tooltip = ({
   };
 
   // Some tooltips only fill in once they're open, so where they sit is worked out again whenever
-  // their size changes. Sliding one doesn't change its size, so this can't set itself off.
-  useEffect(() => {
+  // their size changes. Sliding one doesn't change its size, so this can't set itself off. Only
+  // watched while it's open, since a table can hold thousands of tooltips and only one is open.
+  const resizeObserver = useRef<ResizeObserver>(undefined);
+  const isHovered = useRef(false);
+  const isFocused = useRef(false);
+
+  const stopWatchingSize = () => {
+    resizeObserver.current?.disconnect();
+    resizeObserver.current = undefined;
+  };
+  useEffect(() => stopWatchingSize, []);
+
+  const open = () => {
+    keepOnScreen();
     const tooltip = tooltipRef.current;
-    if (!tooltip || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(keepOnScreen);
-    observer.observe(tooltip);
-    return () => observer.disconnect();
-  }, []);
+    if (
+      resizeObserver.current ||
+      !tooltip ||
+      typeof ResizeObserver === "undefined"
+    )
+      return;
+    resizeObserver.current = new ResizeObserver(keepOnScreen);
+    resizeObserver.current.observe(tooltip);
+  };
+
+  // The stylesheet keeps it open while it's either hovered or has focus inside it.
+  const closeUnlessStillOpen = () => {
+    if (!isHovered.current && !isFocused.current) stopWatchingSize();
+  };
 
   return (
     <span
       className="tooltip-anchor"
-      onMouseEnter={keepOnScreen}
-      onFocus={keepOnScreen}
+      onMouseEnter={() => {
+        isHovered.current = true;
+        open();
+      }}
+      onMouseLeave={() => {
+        isHovered.current = false;
+        closeUnlessStillOpen();
+      }}
+      onFocus={() => {
+        isFocused.current = true;
+        open();
+      }}
+      onBlur={(event) => {
+        // Moving focus to something else inside it leaves it open.
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        isFocused.current = false;
+        closeUnlessStillOpen();
+      }}
     >
       {children(tooltipId)}
       <span ref={tooltipRef} role="tooltip" id={tooltipId} className="tooltip">

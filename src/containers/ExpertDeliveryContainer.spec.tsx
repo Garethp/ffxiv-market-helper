@@ -129,6 +129,9 @@ const setField = (label: string, value: string) =>
 const showRoute = () =>
   fireEvent.click(screen.getByRole("button", { name: "Route" }));
 
+const showGroupedRoute = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Route (Grouped)" }));
+
 let writeText: ReturnType<typeof vi.fn>;
 
 describe("ExpertDeliveryContainer", () => {
@@ -255,7 +258,7 @@ describe("ExpertDeliveryContainer", () => {
       expect(
         screen.getByText("Couldn't fetch prices for 1 item."),
       ).not.toBeNull();
-      showRoute();
+      showGroupedRoute();
       expect(
         screen.getByText("Couldn't fetch prices for 1 item."),
       ).not.toBeNull();
@@ -273,7 +276,7 @@ describe("ExpertDeliveryContainer", () => {
 
       expect(screen.getByText("No listings meet the filters.")).not.toBeNull();
       expect(screen.queryByRole("table")).toBeNull();
-      showRoute();
+      showGroupedRoute();
       expect(screen.getByText("No listings meet the filters.")).not.toBeNull();
     });
   });
@@ -294,66 +297,61 @@ describe("ExpertDeliveryContainer", () => {
       ).toBe("1k");
     });
 
-    it("should apply the limits as they're changed", async () => {
+    const stubCuirassAndSword = () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
+      // 5.18 and 3.62 seals per gil.
       stubPrices({
         8455: buildListedPrice(buildListing(100)),
         1: buildListedPrice(buildListing(500)),
       });
+    };
+
+    const advanceTime = (ms: number) =>
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+
+    it("should apply the limits once typing pauses", async () => {
+      stubCuirassAndSword();
 
       renderPage();
       await waitForItemsLoaded();
-      setField("Maximum price", "200");
-
-      expect(getItemNames()).toEqual(["Augmented Wolfram Cuirass"]);
-
+      vi.useFakeTimers();
       setField("Maximum price", "");
-      setField("Minimum seals / gil", "4");
+      setField("Minimum seals / gil", "3");
+      advanceTime(299);
+
+      expect(getItemNames()).toEqual(["Augmented Wolfram Cuirass"]);
+      advanceTime(1);
+      expect(getItemNames()).toEqual([
+        "Augmented Wolfram Cuirass",
+        "Some Sword",
+      ]);
+
+      setField("Maximum price", "200");
+      advanceTime(300);
 
       expect(getItemNames()).toEqual(["Augmented Wolfram Cuirass"]);
     });
-  });
 
-  describe("the list", () => {
-    it("should show each item at its best listing, with how many listings meet the filters and their average seals per gil", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([sword]);
-      stubPrices({
-        // The last is worth too few seals per gil to count.
-        1: buildListedPrice(
-          buildListing(150, "Lich"),
-          buildListing(100, "Omega"),
-          buildListing(400),
-          buildListing(500),
-        ),
-      });
+    it("should not redraw the page for each key typed, until typing pauses", async () => {
+      stubCuirassAndSword();
 
       renderPage();
       await waitForItemsLoaded();
+      vi.useFakeTimers();
+      // The page prices the items every time it's drawn, so that counts how often it's been drawn.
+      const drawCount = () => mockedUseExpertDeliveryPrices.mock.calls.length;
+      const drawnBeforeTyping = drawCount();
+      setField("Minimum seals / gil", "0");
+      setField("Minimum seals / gil", "0.");
+      setField("Minimum seals / gil", "0.1");
+      setField("Maximum price", "");
+      advanceTime(299);
 
-      expect(getColumnHeaderNames(screen.getByRole("table"))).toEqual([
-        "Item",
-        "Lowest price",
-        "Seals / gil",
-        "Seals",
-        "Listings",
-        "Average seals / gil",
-        "World",
-      ]);
-      expect(getTableRows()).toEqual([
-        ["Some Sword", "100", "18.12", "1,812", "3", "11.58", "Omega - Chaos"],
-      ]);
-    });
-
-    it("should show only the world for a world that isn't in the directory", async () => {
-      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
-      stubPrices({
-        8455: buildListedPrice(buildListing(100, "Brand New World")),
-      });
-
-      renderPage();
-      await waitForItemsLoaded();
-
-      expect(getTableRows()[0].slice(-1)).toEqual(["Brand New World"]);
+      expect(drawCount()).toBe(drawnBeforeTyping);
+      advanceTime(1);
+      expect(drawCount()).toBeGreaterThan(drawnBeforeTyping);
     });
   });
 
@@ -379,7 +377,7 @@ describe("ExpertDeliveryContainer", () => {
     const getWorldTable = (world: string) =>
       within(screen.getByRole("region", { name: world })).getByRole("table");
 
-    it("should show the list until the route is picked", async () => {
+    it("should show the route until the grouped route is picked", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([]);
 
       renderPage();
@@ -387,11 +385,15 @@ describe("ExpertDeliveryContainer", () => {
 
       const getAriaPressed = (name: string) =>
         screen.getByRole("button", { name }).getAttribute("aria-pressed");
-      expect(getAriaPressed("List")).toBe("true");
-      expect(getAriaPressed("Route")).toBe("false");
+      const getPressedViews = () =>
+        ["Route", "Route (Grouped)"].filter(
+          (name) => getAriaPressed(name) === "true",
+        );
+      expect(getPressedViews()).toEqual(["Route"]);
+      showGroupedRoute();
+      expect(getPressedViews()).toEqual(["Route (Grouped)"]);
       showRoute();
-      expect(getAriaPressed("List")).toBe("false");
-      expect(getAriaPressed("Route")).toBe("true");
+      expect(getPressedViews()).toEqual(["Route"]);
     });
 
     it("should visit the home world, then the rest of its data center, then other data centers, most seals first", async () => {
@@ -482,6 +484,74 @@ describe("ExpertDeliveryContainer", () => {
     });
   });
 
+  describe("the grouped route", () => {
+    const buildItem = (
+      itemId: number,
+      name: string,
+      seals: number,
+    ): ExpertDeliveryItem => ({ itemId, name, itemLevel: 100, seals });
+
+    const getWorldTable = (world: string) =>
+      within(screen.getByRole("region", { name: world })).getByRole("table");
+
+    it("should show a row per item on each world, with the most a listing can cost and still meet the filters", async () => {
+      mockedGetExpertDeliveryItems.mockResolvedValue([
+        buildItem(1, "Sword", 900),
+        buildItem(2, "Shield", 500),
+      ]);
+      stubPrices({
+        1: buildListedPrice(
+          buildListing(200, "Lich"),
+          buildListing(120, "Omega"),
+          buildListing(100, "Lich"),
+        ),
+        2: buildListedPrice(buildListing(100, "Lich")),
+      });
+
+      renderPage();
+      await waitForItemsLoaded();
+      showGroupedRoute();
+
+      expect(getColumnHeaderNames(getWorldTable("Lich"))).toEqual([
+        "Item",
+        "Listings",
+        "Max price",
+        "Expected seals / gil",
+        "Seals / item",
+      ]);
+      // At 4 seals per gil at least, Sword is worth up to 225 gil and Shield up to 125.
+      expect(getRowsOf(getWorldTable("Lich"))).toEqual([
+        ["Sword", "2", "225", "6.00", "900"],
+        ["Shield", "1", "125", "5.00", "500"],
+      ]);
+      expect(getRowsOf(getWorldTable("Omega"))).toEqual([
+        ["Sword", "1", "225", "7.50", "900"],
+      ]);
+      expect(
+        screen.getByRole("heading", { name: "Lich 3 listings, 2,300 seals" }),
+      ).not.toBeNull();
+    });
+
+    it("should say any price will do when the filters don't limit it", async () => {
+      mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
+      stubPrices({ 8455: buildListedPrice(buildListing(100)) });
+
+      renderPage();
+      await waitForItemsLoaded();
+      vi.useFakeTimers();
+      setField("Minimum seals / gil", "");
+      setField("Maximum price", "");
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      showGroupedRoute();
+
+      expect(getRowsOf(getWorldTable("Zodiark"))).toEqual([
+        ["Augmented Wolfram Cuirass", "1", "Any", "5.18", "518"],
+      ]);
+    });
+  });
+
   describe("what an item is", () => {
     it("should show it when a name in the list is hovered", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass]);
@@ -516,7 +586,7 @@ describe("ExpertDeliveryContainer", () => {
     const isNameMarkedCopied = (name: string) =>
       getCopyButtonsFor(name).every(isMarkedCopied);
 
-    it("should copy the item's name from the list, and mark only that item as copied", async () => {
+    it("should copy the item's name, and mark only that item as copied", async () => {
       mockedGetExpertDeliveryItems.mockResolvedValue([cuirass, sword]);
       stubPrices({
         8455: buildListedPrice(buildListing(100)),

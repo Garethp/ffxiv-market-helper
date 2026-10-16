@@ -7,10 +7,10 @@ import { ProfitTable } from "./ProfitTable";
 import { ItemSummaryTooltip } from "./ItemSummaryTooltip";
 import { Tooltip } from "./Tooltip";
 import { UniversalisLink } from "./UniversalisLink";
+import { formatNumber } from "../utils/format";
 
-const formatNumber = (value: number): string => {
-  return Math.round(value).toLocaleString();
-};
+const formatRounded = (value: number): string =>
+  formatNumber(Math.round(value));
 
 /**
  * An item's total units sold per day. Once the item's been priced, hovering
@@ -31,7 +31,7 @@ const TotalSaleVelocity = ({
   gapThresholdMultiplier: number;
 }) => {
   const breakdownId = useId();
-  const total = formatNumber(item.totalSaleVelocity);
+  const total = formatRounded(item.totalSaleVelocity);
   switch (profit?.status) {
     case undefined:
       return total;
@@ -146,8 +146,8 @@ export const ScannedItemsTable = memo(
                   )}
                 </Tooltip>
               </td>
-              <td>{formatNumber(item.nqSaleVelocity)}</td>
-              <td>{formatNumber(item.hqSaleVelocity)}</td>
+              <td>{formatRounded(item.nqSaleVelocity)}</td>
+              <td>{formatRounded(item.hqSaleVelocity)}</td>
               <td>
                 <TotalSaleVelocity
                   item={item}

@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useSettledValue } from "../../hooks/useSettledValue";
 import { itemService } from "../../services/itemService";
 import type { ItemSearchResult } from "../../types";
 import { ErrorMessage } from "../ErrorMessage";
@@ -10,16 +11,6 @@ const TYPING_PAUSE_MS = 300;
 
 /** The fewest characters worth searching for. Any fewer match too many items to be useful. */
 const MIN_SEARCH_LENGTH = 2;
-
-/** The value, once it's stopped changing for `delayMs`. */
-const useSettledValue = <T,>(value: T, delayMs: number): T => {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timeout = setTimeout(() => setSettled(value), delayMs);
-    return () => clearTimeout(timeout);
-  }, [value, delayMs]);
-  return settled;
-};
 
 /** How a search for `searchText` has gone: still going, failed, found nothing, or the items to pick from. */
 const SearchOutcome = ({

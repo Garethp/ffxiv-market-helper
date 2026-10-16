@@ -70,16 +70,6 @@ export interface ItemToBuy {
 export const findBestListing = ({ listings }: ItemToBuy): RegionListing =>
   listings[0];
 
-/** The seals per gil of an item's listings, on average. */
-export const calculateAverageSealsPerGil = ({
-  item,
-  listings,
-}: ItemToBuy): number =>
-  listings.reduce(
-    (total, listing) => total + calculateSealsPerGil(item, listing),
-    0,
-  ) / listings.length;
-
 /**
  * The items with listings inside the filters, and those listings, in the
  * order worth buying them: most seals per gil from their best listing first.
@@ -197,4 +187,83 @@ export const planRoute = (
       countSealsAcross(b.stops) - countSealsAcross(a.stops) ||
       (a.dataCenter ?? "").localeCompare(b.dataCenter ?? ""),
   );
+};
+
+/** A world to visit, and each item to buy there with its listings there. */
+export interface GroupedRouteStop {
+  world: string;
+  /**
+   * Each item's listings on the world, most seals per gil first. The items go
+   * most seals per gil for buying all of their listings there first.
+   */
+  itemsToBuy: ItemToBuy[];
+}
+
+/** The worlds to visit in one data center, each item's listings on a world together. */
+export interface GroupedRouteLeg {
+  /** Missing for worlds that aren't in the directory. */
+  dataCenter?: string;
+  stops: GroupedRouteStop[];
+}
+
+/**
+ * The seals per gil of buying every one of an item's listings: their seals
+ * over their total price. Listings may have sold since they were priced, so
+ * it's what to expect rather than what's certain.
+ */
+export const calculateExpectedSealsPerGil = ({
+  item,
+  listings,
+}: ItemToBuy): number =>
+  (item.seals * listings.length) /
+  listings.reduce((total, listing) => total + listing.pricePerUnit, 0);
+
+const groupStopByItem = ({ world, listings }: RouteStop): GroupedRouteStop => {
+  const listingsByItem = new Map<number, ItemToBuy>();
+  // The stop's listings are already most seals per gil first, so each item's stay that way.
+  listings.forEach(({ item, listing }) => {
+    const itemToBuy = listingsByItem.get(item.itemId);
+    if (itemToBuy) itemToBuy.listings.push(listing);
+    else listingsByItem.set(item.itemId, { item, listings: [listing] });
+  });
+  return {
+    world,
+    itemsToBuy: Array.from(listingsByItem.values()).sort(
+      (a, b) =>
+        calculateExpectedSealsPerGil(b) - calculateExpectedSealsPerGil(a) ||
+        compareBySealsThenName(a.item, b.item),
+    ),
+  };
+};
+
+/**
+ * The same route, visiting the same worlds in the same order, with each
+ * world's listings of an item put together so it can be bought in one go.
+ */
+export const groupRouteByItem = (legs: RouteLeg[]): GroupedRouteLeg[] =>
+  legs.map(({ dataCenter, stops }) => ({
+    dataCenter,
+    stops: stops.map(groupStopByItem),
+  }));
+
+/**
+ * The most one of an item can cost and still be inside the filters, in whole
+ * gil. Undefined when the filters don't limit its price.
+ */
+export const calculateMaximumPriceWithinFilters = (
+  item: ExpertDeliveryItem,
+  { minimumSealsPerGil, maximumPricePerUnit }: BuyingFilters,
+): number | undefined => {
+  const limits: number[] = [];
+  if (maximumPricePerUnit !== undefined)
+    limits.push(Math.floor(maximumPricePerUnit));
+  // With no minimum above 0, any price is worth enough seals per gil.
+  if (minimumSealsPerGil !== undefined && minimumSealsPerGil > 0) {
+    let price = Math.floor(item.seals / minimumSealsPerGil);
+    // Dividing by a fraction like 0.1 can land just under a whole number, so
+    // check the next gil up the same way the filters would.
+    if (item.seals / (price + 1) >= minimumSealsPerGil) price += 1;
+    limits.push(price);
+  }
+  return limits.length === 0 ? undefined : Math.min(...limits);
 };

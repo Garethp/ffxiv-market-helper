@@ -143,25 +143,101 @@ describe("Tooltip", () => {
       expect(tooltip.style.translate).toBe("-61px 0");
     });
 
-    it("should slide back onto the screen when it grows after opening", () => {
-      let onResize = () => {};
+    /** Stands in for ResizeObserver, reporting how many tooltips are being watched. */
+    const stubResizeObserver = () => {
+      const watched = new Set<object>();
+      const onResize = { current: () => {} };
       vi.stubGlobal(
         "ResizeObserver",
         class {
           constructor(callback: () => void) {
-            onResize = callback;
+            onResize.current = callback;
           }
-          observe() {}
-          disconnect() {}
+          observe() {
+            watched.add(this);
+          }
+          disconnect() {
+            watched.delete(this);
+          }
         },
       );
+      return { countWatched: () => watched.size, onResize };
+    };
+
+    it("should slide back onto the screen when it grows after opening", () => {
+      const { onResize } = stubResizeObserver();
       const tooltip = renderPlacedTooltip(100, 250);
       hover();
 
       placeTooltip(tooltip, 100, 420);
-      act(() => onResize());
+      act(() => onResize.current());
 
       expect(tooltip.style.translate).toBe("-61px 0");
+    });
+
+    it("should only watch for it growing while it's open", () => {
+      const { countWatched } = stubResizeObserver();
+      renderPlacedTooltip(100, 250);
+      const anchor = screen.getByText("gap");
+
+      expect(countWatched()).toBe(0);
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseEnter(anchor);
+      expect(countWatched()).toBe(1);
+      fireEvent.mouseLeave(anchor);
+      expect(countWatched()).toBe(0);
+    });
+
+    it("should keep watching while it's still open by focus or hover", () => {
+      const { countWatched } = stubResizeObserver();
+      renderPlacedTooltip(100, 250);
+      const anchor = screen.getByText("gap");
+
+      fireEvent.focus(anchor);
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseLeave(anchor);
+      expect(countWatched()).toBe(1);
+
+      fireEvent.mouseEnter(anchor);
+      fireEvent.blur(anchor);
+      expect(countWatched()).toBe(1);
+
+      fireEvent.mouseLeave(anchor);
+      expect(countWatched()).toBe(0);
+    });
+
+    it("should keep watching while focus moves within what it wraps", () => {
+      const { countWatched } = stubResizeObserver();
+      render(
+        <Tooltip text="Room to undercut">
+          {(tooltipId) => (
+            <>
+              <button aria-describedby={tooltipId}>first</button>
+              <button>second</button>
+            </>
+          )}
+        </Tooltip>,
+      );
+      const first = screen.getByRole("button", { name: "first" });
+      const second = screen.getByRole("button", { name: "second" });
+
+      fireEvent.focus(first);
+      fireEvent.blur(first, { relatedTarget: second });
+      fireEvent.focus(second);
+      expect(countWatched()).toBe(1);
+
+      fireEvent.blur(second, { relatedTarget: document.body });
+      expect(countWatched()).toBe(0);
+    });
+
+    it("should stop watching once it's gone", () => {
+      const { countWatched } = stubResizeObserver();
+      renderPlacedTooltip(100, 250);
+      hover();
+
+      cleanup();
+
+      expect(countWatched()).toBe(0);
     });
 
     it("should work out where it sits afresh each time it opens", () => {

@@ -5,6 +5,7 @@ import { useHighVolumeItemScan } from "../hooks/useHighVolumeItemScan";
 import { useScannedItemProfits } from "../hooks/useScannedItemProfits";
 import type { TradingConfig } from "../services/tradingConfig";
 import type { Character } from "../types";
+import { formatNumber } from "../utils/format";
 
 /** How many of the highest-velocity results to display — scanning can surface thousands of traded items. */
 const DISPLAY_LIMIT = 200;
@@ -86,13 +87,13 @@ export const HighVolumeItemsContainer = ({
         </button>
         {status.state === "running" && (
           <span className="last-updated">
-            {status.scannedItems.toLocaleString()} /{" "}
-            {status.totalItems.toLocaleString()} items checked
+            {formatNumber(status.scannedItems)} /{" "}
+            {formatNumber(status.totalItems)} items checked
           </span>
         )}
         {status.state === "done" && (
           <span className="last-updated">
-            Scan complete — {status.scannedItems.toLocaleString()} items checked
+            Scan complete — {formatNumber(status.scannedItems)} items checked
             {status.failedBatchCount > 0
               ? `, ${status.failedBatchCount} batch(es) failed and were skipped`
               : ""}
