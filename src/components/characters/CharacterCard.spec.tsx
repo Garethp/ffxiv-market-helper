@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import {
   cleanup,
   fireEvent,
@@ -118,7 +117,7 @@ describe("CharacterCard", () => {
 
   describe("removing the character", () => {
     it("should report the removal once it's confirmed", () => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
       const { onRemove } = renderCard(buildCharacter());
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));
@@ -127,7 +126,7 @@ describe("CharacterCard", () => {
     });
 
     it("should report nothing when removing it isn't confirmed", () => {
-      vi.spyOn(window, "confirm").mockReturnValue(false);
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
       const { onRemove } = renderCard(buildCharacter());
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Alice" }));

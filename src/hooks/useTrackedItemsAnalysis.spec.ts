@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { defaultScheduler, notifyManager } from "@tanstack/react-query";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import {

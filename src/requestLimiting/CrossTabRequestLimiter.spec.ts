@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CrossTabRequestLimiter } from "./CrossTabRequestLimiter";
 import { InMemoryLockManager } from "./InMemoryLockManager";
 import type {
@@ -32,56 +32,68 @@ const runRequest = async (
   release();
 };
 
+/**
+ * Runs the fake clock until every pending timer (the pretend requests, the limiter's one-second
+ * rate locks) has fired, then waits for the work itself to finish.
+ */
+const runToCompletion = async <T>(work: Promise<T>): Promise<T> => {
+  await vi.runAllTimersAsync();
+  return work;
+};
+
 describe("CrossTabRequestLimiter", () => {
+  // The limiter frees its rate locks with setTimeout. On a fake clock (which fakes Date.now too) the
+  // timing these tests check is exact rather than at the mercy of how busy the machine is, and the
+  // one-second waits take no real time.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe("sharing a budget across tabs", () => {
     it("should never allow more requests in flight at once than the concurrency limit, counting every tab", async () => {
       const tabs = openTwoTabs({ maxConcurrent: 3, maxRequestsPerSecond: 100 });
       let active = 0;
       let maxActive = 0;
 
-      await Promise.all(
-        Array.from({ length: 12 }, async (_, i) => {
-          const release = await tabs[i % 2].acquire("interactive");
-          active++;
-          maxActive = Math.max(maxActive, active);
-          await sleep(30);
-          active--;
-          release();
-        }),
+      await runToCompletion(
+        Promise.all(
+          Array.from({ length: 12 }, async (_, i) => {
+            const release = await tabs[i % 2].acquire("interactive");
+            active++;
+            maxActive = Math.max(maxActive, active);
+            await sleep(30);
+            active--;
+            release();
+          }),
+        ),
       );
 
       expect(maxActive).toBe(3);
     });
 
-    // Measured against the wall clock, so a machine that stalls mid-run can push a start over a
-    // window boundary. Three attempts, passing if any one of them does.
-    it(
-      "should never start more requests than the rate limit within any one-second window, counting every tab",
-      { retry: 2 },
-      async () => {
-        const tabs = openTwoTabs({
-          maxConcurrent: 50,
-          maxRequestsPerSecond: 10,
-        });
-        const starts: number[] = [];
+    it("should never start more requests than the rate limit within any one-second window, counting every tab", async () => {
+      const tabs = openTwoTabs({ maxConcurrent: 50, maxRequestsPerSecond: 10 });
+      const startedAt = Date.now();
+      const starts: number[] = [];
 
-        await Promise.all(
+      await runToCompletion(
+        Promise.all(
           Array.from({ length: 12 }, (_, i) =>
             runRequest(tabs[i % 2], "interactive", 15, () =>
-              starts.push(Date.now()),
+              starts.push(Date.now() - startedAt),
             ),
           ),
-        );
+        ),
+      );
 
-        const worstWindowCount = starts.reduce((worst, windowStart) => {
-          const count = starts.filter(
-            (t) => t >= windowStart && t < windowStart + 1000,
-          ).length;
-          return Math.max(worst, count);
-        }, 0);
-        expect(worstWindowCount).toBeLessThanOrEqual(10);
-      },
-    );
+      // Ten use up the budget straight away. The other two wait for the first rate locks to come
+      // back, one second after they were taken.
+      expect(starts).toEqual([...Array<number>(10).fill(0), 1000, 1000]);
+    });
 
     it("should keep limiters with different names on separate budgets", async () => {
       const locks = new InMemoryLockManager();
@@ -100,16 +112,20 @@ describe("CrossTabRequestLimiter", () => {
   describe("prioritising requests", () => {
     it("should let background requests start together in a burst when nothing interactive is waiting", async () => {
       const [tab] = openTwoTabs({ maxConcurrent: 5, maxRequestsPerSecond: 20 });
+      const startedAt = Date.now();
       const starts: number[] = [];
 
-      await Promise.all(
-        Array.from({ length: 5 }, () =>
-          runRequest(tab, "background", 50, () => starts.push(Date.now())),
+      await runToCompletion(
+        Promise.all(
+          Array.from({ length: 5 }, () =>
+            runRequest(tab, "background", 50, () =>
+              starts.push(Date.now() - startedAt),
+            ),
+          ),
         ),
       );
 
-      const spread = Math.max(...starts) - Math.min(...starts);
-      expect(spread).toBeLessThan(15);
+      expect(starts).toEqual([0, 0, 0, 0, 0]);
     });
 
     it("should start interactive requests ahead of background requests that were already waiting, other than one already queued for a slot", async () => {
@@ -125,15 +141,15 @@ describe("CrossTabRequestLimiter", () => {
       const requests = Array.from({ length: 5 }, () =>
         runRequest(scanTab, "background", 5, recordStart("background")),
       );
-      await sleep(10);
+      await vi.advanceTimersByTimeAsync(10);
       requests.push(
         ...Array.from({ length: 2 }, () =>
           runRequest(itemTab, "interactive", 5, recordStart("interactive")),
         ),
       );
-      await sleep(10);
+      await vi.advanceTimersByTimeAsync(10);
       releaseBlocker();
-      await Promise.all(requests);
+      await runToCompletion(Promise.all(requests));
 
       expect(startOrder).toEqual([
         "background",
@@ -175,7 +191,7 @@ describe("CrossTabRequestLimiter", () => {
         .acquire("background", controller.signal)
         .catch(() => undefined);
       const behind = scanTab.acquire("background");
-      await sleep(10);
+      await vi.advanceTimersByTimeAsync(10);
       controller.abort();
       await cancelled;
       releaseBlocker();

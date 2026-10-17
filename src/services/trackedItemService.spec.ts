@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import type { PricedItem, TrackedItem } from "../types";
 import {

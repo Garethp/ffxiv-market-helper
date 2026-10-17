@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import {
   cleanup,
   fireEvent,
@@ -138,7 +137,7 @@ describe("CharactersContainer", () => {
 
   describe("removing a character", () => {
     it("should remove the character once it's confirmed", async () => {
-      vi.spyOn(window, "confirm").mockReturnValue(true);
+      vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
       await addAliceWithAmarana();
       await renderPage();
 
@@ -176,7 +175,7 @@ describe("CharactersContainer", () => {
     ] as const)(
       "should say something went wrong at the top of the page when %s couldn't be removed",
       async (_, method, removeButtonName) => {
-        vi.spyOn(window, "confirm").mockReturnValue(true);
+        vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
         vi.spyOn(characterService, method).mockRejectedValue(
           new Error("storage is full"),
         );

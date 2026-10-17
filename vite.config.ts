@@ -55,6 +55,11 @@ export default defineConfig(({ mode }) => ({
       }) as PluginOption),
   ],
   test: {
+    // Undo vi.stubGlobal (e.g. the confirm dialog) after each test, so stubs can't leak between them.
+    unstubGlobals: true,
+    // Every test gets a DOM. The plain-logic tests don't need one, but happy-dom is cheap to set up and
+    // one default can't put a new test in the wrong environment.
+    environment: "happy-dom",
     include: ["src/**/*.spec.ts", "src/**/*.spec.tsx", "*.spec.ts"],
   },
 }));
