@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatGil, formatNumber } from "./format";
+import { formatBuyLocation, formatGil, formatNumber } from "./format";
 
 describe("formatGil", () => {
   describe("when there is no value to show", () => {
@@ -25,6 +25,16 @@ describe("formatGil", () => {
     it("should group thousands with the viewer's locale separators", () => {
       expect(formatGil(1234567)).toBe((1234567).toLocaleString());
     });
+  });
+});
+
+describe("formatBuyLocation", () => {
+  it("should show only the data center when the listings needed span several worlds", () => {
+    expect(formatBuyLocation("Chaos")).toBe("Chaos");
+  });
+
+  it("should show the data center and world when everything needed is on one world", () => {
+    expect(formatBuyLocation("Chaos", "Omega")).toBe("Chaos - Omega");
   });
 });
 

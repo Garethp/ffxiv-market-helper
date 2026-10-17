@@ -10,6 +10,7 @@ import {
   calculateAverageSalePrice,
   calculateConsistentPrice,
   determineSellListingStatus,
+  findSingleWorldPrice,
   isOwnRetainerListing,
   resolveSellTaxRate,
 } from "./pricing";
@@ -98,6 +99,214 @@ describe("pricing", () => {
       );
 
       expect(result?.cheapestWorld).toBe("WorldA");
+    });
+
+    it("should note the world when every listing needed is on it, even if pricier ones elsewhere aren't", () => {
+      const result = calculateConsistentPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 30,
+            worldName: "WorldA",
+          }),
+          buildListing({
+            pricePerUnit: 200,
+            quantity: 30,
+            worldName: "WorldA",
+          }),
+          buildListing({
+            pricePerUnit: 300,
+            quantity: 30,
+            worldName: "WorldB",
+          }),
+        ],
+        50,
+      );
+
+      expect(result?.singleWorld).toBe("WorldA");
+    });
+
+    it("should not note a single world when the listings needed are spread across worlds", () => {
+      const result = calculateConsistentPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 30,
+            worldName: "WorldA",
+          }),
+          buildListing({
+            pricePerUnit: 200,
+            quantity: 30,
+            worldName: "WorldB",
+          }),
+        ],
+        50,
+      );
+
+      expect(result?.singleWorld).toBeUndefined();
+    });
+
+    it("should still note the world when every listing there is falls short but is on one world", () => {
+      const result = calculateConsistentPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 10,
+            worldName: "WorldA",
+          }),
+        ],
+        50,
+      );
+
+      expect(result?.fullyFilled).toBe(false);
+      expect(result?.singleWorld).toBe("WorldA");
+    });
+
+    it("should not note a single world when a listing needed doesn't say which world it's on", () => {
+      const result = calculateConsistentPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 30,
+            worldName: "WorldA",
+          }),
+          buildListing({ pricePerUnit: 200, quantity: 30 }),
+        ],
+        50,
+      );
+
+      expect(result?.singleWorld).toBeUndefined();
+    });
+  });
+
+  describe("findSingleWorldPrice", () => {
+    // Bought across the data center, 100 units cost 100 each.
+    const dataCenterPrice = {
+      pricePerUnit: 100,
+      quantityFilled: 100,
+      fullyFilled: true,
+    };
+
+    it("should price the whole quantity on one world when it costs within the tolerance of the whole data center", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({
+            pricePerUnit: 103,
+            quantity: 100,
+            worldName: "WorldA",
+          }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result?.pricePerUnit).toBe(103);
+      expect(result?.quantityFilled).toBe(100);
+      expect(result?.singleWorld).toBe("WorldA");
+    });
+
+    it("should not pick a world that costs just over the tolerance", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({
+            pricePerUnit: 103.1,
+            quantity: 100,
+            worldName: "WorldA",
+          }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should not pick a world that can't fill the whole quantity alone, however cheap", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({ pricePerUnit: 50, quantity: 60, worldName: "WorldA" }),
+          buildListing({
+            pricePerUnit: 150,
+            quantity: 40,
+            worldName: "WorldB",
+          }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should pick the cheapest world when several are within the tolerance", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({
+            pricePerUnit: 102,
+            quantity: 100,
+            worldName: "WorldA",
+          }),
+          buildListing({
+            pricePerUnit: 101,
+            quantity: 100,
+            worldName: "WorldB",
+          }),
+          buildListing({
+            pricePerUnit: 103,
+            quantity: 100,
+            worldName: "WorldC",
+          }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result?.singleWorld).toBe("WorldB");
+      expect(result?.pricePerUnit).toBe(101);
+    });
+
+    it("should price a world by every listing it has, not just its cheapest", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 50,
+            worldName: "WorldA",
+          }),
+          buildListing({
+            pricePerUnit: 104,
+            quantity: 50,
+            worldName: "WorldA",
+          }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result?.pricePerUnit).toBe(102);
+    });
+
+    it("should leave out listings that don't say which world they're on", () => {
+      const result = findSingleWorldPrice(
+        [
+          buildListing({
+            pricePerUnit: 100,
+            quantity: 50,
+            worldName: "WorldA",
+          }),
+          buildListing({ pricePerUnit: 100, quantity: 50 }),
+        ],
+        100,
+        dataCenterPrice,
+        0.03,
+      );
+
+      expect(result).toBeUndefined();
     });
   });
 

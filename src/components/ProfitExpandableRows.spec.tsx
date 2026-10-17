@@ -21,6 +21,7 @@ const undercutRow: DisplayRow = {
         quantityFilled: 99,
         fullyFilled: true,
         cheapestWorld: "Omega",
+        singleWorld: "Omega",
       },
       sellPricePerUnit: 250,
       sellPriceSource: "history",
@@ -91,7 +92,7 @@ describe("ProfitExpandableRows", () => {
     );
 
     expect(Object.entries(getFiguresShown())).toEqual([
-      ["Buy DC", "Chaos"],
+      ["Buy DC", "Chaos - Omega"],
       ["Buy price / unit", (100).toLocaleString()],
       ["Sell price", (250).toLocaleString()],
       ["Profit / item", (132).toLocaleString()],
@@ -99,7 +100,7 @@ describe("ProfitExpandableRows", () => {
       ["Expected profit / day", (500).toLocaleString()],
     ]);
     expect(
-      screen.getByRole("link", { name: "Chaos" }).getAttribute("href"),
+      screen.getByRole("link", { name: "Chaos - Omega" }).getAttribute("href"),
     ).toBe(buildMarketPageUrl(42, "Chaos"));
     expect(
       screen

@@ -10,3 +10,9 @@ export const formatGil = (value?: number): string => {
   if (value === undefined || Number.isNaN(value)) return "—";
   return formatNumber(Math.round(value));
 };
+
+/** Where to buy: the data center, and the world too when everything needed is on one world. */
+export const formatBuyLocation = (
+  dataCenter: string,
+  singleWorld?: string,
+): string => (singleWorld ? `${dataCenter} - ${singleWorld}` : dataCenter);

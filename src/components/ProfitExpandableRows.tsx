@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useCopyText } from "../hooks/useCopyText";
 import type { DisplayRow } from "../types";
-import { formatGil } from "../utils/format";
+import { formatBuyLocation, formatGil } from "../utils/format";
 import { GapBadge } from "./badges/GapBadge";
 import { HighQualityBadge } from "./badges/HighQualityBadge";
 import { UndercutBadge } from "./badges/UndercutBadge";
@@ -41,7 +41,7 @@ const ProfitExpandableRow = ({
         itemId={item.itemId}
         worldOrDataCenter={pricing.buyDataCenter}
       >
-        {pricing.buyDataCenter}
+        {formatBuyLocation(pricing.buyDataCenter, pricing.buy.singleWorld)}
       </UniversalisLink>
     ) : (
       "—"

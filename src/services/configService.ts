@@ -220,6 +220,7 @@ class HardcodedConfigService implements ConfigService {
     gapThresholdMultiplier: 1.1,
     saleSampleSize: 3,
     buyListingsFetchCount: 100,
+    singleWorldTolerance: 0.01,
     // Needs to cover every listing on the board, not just enough for a price average — otherwise
     // our own listing could rank outside the fetched set and get misread as "not listed".
     sellListingsFetchCount: 100,

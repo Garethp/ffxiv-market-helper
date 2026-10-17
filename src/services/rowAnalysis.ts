@@ -8,6 +8,7 @@ import {
   fetchMarketData,
   fetchTaxRates,
   type TaxRatesByCity,
+  type UniversalisListing,
   type UniversalisMarketData,
 } from "../api/universalis";
 import {
@@ -16,6 +17,7 @@ import {
   calculateAverageSalePrice,
   calculateConsistentPrice,
   determineSellListingStatus,
+  findSingleWorldPrice,
   isOwnRetainerListing,
   resolveSellTaxRate,
   type WorldRetainer,
@@ -193,6 +195,7 @@ export const analyzeRow = (
   let best:
     | {
         dataCenter: string;
+        listings: UniversalisListing[];
         price: NonNullable<ReturnType<typeof calculateConsistentPrice>>;
       }
     | undefined;
@@ -205,13 +208,25 @@ export const analyzeRow = (
       item.targetQuantity,
     );
     if (price && (!best || price.pricePerUnit < best.price.pricePerUnit)) {
-      best = { dataCenter, price };
+      best = { dataCenter, listings: buyableListings, price };
     }
   }
 
+  // Prices the row at what buying on that one world costs, so the profit figures match where
+  // the Buy DC column says to go.
+  const buyPrice =
+    best &&
+    (findSingleWorldPrice(
+      best.listings,
+      item.targetQuantity,
+      best.price,
+      params.singleWorldTolerance,
+    ) ??
+      best.price);
+
   return buildReadyAnalysis(
     best?.dataCenter ?? marketData.buy[0]?.dataCenter ?? "",
-    best?.price,
+    buyPrice,
     sellHistory,
     sellListings,
     item.stackSize,

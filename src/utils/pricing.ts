@@ -68,9 +68,11 @@ export const calculateConsistentPrice = (
   let totalCost = 0;
   let quantityFilled = 0;
   const cheapestWorld = sorted[0].worldName;
+  const worldsUsed = new Set<string | undefined>();
 
   for (const listing of sorted) {
     if (remaining <= 0) break;
+    worldsUsed.add(listing.worldName);
     const quantityTaken = Math.min(remaining, listing.quantity);
     totalCost += quantityTaken * listing.pricePerUnit;
     quantityFilled += quantityTaken;
@@ -82,7 +84,38 @@ export const calculateConsistentPrice = (
     quantityFilled,
     fullyFilled: remaining <= 0,
     cheapestWorld,
+    singleWorld: worldsUsed.size === 1 ? [...worldsUsed][0] : undefined,
   };
+};
+
+/**
+ * The price of buying the whole target quantity on the cheapest single world that can fill it
+ * alone, when that costs no more than `tolerance` over `dataCenterPrice`. Both fill the same
+ * quantity, so comparing price per unit compares the totals.
+ */
+export const findSingleWorldPrice = (
+  listings: UniversalisListing[],
+  targetQuantity: number,
+  dataCenterPrice: ConsistentPrice,
+  tolerance: number,
+): ConsistentPrice | undefined => {
+  const listingsByWorld = new Map<string, UniversalisListing[]>();
+  for (const listing of listings) {
+    if (listing.worldName === undefined) continue;
+    listingsByWorld.set(listing.worldName, [
+      ...(listingsByWorld.get(listing.worldName) ?? []),
+      listing,
+    ]);
+  }
+
+  const maxPricePerUnit = dataCenterPrice.pricePerUnit * (1 + tolerance);
+  let best: ConsistentPrice | undefined;
+  for (const worldListings of listingsByWorld.values()) {
+    const price = calculateConsistentPrice(worldListings, targetQuantity);
+    if (!price?.fullyFilled || price.pricePerUnit > maxPricePerUnit) continue;
+    if (!best || price.pricePerUnit < best.pricePerUnit) best = price;
+  }
+  return best;
 };
 
 /** Average price per unit across the most recent sale history entries. */

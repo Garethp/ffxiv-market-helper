@@ -169,6 +169,25 @@ describe("ProfitTableRow", () => {
       );
     });
 
+    it("should name the world alongside the data center when everything needed is on one world", () => {
+      const { buyDataCenterCell } = renderRow(
+        buildReadyRow({
+          buyDataCenter: "Chaos",
+          buy: {
+            pricePerUnit: 100,
+            quantityFilled: 297,
+            fullyFilled: true,
+            cheapestWorld: "Omega",
+            singleWorld: "Omega",
+          },
+        }),
+      );
+
+      expect(buyDataCenterCell.querySelector("a")?.textContent).toBe(
+        "Chaos - Omega",
+      );
+    });
+
     it("should show a dash for the data center when there's nothing to buy", () => {
       const { buyDataCenterCell } = renderRow(
         buildReadyRow({ buy: undefined }),

@@ -1,5 +1,5 @@
 import type { DisplayRow } from "../types";
-import { formatGil } from "../utils/format";
+import { formatBuyLocation, formatGil } from "../utils/format";
 import { GapBadge } from "./badges/GapBadge";
 import { HighQualityBadge } from "./badges/HighQualityBadge";
 import { UndercutBadge } from "./badges/UndercutBadge";
@@ -47,7 +47,7 @@ export const ProfitTableRow = ({
             itemId={item.itemId}
             worldOrDataCenter={pricing.buyDataCenter}
           >
-            {pricing.buyDataCenter}
+            {formatBuyLocation(pricing.buyDataCenter, pricing.buy.singleWorld)}
           </UniversalisLink>
         ) : (
           "—"

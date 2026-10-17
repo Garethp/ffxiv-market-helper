@@ -134,6 +134,11 @@ export interface TradingParameters {
   saleSampleSize: number;
   /** How many listings to fetch per buy-side data center request. */
   buyListingsFetchCount: number;
+  /**
+   * How much more, as a fraction, buying the whole target quantity on one world may cost over
+   * buying it across the data center, for buying it all in one place to be worth it.
+   */
+  singleWorldTolerance: number;
   /** How many current listings to fetch on the sell server. */
   sellListingsFetchCount: number;
   /**
@@ -200,6 +205,8 @@ export interface ConsistentPrice {
   fullyFilled: boolean;
   /** The world the cheapest listing(s) came from (first listing consumed). */
   cheapestWorld?: string;
+  /** The world every listing used came from, when they're all on one world. */
+  singleWorld?: string;
 }
 
 /** The priced-out result of a successful profit analysis. */

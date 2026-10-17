@@ -52,6 +52,7 @@ const params: TradingParameters = {
   gapThresholdMultiplier: 1.1,
   saleSampleSize: 3,
   buyListingsFetchCount: 100,
+  singleWorldTolerance: 0.03,
   sellListingsFetchCount: 100,
   sellHistoryFetchCount: 100,
   saleVelocityWindowMs: 86_400_000,
@@ -203,6 +204,61 @@ describe("row analysis", () => {
         const analysis = await analyze({ regions: twoDataCenterRegions });
 
         expect(analysis.buyDataCenter).toBe("Light");
+      });
+
+      describe("buying everything on one world", () => {
+        const fiftyItem: PricedItem = { ...item, targetQuantity: 50 };
+
+        it("should price the row at one world's cost when buying it all there is within the tolerance", async () => {
+          // Across the data center: 30 at 100 then 20 at 101 = 5,020. WorldB alone: 50 at 101 = 5,050, 0.6% more.
+          mockMarketDataByScope({
+            Light: {
+              listings: [
+                buildListing({
+                  pricePerUnit: 100,
+                  quantity: 30,
+                  worldName: "WorldA",
+                }),
+                buildListing({
+                  pricePerUnit: 101,
+                  quantity: 50,
+                  worldName: "WorldB",
+                }),
+              ],
+            },
+          });
+
+          const analysis = await analyze({ item: fiftyItem });
+
+          expect(analysis.buyDataCenter).toBe("Light");
+          expect(analysis.buy?.singleWorld).toBe("WorldB");
+          expect(analysis.buy?.pricePerUnit).toBe(101);
+        });
+
+        it("should price the row across the data center when buying on one world costs too much more", async () => {
+          // Across the data center: 30 at 100 then 20 at 120 = 3,000 + 2,400 = 5,400. WorldB alone: 50 at 120 = 6,000, 11% more.
+          mockMarketDataByScope({
+            Light: {
+              listings: [
+                buildListing({
+                  pricePerUnit: 100,
+                  quantity: 30,
+                  worldName: "WorldA",
+                }),
+                buildListing({
+                  pricePerUnit: 120,
+                  quantity: 50,
+                  worldName: "WorldB",
+                }),
+              ],
+            },
+          });
+
+          const analysis = await analyze({ item: fiftyItem });
+
+          expect(analysis.buy?.singleWorld).toBeUndefined();
+          expect(analysis.buy?.pricePerUnit).toBe(108);
+        });
       });
 
       it("should report no buy price, naming the first data center, when nothing is buyable anywhere", async () => {
